@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="Vivarium.Application.Tests/Vivarium.Application.Tests.csproj" />
+  <Project Path="Vivarium.Application/Vivarium.Application.csproj" />
+  <Project Path="Vivarium.Domain.Tests/Vivarium.Domain.Tests.csproj" />
+  <Project Path="Vivarium.Domain/Vivarium.Domain.csproj" />
+  <Project Path="Vivarium.Infrastructure/Vivarium.Infrastructure.csproj" />
+  <Project Path="Vivarium.SimRunner/Vivarium.SimRunner.csproj" />
+</Solution>

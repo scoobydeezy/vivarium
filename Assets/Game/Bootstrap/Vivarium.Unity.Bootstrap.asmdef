@@ -1,0 +1,21 @@
+{
+    "name": "Vivarium.Unity.Bootstrap",
+    "rootNamespace": "Vivarium.Unity.Bootstrap",
+    "references": [
+        "Vivarium.Domain",
+        "Vivarium.Application",
+        "Vivarium.Infrastructure",
+        "Vivarium.Unity.Authoring",
+        "Vivarium.Unity.Infrastructure",
+        "Vivarium.Unity.Presentation"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

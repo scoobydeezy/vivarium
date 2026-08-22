@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Headless runner (§52). Targets a modern runtime rather than netstandard2.1, because unlike Core it
+    never has to compile inside Unity — it is one of the two consumers of the same Core source.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>Vivarium.SimRunner</AssemblyName>
+    <RootNamespace>Vivarium.SimRunner</RootNamespace>
+    <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Vivarium.Domain\Vivarium.Domain.csproj" />
+    <ProjectReference Include="..\Vivarium.Application\Vivarium.Application.csproj" />
+    <ProjectReference Include="..\Vivarium.Infrastructure\Vivarium.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

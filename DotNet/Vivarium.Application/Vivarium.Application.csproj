@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Game use cases: commands, queries, session, projections, ports (§33).
+    Depends on Domain only. It coordinates Domain behaviour and contains no presentation logic.
+  -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>Vivarium.Application</AssemblyName>
+    <RootNamespace>Vivarium.Application</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="$(CoreRoot)\Application\**\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Vivarium.Domain\Vivarium.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

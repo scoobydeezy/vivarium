@@ -112,3 +112,12 @@ InitTestScene*.unity*
 
 # Auto-generated cache in Assets folder
 /[Aa]ssets/[Ss]ceneDependencyCache*
+
+# --- Vivarium: hand-authored .NET side ---------------------------------------
+# The Unity template ignores *.csproj/*.sln because Unity regenerates those at the
+# repo root. The projects under /DotNet are hand-written source, not generated, so
+# they are re-included here. See Docs/Architecture.md.
+!/DotNet/**/*.csproj
+!/DotNet/*.slnx
+/DotNet/**/bin/
+/DotNet/**/obj/

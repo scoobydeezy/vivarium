@@ -1,0 +1,26 @@
+<Project>
+
+  <!--
+    Shared build settings for the .NET side of the repo.
+
+    The Core library projects target netstandard2.1 because that is Unity's cross-platform API
+    compatibility profile (Architecture §4): the same source files compile under Unity and under
+    `dotnet build`/`dotnet test`, with no compiled-DLL-copy workflow.
+
+    Nullable reference annotations are off deliberately. Unity's asmdef compilation does not enable
+    the nullable context, and Core must compile identically in both toolchains — so nullability is
+    documented in XML comments instead of enforced by the compiler. Turning it on means turning it on
+    in both places at once.
+  -->
+  <PropertyGroup>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <Deterministic>true</Deterministic>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <CoreRoot>$(MSBuildThisFileDirectory)..\Core\Runtime</CoreRoot>
+  </PropertyGroup>
+
+</Project>

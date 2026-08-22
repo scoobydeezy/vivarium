@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The authoritative simulation. Depends on the BCL and nothing else (§3).
+
+    There is intentionally no ProjectReference and no PackageReference here: if this project ever
+    needs one, that is the signal that something Unity-shaped, platform-shaped, or infrastructural
+    has leaked into the Domain.
+  -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>Vivarium.Domain</AssemblyName>
+    <RootNamespace>Vivarium.Domain</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="$(CoreRoot)\Domain\**\*.cs" />
+  </ItemGroup>
+
+</Project>

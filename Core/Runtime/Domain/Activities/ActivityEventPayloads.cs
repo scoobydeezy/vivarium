@@ -1,0 +1,107 @@
+using Vivarium.Domain.Common;
+using Vivarium.Domain.Scheduling;
+
+namespace Vivarium.Domain.Activities
+{
+    /// <summary>
+    /// Authored scheduled-event types. Persisted in saves, so these strings are schema (§39).
+    /// </summary>
+    public static class ScheduledEventTypes
+    {
+        public static readonly AuthoredId ActivityStart = new AuthoredId("event.activity.start");
+        public static readonly AuthoredId ActivityComplete = new AuthoredId("event.activity.complete");
+        public static readonly AuthoredId TravelArrival = new AuthoredId("event.travel.arrival");
+        public static readonly AuthoredId NeedThreshold = new AuthoredId("event.need.threshold");
+        public static readonly AuthoredId DecisionResolve = new AuthoredId("event.decision.resolve");
+        public static readonly AuthoredId CommitmentWindowExpired = new AuthoredId("event.commitment.window_expired");
+        public static readonly AuthoredId InteractionOpportunity = new AuthoredId("event.social.interaction_opportunity");
+    }
+
+    /// <summary>Begin the Activity that fulfils a planned Commitment (§29.5).</summary>
+    public sealed class ActivityStartPayload : IScheduledEventPayload
+    {
+        public ActivityStartPayload(CharacterId characterId, CommitmentId commitmentId, AuthoredId activityDefinitionId, LocationId locationId)
+        {
+            CharacterId = characterId;
+            CommitmentId = commitmentId;
+            ActivityDefinitionId = activityDefinitionId;
+            LocationId = locationId;
+        }
+
+        public CharacterId CharacterId { get; }
+
+        public CommitmentId CommitmentId { get; }
+
+        public AuthoredId ActivityDefinitionId { get; }
+
+        public LocationId LocationId { get; }
+    }
+
+    /// <summary>
+    /// An Activity's analytical progress reaches completion. Rescheduled whenever the progression rate
+    /// changes (§10.2).
+    /// </summary>
+    public sealed class ActivityCompletionPayload : IScheduledEventPayload
+    {
+        public ActivityCompletionPayload(ActivityInstanceId activityInstanceId, CharacterId characterId)
+        {
+            ActivityInstanceId = activityInstanceId;
+            CharacterId = characterId;
+        }
+
+        public ActivityInstanceId ActivityInstanceId { get; }
+
+        public CharacterId CharacterId { get; }
+    }
+
+    /// <summary>A Traveling Activity reaches its destination (§29.2).</summary>
+    public sealed class TravelArrivalPayload : IScheduledEventPayload
+    {
+        public TravelArrivalPayload(ActivityInstanceId activityInstanceId, CharacterId characterId, LocationId destinationLocationId)
+        {
+            ActivityInstanceId = activityInstanceId;
+            CharacterId = characterId;
+            DestinationLocationId = destinationLocationId;
+        }
+
+        public ActivityInstanceId ActivityInstanceId { get; }
+
+        public CharacterId CharacterId { get; }
+
+        public LocationId DestinationLocationId { get; }
+    }
+
+    /// <summary>
+    /// A need's analytical value crosses a behaviourally meaningful threshold (§10.2).
+    /// Without this event nothing would notice the crossing at all.
+    /// </summary>
+    public sealed class NeedThresholdPayload : IScheduledEventPayload
+    {
+        public NeedThresholdPayload(CharacterId characterId, AuthoredId needId, long threshold)
+        {
+            CharacterId = characterId;
+            NeedId = needId;
+            Threshold = threshold;
+        }
+
+        public CharacterId CharacterId { get; }
+
+        public AuthoredId NeedId { get; }
+
+        public long Threshold { get; }
+    }
+
+    /// <summary>A commitment's start window elapsed without it beginning (§29.3).</summary>
+    public sealed class CommitmentWindowExpiredPayload : IScheduledEventPayload
+    {
+        public CommitmentWindowExpiredPayload(CommitmentId commitmentId, CharacterId characterId)
+        {
+            CommitmentId = commitmentId;
+            CharacterId = characterId;
+        }
+
+        public CommitmentId CommitmentId { get; }
+
+        public CharacterId CharacterId { get; }
+    }
+}

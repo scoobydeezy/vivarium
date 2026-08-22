@@ -1,0 +1,472 @@
+using System.Collections.Generic;
+
+namespace Vivarium.Application.Persistence
+{
+    /// <summary>
+    /// Explicitly versioned save DTOs (§38).
+    /// <para>
+    /// Runtime Domain objects are never serialized directly. These are flat, format-agnostic data
+    /// classes: no behaviour, no Unity references, and definition references held as stable authored id
+    /// strings rather than object links (§39).
+    /// </para>
+    /// <para>
+    /// Everything reconstructible is deliberately absent — occupancy indexes, membership indexes,
+    /// decision dependency indexes, ancestor caches. Those are rebuilt and validated on load (§40).
+    /// The scheduler and active Activities/Commitments are <b>not</b> in that category: they are
+    /// authoritative state and are persisted (invariant 59).
+    /// </para>
+    /// </summary>
+    public sealed class SaveGameData
+    {
+        /// <summary>
+        /// The current persisted shape. Bump on any structural change and add a migration (§39).
+        /// </summary>
+        public const int CurrentSchemaVersion = 1;
+
+        /// <summary>Determines whether the persisted shape can be understood or migrated (§39.1).</summary>
+        public int SchemaVersion = CurrentSchemaVersion;
+
+        /// <summary>
+        /// Compatibility and diagnostics metadata. A mismatch is <b>not</b> automatically a load
+        /// blocker — support policy decides loadability (§39.1, invariant 62).
+        /// </summary>
+        public int ContentVersion;
+
+        public int SimulationRulesVersion;
+
+        public int RandomAlgorithmVersion;
+
+        public long WorldSeed;
+
+        /// <summary>Authoritative simulation clock, in whole simulation minutes (§9).</summary>
+        public long ClockMinutes;
+
+        /// <summary>
+        /// Real-world instant the save was taken, in UTC ticks. Application/Infrastructure subtracts
+        /// this from <c>IRealWorldClock</c> to derive offline elapsed duration — the Domain never reads
+        /// the wall clock (§21, §38).
+        /// </summary>
+        public long SavedAtRealTimeUtcTicks;
+
+        /// <summary>Last external command sequence issued, so ingress numbering continues (§2.2.1).</summary>
+        public long LastCommandSequence;
+
+        public RuntimeIdCountersData RuntimeIdCounters = new RuntimeIdCountersData();
+
+        public SchedulerData Scheduler = new SchedulerData();
+
+        /// <summary>
+        /// Aspect-scoped revision counters (§11.2.1).
+        /// <para>
+        /// These must be persisted, not rebuilt: pending events record the revisions they expected, so
+        /// restoring the counters to zero would make every saved event look stale and silently discard
+        /// the world's entire future.
+        /// </para>
+        /// </summary>
+        public List<RevisionData> Revisions = new List<RevisionData>();
+
+        public List<CharacterData> Characters = new List<CharacterData>();
+
+        public List<ActivityData> Activities = new List<ActivityData>();
+
+        public List<CommitmentData> Commitments = new List<CommitmentData>();
+
+        public List<LocationData> Locations = new List<LocationData>();
+
+        public List<TravelConnectionData> TravelConnections = new List<TravelConnectionData>();
+
+        public List<GroupData> Groups = new List<GroupData>();
+
+        public List<GroupMembershipData> GroupMemberships = new List<GroupMembershipData>();
+
+        public List<RelationshipData> Relationships = new List<RelationshipData>();
+
+        public List<DecisionData> Decisions = new List<DecisionData>();
+
+        public List<KnowledgeEntryData> Knowledge = new List<KnowledgeEntryData>();
+
+        public AttentionData Attention = new AttentionData();
+
+        /// <summary>Only Significant and Legacy tiers are persisted (§37).</summary>
+        public List<HistoryEntryData> SignificantHistory = new List<HistoryEntryData>();
+    }
+
+    /// <summary>Allocator counters. Ids are never reused, so these only ever move forward (§7.1).</summary>
+    public sealed class RuntimeIdCountersData
+    {
+        public int Characters;
+        public int Activities;
+        public int Commitments;
+        public int Relationships;
+        public int Decisions;
+        public int Locations;
+        public int Groups;
+        public int ScheduledEvents;
+        public int HistoryEntries;
+
+        /// <summary>Scheduler tie-break counter — distinct from the command sequence (§11, §34).</summary>
+        public long EventSequence;
+    }
+
+    /// <summary>Flattened <c>AnalyticalProgression</c> (§10.1).</summary>
+    public sealed class ProgressionData
+    {
+        public long ValueAtAnchor;
+        public long AnchoredAtMinutes;
+        public long RateNumerator;
+        public long RateDenominator = 1;
+        public long MinValue;
+        public long MaxValue;
+    }
+
+    public sealed class CharacterData
+    {
+        public int Id;
+        public string DisplayName;
+        public long CreatedAtMinutes;
+        public bool IsActive;
+        public long RetiredAtMinutes = -1;
+        public int CurrentActivityId;
+        public List<string> Traits = new List<string>();
+        public List<NeedData> Needs = new List<NeedData>();
+    }
+
+    public sealed class NeedData
+    {
+        public string NeedId;
+        public ProgressionData Progression = new ProgressionData();
+        public long BehaviouralThreshold;
+
+        /// <summary>The pending threshold-crossing event, revalidated on load (§10.2).</summary>
+        public int PendingThresholdEventId;
+    }
+
+    /// <summary>
+    /// An active or completed Activity. Active Traveling route/timing parameters must round-trip
+    /// exactly (§38, §40).
+    /// </summary>
+    public sealed class ActivityData
+    {
+        public int Id;
+        public int CharacterId;
+        public string DefinitionId;
+        public long StartedAtMinutes;
+        public int Status;
+        public int SourceCommitmentId;
+        public int PendingCompletionEventId;
+
+        /// <summary>0 = Located, 1 = Traveling (§29.1).</summary>
+        public int SpatialKind;
+
+        public int LocationId;
+        public int TransitOriginLocationId;
+        public int TransitDestinationLocationId;
+        public long TransitDepartedAtMinutes;
+        public long TransitArrivesAtMinutes;
+        public string TransitTravelModeId;
+        public int TransitTravelPlanId;
+
+        public ProgressionData Progress = new ProgressionData();
+        public ProgressionData Performance = new ProgressionData();
+
+        public bool HasAcceptedResult;
+        public int ResultGrade;
+        public long ResultMagnitude;
+        public int ResultSource;
+        public string ResultOutcomeId;
+
+        /// <summary>Definition-derived values snapshotted at construction (§42.1).</summary>
+        public List<AuthoredLongData> CommittedParameters = new List<AuthoredLongData>();
+
+        public List<ActivityModifierData> ActiveModifiers = new List<ActivityModifierData>();
+    }
+
+    public sealed class ActivityModifierData
+    {
+        public string ModifierId;
+        public long AppliedAtMinutes;
+        public long RateNumerator;
+        public long RateDenominator = 1;
+        public int CauseEntityKind;
+        public int CauseRuntimeId;
+    }
+
+    public sealed class CommitmentData
+    {
+        public int Id;
+        public int CharacterId;
+        public string Kind;
+        public long EarliestStartMinutes;
+        public long LatestStartMinutes;
+        public long ExpectedDurationMinutes;
+        public int LocationId;
+        public int Priority;
+        public string ActivityDefinitionId;
+        public int SourceEntityKind;
+        public int SourceRuntimeId;
+        public string SourceTemplateId;
+        public int Status;
+        public int FulfillingActivityId;
+        public List<int> AdditionalParticipants = new List<int>();
+    }
+
+    public sealed class LocationData
+    {
+        public int Id;
+        public int ParentLocationId;
+        public string LocationKindId;
+        public string DisplayName;
+        public bool IsOccupiable;
+        public int Capacity;
+    }
+
+    public sealed class TravelConnectionData
+    {
+        public int FromLocationId;
+        public int ToLocationId;
+        public long CostMinutes;
+        public string TravelModeId;
+    }
+
+    public sealed class GroupData
+    {
+        public int Id;
+        public string Kind;
+        public string DisplayName;
+        public int PrimaryLocationId;
+    }
+
+    public sealed class GroupMembershipData
+    {
+        public int GroupId;
+        public int CharacterId;
+    }
+
+    public sealed class RelationshipData
+    {
+        public int Id;
+        public int LowCharacterId;
+        public int HighCharacterId;
+        public string Kind;
+        public ProgressionData Affinity = new ProgressionData();
+        public int Familiarity;
+        public long EstablishedAtMinutes;
+        public long LastInteractionAtMinutes = -1;
+        public bool IsActive;
+    }
+
+    /// <summary>
+    /// An active or recently resolved Decision. Influences carry their stable within-decision ids so
+    /// interventions stay bound across a reload (§17.2, invariant 37).
+    /// </summary>
+    public sealed class DecisionData
+    {
+        public int Id;
+        public int CharacterId;
+        public string DefinitionId;
+        public long CreatedAtMinutes;
+        public long ResolveAtMinutes;
+        public int Status;
+        public int Importance;
+        public int InfluenceRevision;
+        public int PendingResolveEventId;
+        public string ConflictScopeKind;
+        public int ConflictScopeEntityKind;
+        public int ConflictScopeRuntimeId;
+
+        public List<DecisionOptionData> Options = new List<DecisionOptionData>();
+        public List<DecisionInfluenceData> Influences = new List<DecisionInfluenceData>();
+        public List<AppliedInterventionData> Interventions = new List<AppliedInterventionData>();
+        public List<DependencyKeyData> DependencyKeys = new List<DependencyKeyData>();
+        public List<AuthoredLongData> SnapshottedParameters = new List<AuthoredLongData>();
+
+        public bool HasResolution;
+        public string ResolvedOptionId;
+        public int ResolvedDegree;
+        public long ResolvedAtMinutes;
+        public int ResolutionSource;
+        public List<OptionTotalData> OptionTotals = new List<OptionTotalData>();
+        public List<InfluenceRollData> Rolls = new List<InfluenceRollData>();
+    }
+
+    public sealed class DecisionOptionData
+    {
+        public string Id;
+        public string LabelId;
+        public int OrderIndex;
+    }
+
+    public sealed class DecisionInfluenceData
+    {
+        public int Id;
+        public string OptionId;
+        public string Category;
+        public string LabelId;
+        public int BaseDieSides;
+        public int CurrentDieSides;
+        public int Visibility;
+        public int RollIndex;
+        public bool IsRetracted;
+        public string DependencyContextKind;
+        public int DependencyEntityKind;
+        public int DependencyRuntimeId;
+        public int SubjectEntityKind;
+        public int SubjectRuntimeId;
+    }
+
+    public sealed class AppliedInterventionData
+    {
+        public string InterventionDefinitionId;
+        public int TargetInfluenceId;
+        public long CommandSequence;
+    }
+
+    public sealed class DependencyKeyData
+    {
+        public string ContextKind;
+        public int SubjectEntityKind;
+        public int SubjectRuntimeId;
+    }
+
+    public sealed class OptionTotalData
+    {
+        public string OptionId;
+        public int Total;
+        public int OrderIndex;
+    }
+
+    public sealed class InfluenceRollData
+    {
+        public int InfluenceId;
+        public string OptionId;
+        public int DieSides;
+        public int Rolled;
+        public int RollIndex;
+    }
+
+    /// <summary>
+    /// Player knowledge — not derivable from truth, so always persisted (§22).
+    /// <see cref="SourceHistoryEntryId"/> is a weak reference and may dangle after pruning (§23.1).
+    /// </summary>
+    public sealed class KnowledgeEntryData
+    {
+        public string FactKind;
+        public int SubjectEntityKind;
+        public int SubjectRuntimeId;
+        public string Qualifier;
+        public string ObservedBand;
+        public long ObservedMagnitude;
+        public bool HasObservedMagnitude;
+        public long ObservedAtMinutes;
+        public int Confidence;
+        public string SourceChannelId;
+        public int InformantEntityKind;
+        public int InformantRuntimeId;
+        public int SourceHistoryEntryId;
+    }
+
+    /// <summary>
+    /// Durable attention state only. Ephemeral watch flags — visibility, selection — are presentation
+    /// state and are deliberately not saved (§8, §20.1).
+    /// </summary>
+    public sealed class AttentionData
+    {
+        public List<int> FollowedCharacters = new List<int>();
+        public List<CharacterPolicyData> CharacterPolicies = new List<CharacterPolicyData>();
+        public List<DecisionPolicyData> DecisionPolicies = new List<DecisionPolicyData>();
+        public List<int> HeldDecisions = new List<int>();
+        public List<ObservationOrdinalData> ObservationOrdinals = new List<ObservationOrdinalData>();
+    }
+
+    public sealed class CharacterPolicyData
+    {
+        public int CharacterId;
+        public int Policy;
+    }
+
+    public sealed class DecisionPolicyData
+    {
+        public int DecisionId;
+        public int Policy;
+    }
+
+    public sealed class ObservationOrdinalData
+    {
+        public int CharacterId;
+        public int Ordinal;
+    }
+
+    public sealed class HistoryEntryData
+    {
+        public int Id;
+        public string Kind;
+        public long OccurredAtMinutes;
+        public int Tier;
+        public string Summary;
+        public List<EntityRefData> Subjects = new List<EntityRefData>();
+    }
+
+    public sealed class EntityRefData
+    {
+        public int EntityKind;
+        public int RuntimeId;
+    }
+
+    public sealed class AuthoredLongData
+    {
+        public string Key;
+        public long Value;
+    }
+
+    /// <summary>
+    /// Pending scheduled work. Authoritative state, persisted rather than rebuilt (§40, invariant 59).
+    /// </summary>
+    public sealed class SchedulerData
+    {
+        public long NextEventSequence;
+
+        public List<ScheduledEventData> PendingEvents = new List<ScheduledEventData>();
+    }
+
+    public sealed class ScheduledEventData
+    {
+        public int Id;
+        public long DueAtMinutes;
+        public int Phase;
+        public long EventSequence;
+        public string EventType;
+
+        /// <summary>Payload encoded by the codec registered for <see cref="EventType"/>.</summary>
+        public ScheduledEventPayloadData Payload = new ScheduledEventPayloadData();
+
+        public List<EventDependencyData> Dependencies = new List<EventDependencyData>();
+    }
+
+    /// <summary>One aspect-scoped revision counter (§11.2.1).</summary>
+    public sealed class RevisionData
+    {
+        public int SubjectEntityKind;
+        public int SubjectRuntimeId;
+        public string Aspect;
+        public int Revision;
+    }
+
+    public sealed class EventDependencyData
+    {
+        public int SubjectEntityKind;
+        public int SubjectRuntimeId;
+        public string Aspect;
+        public int ExpectedRevision;
+    }
+
+    /// <summary>
+    /// Format-agnostic payload encoding: a handful of strings and numbers whose meaning is defined by
+    /// the codec for that event type (§11.3 — payloads are pure data).
+    /// </summary>
+    public sealed class ScheduledEventPayloadData
+    {
+        public List<string> Strings = new List<string>();
+
+        public List<long> Numbers = new List<long>();
+    }
+}

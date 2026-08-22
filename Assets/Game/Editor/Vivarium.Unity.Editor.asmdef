@@ -1,0 +1,19 @@
+{
+    "name": "Vivarium.Unity.Editor",
+    "rootNamespace": "Vivarium.Unity.Editor",
+    "references": [
+        "Vivarium.Domain",
+        "Vivarium.Unity.Authoring"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

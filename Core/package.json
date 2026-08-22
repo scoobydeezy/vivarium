@@ -1,0 +1,10 @@
+{
+  "name": "com.vivarium.core",
+  "version": "0.1.0",
+  "displayName": "Vivarium Core",
+  "description": "Unity-independent authoritative simulation core: Domain, Application, and Infrastructure. Compiled by Unity as a local package and by /DotNet for tests and the headless SimRunner from the same source.",
+  "unity": "6000.4",
+  "author": {
+    "name": "Vivarium"
+  }
+}

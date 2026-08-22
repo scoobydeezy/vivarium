@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Adapters for the Application's ports: save stores, storage, clock, logging (§48).
+    Depends on Application and Domain. Nothing depends on it except composition roots.
+  -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>Vivarium.Infrastructure</AssemblyName>
+    <RootNamespace>Vivarium.Infrastructure</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="$(CoreRoot)\Infrastructure\**\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Vivarium.Domain\Vivarium.Domain.csproj" />
+    <ProjectReference Include="..\Vivarium.Application\Vivarium.Application.csproj" />
+  </ItemGroup>
+
+</Project>

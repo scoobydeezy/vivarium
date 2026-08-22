@@ -1,0 +1,17 @@
+{
+    "name": "Vivarium.Unity.Presentation",
+    "rootNamespace": "Vivarium.Unity.Presentation",
+    "references": [
+        "Vivarium.Domain",
+        "Vivarium.Application"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
