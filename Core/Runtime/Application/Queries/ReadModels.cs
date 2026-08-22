@@ -2,6 +2,22 @@ using System.Collections.Generic;
 
 namespace Vivarium.Application.Queries
 {
+    public sealed class CharacterRosterEntryView
+    {
+        public CharacterRosterEntryView(int characterId, string displayName, bool isFollowed)
+        {
+            CharacterId = characterId;
+            DisplayName = displayName;
+            IsFollowed = isFollowed;
+        }
+
+        public int CharacterId { get; }
+
+        public string DisplayName { get; }
+
+        public bool IsFollowed { get; }
+    }
+
     /// <summary>
     /// Read models the UI binds to (§35).
     /// <para>
@@ -19,6 +35,8 @@ namespace Vivarium.Application.Queries
             string currentActivityLabel,
             string locationLabel,
             bool isTraveling,
+            string travelOriginLabel,
+            int travelProgressBasisPoints,
             bool isFollowed,
             IReadOnlyList<KnownFactView> knownTraits,
             IReadOnlyList<KnownFactView> knownNeeds)
@@ -28,6 +46,8 @@ namespace Vivarium.Application.Queries
             CurrentActivityLabel = currentActivityLabel;
             LocationLabel = locationLabel;
             IsTraveling = isTraveling;
+            TravelOriginLabel = travelOriginLabel;
+            TravelProgressBasisPoints = travelProgressBasisPoints;
             IsFollowed = isFollowed;
             KnownTraits = knownTraits;
             KnownNeeds = knownNeeds;
@@ -43,6 +63,10 @@ namespace Vivarium.Application.Queries
         public string LocationLabel { get; }
 
         public bool IsTraveling { get; }
+
+        public string TravelOriginLabel { get; }
+
+        public int TravelProgressBasisPoints { get; }
 
         public bool IsFollowed { get; }
 

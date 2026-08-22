@@ -30,6 +30,11 @@ namespace Vivarium.Unity.Presentation
 
         private Vector3 _targetPosition;
         private bool _hasTarget;
+        private System.Action<CharacterId> _onTapped;
+        private Renderer _markerRenderer;
+
+        private static readonly Color NormalColor = new Color(0.15f, 0.85f, 1f);
+        private static readonly Color SelectedColor = new Color(1f, 0.8f, 0.1f);
 
         /// <summary>Which simulated character this object stands for. Assigned by the view pool.</summary>
         public CharacterId CharacterId { get; private set; }
@@ -37,11 +42,28 @@ namespace Vivarium.Unity.Presentation
         /// <summary>The most recent read model this view rendered.</summary>
         public CharacterProfileView Profile { get; private set; }
 
-        public void Bind(CharacterId characterId)
+        public void Bind(CharacterId characterId, System.Action<CharacterId> onTapped)
         {
             CharacterId = characterId;
+            _onTapped = onTapped;
             Profile = null;
             _hasTarget = false;
+            SetSelected(false);
+        }
+
+        private void OnMouseDown() => _onTapped?.Invoke(CharacterId);
+
+        public void SetSelected(bool selected)
+        {
+            if (_markerRenderer == null)
+            {
+                _markerRenderer = GetComponentInChildren<Renderer>();
+            }
+
+            if (_markerRenderer != null)
+            {
+                _markerRenderer.material.color = selected ? SelectedColor : NormalColor;
+            }
         }
 
         /// <summary>

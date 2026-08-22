@@ -229,6 +229,7 @@ namespace Vivarium.Infrastructure.Bootstrap
             dispatcher.Register(new BeginObservingCharacterHandler(watchSignals));
             dispatcher.Register(new EndObservingCharacterHandler(watchSignals));
             dispatcher.Register(new InspectCharacterHandler(watchSignals));
+            dispatcher.Register(new TravelCharacterHandler(transitions));
             dispatcher.Register(new HoldDecisionHandler(holdPolicy));
             dispatcher.Register(new ReleaseDecisionHandler());
             dispatcher.Register(new ApplyDecisionInterventionHandler(catalog.Interventions));

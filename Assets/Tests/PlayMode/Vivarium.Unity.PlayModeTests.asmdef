@@ -1,0 +1,25 @@
+{
+    "name": "Vivarium.Unity.PlayModeTests",
+    "rootNamespace": "Vivarium.Unity.Tests",
+    "references": [
+        "Vivarium.Domain",
+        "Vivarium.Application",
+        "Vivarium.Infrastructure",
+        "Vivarium.Unity.Bootstrap",
+        "Vivarium.Unity.Presentation"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false,
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ]
+}

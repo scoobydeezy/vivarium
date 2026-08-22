@@ -87,6 +87,20 @@ namespace Vivarium.Application.Commands
         public bool Open { get; }
     }
 
+    /// <summary>Requests travel through the world's committed route network.</summary>
+    public sealed class TravelCharacterCommand : ICommand<Result>
+    {
+        public TravelCharacterCommand(CharacterId characterId, LocationId destinationLocationId)
+        {
+            CharacterId = characterId;
+            DestinationLocationId = destinationLocationId;
+        }
+
+        public CharacterId CharacterId { get; }
+
+        public LocationId DestinationLocationId { get; }
+    }
+
     /// <summary>Holds a decision so it does not auto-resolve (§20).</summary>
     public sealed class HoldDecisionCommand : ICommand<Result>
     {

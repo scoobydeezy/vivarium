@@ -1,9 +1,14 @@
+using System.Collections.Generic;
 using UnityEngine;
 using Vivarium.Application.Commands;
 using Vivarium.Application.Persistence;
 using Vivarium.Application.Session;
+using Vivarium.Domain.Activities;
+using Vivarium.Domain.Characters;
+using Vivarium.Domain.Common;
 using Vivarium.Domain.Content;
 using Vivarium.Domain.Simulation;
+using Vivarium.Domain.Spatial;
 using Vivarium.Domain.Time;
 using Vivarium.Infrastructure.Bootstrap;
 using Vivarium.Infrastructure.Persistence;
@@ -48,13 +53,20 @@ namespace Vivarium.Unity.Bootstrap
 
         [SerializeField] private float speedMultiplier = 1f;
 
+        [Header("Demo Test")]
+        [Tooltip("Seeds followed characters so the Unity presentation pipeline can be smoke-tested.")]
+        [SerializeField] private bool seedDemoCharacter = true;
+
         [Header("Presentation")]
         [SerializeField] private WorldPresenter presenter;
 
         [SerializeField] private TimeDisplay timeDisplay;
 
         private SimulationHost _host;
+        private DefinitionCatalog _catalog;
+        private InMemorySaveGameStore _saveStore;
         private float _accumulatedMinutes;
+        private readonly List<LocationId> _demoLocations = new List<LocationId>();
 
         /// <summary>The composed simulation. Null until <see cref="Awake"/> has run.</summary>
         public SimulationHost Host => _host;
@@ -66,30 +78,145 @@ namespace Vivarium.Unity.Bootstrap
                 timeDisplay = FindAnyObjectByType<TimeDisplay>();
             }
 
-            DefinitionCatalog catalog = contentPack != null
+            _catalog = contentPack != null
                 ? contentPack.Build()
                 : throw new System.InvalidOperationException("GameBootstrapper needs a content pack.");
 
-            var storage = new UnityPersistentDataStorage();
-            var saveStore = new InMemorySaveGameStore();
+            _saveStore = new InMemorySaveGameStore();
 
             // A real save format is deliberately still open (§57). Until a serializer is chosen, the
             // in-memory store keeps save/load exercised without committing to an encoding.
             _host = SimulationBootstrapper.CreateNewWorld(
                 worldSeed,
                 SimTime.FromClockTime(startDay, startHour, 0),
-                catalog,
+                _catalog,
                 simulationRulesVersion,
                 trace: null,
-                saveStore: saveStore,
+                saveStore: _saveStore,
                 realWorldClock: new UnityRealWorldClock());
 
-            if (presenter != null)
+            if (presenter == null)
             {
-                presenter.Initialize(_host.Projections, (command, diagnostics) => _host.Session.Enqueue(command, diagnostics));
+                presenter = FindAnyObjectByType<WorldPresenter>();
             }
 
+            if (presenter == null)
+            {
+                var presenterObject = new GameObject("World Presenter (Runtime)");
+                presenter = presenterObject.AddComponent<WorldPresenter>();
+            }
+
+            presenter.EnsureRuntimeFallback();
+            presenter.ConfigureRuntimeTravel(CreateDemoTravelCommand);
+            presenter.ConfigureRuntimePersistence(SaveRuntimeSmokeTest, () => LoadRuntimeSmokeTest());
+
+            presenter.Initialize(_host.Projections, (command, diagnostics) => _host.Session.Enqueue(command, diagnostics));
+
+            if (seedDemoCharacter)
+            {
+                SeedDemoCharacters();
+            }
+
+            _host.Projections.OnQuiescence(_host.World, _host.Simulation);
+
             timeDisplay?.SetTime(_host.World.Clock.Now);
+        }
+
+        private void SeedDemoCharacters()
+        {
+            _demoLocations.Clear();
+            SeedDemoCharacter("Mina Test", "Demo Room", 1200);
+            SeedDemoCharacter("Glen Test", "Demo Cafe", 3200);
+            SeedDemoCharacter("Darius Test", "Demo Workshop", 5200);
+
+            var walking = new AuthoredId("travel_mode.walking");
+            for (int i = 0; i < _demoLocations.Count; i++)
+            {
+                LocationId from = _demoLocations[i];
+                LocationId to = _demoLocations[(i + 1) % _demoLocations.Count];
+                _host.World.TravelNetwork.ConnectBidirectional(from, to, SimDuration.FromMinutes(30), walking);
+            }
+        }
+
+        private void SeedDemoCharacter(string characterName, string locationName, long initialHunger)
+        {
+            var location = new LocationNode(
+                _host.World.RuntimeIds.Locations.Next(),
+                LocationId.None,
+                new AuthoredId("location_kind.building"),
+                locationName);
+            _host.World.Locations.Add(location);
+            _demoLocations.Add(location.Id);
+
+            var character = new Character(
+                _host.World.RuntimeIds.Characters.Next(),
+                characterName,
+                _host.World.Clock.Now);
+
+            _host.World.Characters.Add(character.Id, character);
+
+            NeedDefinition hunger = _host.Catalog.Needs[new AuthoredId("need.hunger")];
+            var hungerState = new NeedState(
+                hunger.Id,
+                AnalyticalProgression.Linear(
+                    initialHunger,
+                    _host.World.Clock.Now,
+                    hunger.DefaultRateNumerator,
+                    hunger.DefaultRateDenominator,
+                    hunger.MinValue,
+                    hunger.MaxValue),
+                hunger.MaxValue);
+            character.SetNeed(hungerState);
+            _host.Needs.Rearm(_host.Simulation, character, hungerState);
+
+            _host.Transitions.BeginActivity(
+                _host.Simulation,
+                character.Id,
+                WellKnownActivities.Waiting,
+                location.Id,
+                SimDuration.FromDays(1));
+            _host.WatchSignals.SetFollowed(_host.World, character.Id, true);
+        }
+
+        private ICommand CreateDemoTravelCommand(CharacterId characterId)
+        {
+            if (_demoLocations.Count == 0 ||
+                !_host.World.TryGetSpatialContext(characterId, out ActivitySpatialContext spatial) ||
+                !spatial.IsLocated)
+            {
+                return null;
+            }
+
+            int currentIndex = _demoLocations.IndexOf(spatial.LocationId);
+            int destinationIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % _demoLocations.Count;
+            return new TravelCharacterCommand(characterId, _demoLocations[destinationIndex]);
+        }
+
+        public void SaveRuntimeSmokeTest() => _host.Session.Save("runtime-smoke-test");
+
+        public bool LoadRuntimeSmokeTest()
+        {
+            if (!_saveStore.TryLoad("runtime-smoke-test", out SaveGameData saved))
+            {
+                return false;
+            }
+
+            WorldState restoredWorld = _host.SaveMapper.Restore(saved);
+            _host = SimulationBootstrapper.CreateFromRestoredWorld(
+                restoredWorld,
+                _catalog,
+                saved.LastCommandSequence,
+                saved.SimulationRulesVersion,
+                trace: null,
+                saveStore: _saveStore,
+                realWorldClock: new UnityRealWorldClock());
+
+            _accumulatedMinutes = 0f;
+            presenter.PrepareForWorldReload();
+            presenter.Initialize(_host.Projections, (command, diagnostics) => _host.Session.Enqueue(command, diagnostics));
+            _host.Projections.OnQuiescence(_host.World, _host.Simulation);
+            timeDisplay?.SetTime(_host.World.Clock.Now);
+            return true;
         }
 
         /// <summary>

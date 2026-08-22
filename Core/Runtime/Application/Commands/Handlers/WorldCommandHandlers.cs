@@ -130,6 +130,27 @@ namespace Vivarium.Application.Commands.Handlers
         }
     }
 
+    public sealed class TravelCharacterHandler : CommandHandler<TravelCharacterCommand, Result>
+    {
+        public static readonly AuthoredId ReasonTravelUnavailable = new AuthoredId("command.travel.unavailable");
+
+        private readonly ActivityTransitionService _transitions;
+
+        public TravelCharacterHandler(ActivityTransitionService transitions)
+        {
+            _transitions = transitions ?? throw new ArgumentNullException(nameof(transitions));
+        }
+
+        public override Result Handle(TravelCharacterCommand command, CommandContext context) =>
+            _transitions.TryBeginTravel(
+                context.Simulation,
+                command.CharacterId,
+                command.DestinationLocationId,
+                out ActivityInstance _)
+                ? Result.Ok()
+                : Result.Fail(ReasonTravelUnavailable, command.DestinationLocationId.ToString());
+    }
+
     /// <summary>
     /// Accepts a normalized result from interactive play (§29.6).
     /// <para>

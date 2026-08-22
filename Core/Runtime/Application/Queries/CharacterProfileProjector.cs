@@ -9,6 +9,23 @@ using Vivarium.Domain.Time;
 
 namespace Vivarium.Application.Queries
 {
+    public sealed class CharacterRosterProjector
+    {
+        public IReadOnlyList<CharacterRosterEntryView> Project(WorldState world)
+        {
+            var entries = new List<CharacterRosterEntryView>();
+            foreach (Character character in world.Characters.All)
+            {
+                entries.Add(new CharacterRosterEntryView(
+                    character.Id.Value,
+                    character.DisplayName,
+                    world.Attention.WatchStateOf(character.Id).IsFollowed));
+            }
+
+            return entries;
+        }
+    }
+
     /// <summary>
     /// Projects a character profile from truth filtered through player knowledge (§35, §36).
     /// <para>
@@ -39,6 +56,8 @@ namespace Vivarium.Application.Queries
             string activityLabel = "unknown";
             string locationLabel = "unknown";
             bool isTraveling = false;
+            string travelOriginLabel = null;
+            int travelProgressBasisPoints = 0;
 
             if (world.TryGetCurrentActivity(characterId, out ActivityInstance activity))
             {
@@ -47,7 +66,15 @@ namespace Vivarium.Application.Queries
 
                 if (isTraveling)
                 {
+                    travelOriginLabel = LocationName(world, activity.SpatialContext.Transit.OriginLocationId);
                     locationLabel = LocationName(world, activity.SpatialContext.Transit.DestinationLocationId) + " (en route)";
+                    long totalMinutes = activity.SpatialContext.Transit.ArrivesAt
+                        .Since(activity.SpatialContext.Transit.DepartedAt).TotalMinutes;
+                    long elapsedMinutes = world.Clock.Now
+                        .Since(activity.SpatialContext.Transit.DepartedAt).TotalMinutes;
+                    travelProgressBasisPoints = totalMinutes <= 0
+                        ? 10000
+                        : (int)System.Math.Max(0, System.Math.Min(10000, elapsedMinutes * 10000 / totalMinutes));
                 }
                 else
                 {
@@ -84,6 +111,8 @@ namespace Vivarium.Application.Queries
                 activityLabel,
                 locationLabel,
                 isTraveling,
+                travelOriginLabel,
+                travelProgressBasisPoints,
                 world.Attention.WatchStateOf(characterId).IsFollowed,
                 traits,
                 needs);
