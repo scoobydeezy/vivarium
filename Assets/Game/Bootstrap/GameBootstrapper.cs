@@ -111,7 +111,7 @@ namespace Vivarium.Unity.Bootstrap
 
             _accumulatedMinutes -= wholeMinutes;
 
-            SimulationMode mode = speedMultiplier > 1f ? SimulationMode.PlayerFastForward : SimulationMode.Live;
+            Domain.Simulation.SimulationMode mode = speedMultiplier > 1f ? Domain.Simulation.SimulationMode.PlayerFastForward : Domain.Simulation.SimulationMode.Live;
             _host.Session.Advance(SimDuration.FromMinutes(wholeMinutes), mode);
         }
 
@@ -139,7 +139,7 @@ namespace Vivarium.Unity.Bootstrap
             }
 
             // Publish periodically during a long catch-up, but only at safe boundaries (§13.1).
-            _host.Session.Advance(elapsed, SimulationMode.OfflineCatchUp, publishEveryInstants: 500);
+            _host.Session.Advance(elapsed, Domain.Simulation.SimulationMode.OfflineCatchUp, publishEveryInstants: 500);
         }
     }
 }

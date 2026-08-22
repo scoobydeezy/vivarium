@@ -19,7 +19,7 @@ namespace Vivarium.Unity.Infrastructure
 
         public UnityPersistentDataStorage(string subdirectory = "vivarium")
         {
-            _root = Path.Combine(Application.persistentDataPath, subdirectory);
+            _root = Path.Combine(UnityEngine.Application.persistentDataPath, subdirectory);
         }
 
         public bool Exists(string relativePath) => File.Exists(Resolve(relativePath));
