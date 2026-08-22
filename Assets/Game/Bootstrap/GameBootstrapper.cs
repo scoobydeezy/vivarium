@@ -51,6 +51,8 @@ namespace Vivarium.Unity.Bootstrap
         [Header("Presentation")]
         [SerializeField] private WorldPresenter presenter;
 
+        [SerializeField] private TimeDisplay timeDisplay;
+
         private SimulationHost _host;
         private float _accumulatedMinutes;
 
@@ -59,6 +61,11 @@ namespace Vivarium.Unity.Bootstrap
 
         private void Awake()
         {
+            if (timeDisplay == null)
+            {
+                timeDisplay = FindAnyObjectByType<TimeDisplay>();
+            }
+
             DefinitionCatalog catalog = contentPack != null
                 ? contentPack.Build()
                 : throw new System.InvalidOperationException("GameBootstrapper needs a content pack.");
@@ -81,6 +88,8 @@ namespace Vivarium.Unity.Bootstrap
             {
                 presenter.Initialize(_host.Projections, (command, diagnostics) => _host.Session.Enqueue(command, diagnostics));
             }
+
+            timeDisplay?.SetTime(_host.World.Clock.Now);
         }
 
         /// <summary>
@@ -113,6 +122,7 @@ namespace Vivarium.Unity.Bootstrap
 
             Domain.Simulation.SimulationMode mode = speedMultiplier > 1f ? Domain.Simulation.SimulationMode.PlayerFastForward : Domain.Simulation.SimulationMode.Live;
             _host.Session.Advance(SimDuration.FromMinutes(wholeMinutes), mode);
+            timeDisplay?.SetTime(_host.World.Clock.Now);
         }
 
         /// <summary>Changes game speed. Presentation concern; the rules do not vary with it (§21).</summary>

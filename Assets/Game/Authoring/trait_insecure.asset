@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1fd7b95f1299b64498514bfcba5796ac, type: 3}
   m_Name: trait_insecure
   m_EditorClassIdentifier: Vivarium.Unity.Authoring::Vivarium.Unity.Authoring.TraitDefinitionAsset
-  authoredId: trait.homebody
-  displayName: Homebody
+  authoredId: trait.insecure
+  displayName: Insecure
   discoverableThrough:
   - channelId: discovery.inspection
     difficultyBasisPoints: 0

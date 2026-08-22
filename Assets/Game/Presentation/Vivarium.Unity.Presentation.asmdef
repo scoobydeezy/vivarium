@@ -3,7 +3,8 @@
     "rootNamespace": "Vivarium.Unity.Presentation",
     "references": [
         "Vivarium.Domain",
-        "Vivarium.Application"
+        "Vivarium.Application",
+        "Unity.TextMeshPro"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
