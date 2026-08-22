@@ -3,7 +3,11 @@
     "rootNamespace": "Vivarium.Unity.Editor",
     "references": [
         "Vivarium.Domain",
-        "Vivarium.Unity.Authoring"
+        "Vivarium.Unity.Authoring",
+        "Vivarium.Unity.Bootstrap",
+        "Vivarium.Unity.Presentation",
+        "Unity.TextMeshPro",
+        "Unity.ugui"
     ],
     "includePlatforms": [
         "Editor"

@@ -106,9 +106,8 @@ namespace Vivarium.Unity.Bootstrap
                 presenter = presenterObject.AddComponent<WorldPresenter>();
             }
 
-            presenter.EnsureRuntimeFallback();
-            presenter.ConfigureRuntimeTravel(CreateDemoTravelCommand);
-            presenter.ConfigureRuntimePersistence(SaveRuntimeSmokeTest, () => LoadRuntimeSmokeTest());
+            presenter.ValidateConfiguration();
+            presenter.ConfigureTravel(CreateDemoTravelCommand);
 
             presenter.Initialize(_host.Projections, (command, diagnostics) => _host.Session.Enqueue(command, diagnostics));
 
@@ -218,6 +217,8 @@ namespace Vivarium.Unity.Bootstrap
             timeDisplay?.SetTime(_host.World.Clock.Now);
             return true;
         }
+
+        public void LoadRuntimeSmokeTestFromUi() => LoadRuntimeSmokeTest();
 
         /// <summary>
         /// Drains queued commands and advances the world by whole simulation minutes.
