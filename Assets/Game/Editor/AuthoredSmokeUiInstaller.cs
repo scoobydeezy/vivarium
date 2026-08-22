@@ -24,6 +24,7 @@ namespace Vivarium.Unity.Editor
             CharacterRosterEntry rosterEntryPrefab = CreateRosterEntryPrefab();
             CharacterProfilePanel profilePrefab = CreateProfilePanelPrefab();
             CharacterRosterPanel rosterPrefab = CreateRosterPanelPrefab(rosterEntryPrefab);
+            DecisionPanel decisionPrefab = CreateDecisionPanelPrefab();
 
             Scene scene = SceneManager.GetActiveScene();
             if (scene.path != TestScenePath)
@@ -47,6 +48,7 @@ namespace Vivarium.Unity.Editor
             Transform viewRoot = EnsureChild(presenter.transform, "Character View Root");
             CharacterProfilePanel profilePanel = EnsurePrefabInstance(profilePrefab, canvas.transform, "Character Profile Panel");
             CharacterRosterPanel rosterPanel = EnsurePrefabInstance(rosterPrefab, canvas.transform, "Character Roster Panel");
+            DecisionPanel decisionPanel = EnsurePrefabInstance(decisionPrefab, canvas.transform, "Decision Panel");
             EnsurePersistencePanel(canvas.transform, bootstrapper);
 
             var presenterObject = new SerializedObject(presenter);
@@ -54,6 +56,7 @@ namespace Vivarium.Unity.Editor
             presenterObject.FindProperty("viewRoot").objectReferenceValue = viewRoot;
             presenterObject.FindProperty("profilePanel").objectReferenceValue = profilePanel;
             presenterObject.FindProperty("rosterPanel").objectReferenceValue = rosterPanel;
+            presenterObject.FindProperty("decisionPanel").objectReferenceValue = decisionPanel;
             presenterObject.ApplyModifiedPropertiesWithoutUndo();
 
             var bootstrapObject = new SerializedObject(bootstrapper);
@@ -159,6 +162,36 @@ namespace Vivarium.Unity.Editor
             GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, PrefabFolder + "/CharacterRosterPanel.prefab");
             Object.DestroyImmediate(root);
             return prefab.GetComponent<CharacterRosterPanel>();
+        }
+
+        private static DecisionPanel CreateDecisionPanelPrefab()
+        {
+            GameObject root = UiObject("Decision Panel", null, new Vector2(520f, 400f));
+            RectTransform rect = root.GetComponent<RectTransform>();
+            Anchor(rect, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-24f, 24f));
+            root.AddComponent<Image>().color = new Color(0.08f, 0.05f, 0.1f, 0.9f);
+            DecisionPanel panel = root.AddComponent<DecisionPanel>();
+
+            TextMeshProUGUI summary = CreateText(root.transform, "Summary", 23f, TextAlignmentOptions.TopLeft);
+            summary.rectTransform.anchorMin = new Vector2(0f, 0f);
+            summary.rectTransform.anchorMax = new Vector2(1f, 1f);
+            summary.rectTransform.offsetMin = new Vector2(18f, 64f);
+            summary.rectTransform.offsetMax = new Vector2(-18f, -18f);
+
+            Button hold = CreateButton(root.transform, "Hold", new Vector2(18f, 12f), new Color(0.32f, 0.22f, 0.08f, 1f));
+            Button release = CreateButton(root.transform, "Release", new Vector2(174f, 12f), new Color(0.24f, 0.18f, 0.08f, 1f));
+            Button intervene = CreateButton(root.transform, "Encourage", new Vector2(330f, 12f), new Color(0.35f, 0.12f, 0.3f, 1f));
+
+            var serialized = new SerializedObject(panel);
+            serialized.FindProperty("summaryText").objectReferenceValue = summary;
+            serialized.FindProperty("holdButton").objectReferenceValue = hold;
+            serialized.FindProperty("releaseButton").objectReferenceValue = release;
+            serialized.FindProperty("interveneButton").objectReferenceValue = intervene;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, PrefabFolder + "/DecisionPanel.prefab");
+            Object.DestroyImmediate(root);
+            return prefab.GetComponent<DecisionPanel>();
         }
 
         private static WorldPresenter EnsurePresenter()

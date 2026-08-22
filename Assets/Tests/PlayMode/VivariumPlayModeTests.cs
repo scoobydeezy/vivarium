@@ -9,6 +9,7 @@ using Vivarium.Application.Queries;
 using Vivarium.Domain.Activities;
 using Vivarium.Domain.Characters;
 using Vivarium.Domain.Common;
+using Vivarium.Domain.Decisions;
 using Vivarium.Domain.Spatial;
 using Vivarium.Domain.Time;
 using Vivarium.Unity.Bootstrap;
@@ -147,6 +148,45 @@ namespace Vivarium.Unity.Tests
             Assert.That(_presenter.HasActiveView(characterId), Is.True);
         }
 
+        [UnityTest]
+        public IEnumerator Demo_decision_projects_visible_options_and_influences()
+        {
+            Decision decision = FirstDecision();
+            var projector = new DecisionProjector(_bootstrapper.Host.Catalog.Interventions);
+            DecisionView view = projector.Project(_bootstrapper.Host.World, decision);
+
+            Assert.That(view.Options.Count, Is.EqualTo(2));
+            Assert.That(view.Options[0].Influences.Count, Is.GreaterThan(0));
+            Assert.That(view.Options[1].Influences.Count, Is.GreaterThan(0));
+            Assert.That(view.Resolution, Is.Null);
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator Decision_can_be_held_released_and_intervened_on()
+        {
+            Decision decision = FirstDecision();
+            DecisionInfluence influence = decision.Influences[0];
+            int originalSides = influence.CurrentDie.Sides;
+
+            Result held = _bootstrapper.Host.Session.Execute(new HoldDecisionCommand(decision.Id));
+            Assert.That(held.IsSuccess, Is.True);
+            Assert.That(_bootstrapper.Host.World.Attention.IsHeld(decision.Id), Is.True);
+
+            Result released = _bootstrapper.Host.Session.Execute(new ReleaseDecisionCommand(decision.Id));
+            Assert.That(released.IsSuccess, Is.True);
+            Assert.That(_bootstrapper.Host.World.Attention.IsHeld(decision.Id), Is.False);
+
+            Result intervened = _bootstrapper.Host.Session.Execute(
+                new ApplyDecisionInterventionCommand(
+                    decision.Id,
+                    new AuthoredId("intervention.encourage"),
+                    influence.Id));
+            Assert.That(intervened.IsSuccess, Is.True);
+            Assert.That(influence.CurrentDie.Sides, Is.GreaterThan(originalSides));
+            yield return null;
+        }
+
         private Character FirstCharacter()
         {
             foreach (Character character in _bootstrapper.Host.World.Characters.All)
@@ -155,6 +195,17 @@ namespace Vivarium.Unity.Tests
             }
 
             Assert.Fail("The demo world did not seed any characters.");
+            return null;
+        }
+
+        private Decision FirstDecision()
+        {
+            foreach (Decision decision in _bootstrapper.Host.World.Decisions.All)
+            {
+                return decision;
+            }
+
+            Assert.Fail("The demo world did not seed a decision.");
             return null;
         }
     }

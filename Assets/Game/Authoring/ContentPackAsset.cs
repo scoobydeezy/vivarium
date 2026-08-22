@@ -3,6 +3,7 @@ using UnityEngine;
 using Vivarium.Domain.Activities;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Content;
+using Vivarium.Domain.Decisions;
 using Vivarium.Domain.Spatial;
 using Vivarium.Domain.Time;
 
@@ -36,6 +37,9 @@ namespace Vivarium.Unity.Authoring
 
         [SerializeField] private string[] locationKindIds = new string[0];
 
+        [Tooltip("Adds the authored decision/intervention content used by the Unity smoke-test scene.")]
+        [SerializeField] private bool includeDemoDecisionContent;
+
         public int ContentVersion => contentVersion;
 
         /// <summary>
@@ -67,6 +71,24 @@ namespace Vivarium.Unity.Authoring
             for (int i = 0; i < locationKindIds.Length; i++)
             {
                 builder.Add(new LocationKindDefinition(new AuthoredId(locationKindIds[i]), locationKindIds[i]));
+            }
+
+            if (includeDemoDecisionContent)
+            {
+                builder.Add(new DecisionDefinition(
+                    new AuthoredId("decision.job_offer"),
+                    new[]
+                    {
+                        new DecisionOption(new AuthoredId("option.accept"), "Take the opportunity", 0),
+                        new DecisionOption(new AuthoredId("option.stay"), "Stay where you are", 1),
+                    },
+                    SimDuration.FromHours(8),
+                    new AuthoredId("conflict_scope.employment"),
+                    importance: 10));
+                builder.Add(new InterventionDefinition(
+                    new AuthoredId("intervention.encourage"),
+                    InterventionKind.StepDieUp,
+                    cost: 1));
             }
 
             // The system-provided activities the architecture assumes exist (§29.2, invariant 39).

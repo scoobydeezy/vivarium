@@ -4,6 +4,7 @@ using UnityEngine;
 using Vivarium.Application.Commands;
 using Vivarium.Application.Queries;
 using Vivarium.Domain.Common;
+using Vivarium.Domain.Decisions;
 using Vivarium.Domain.Simulation;
 
 namespace Vivarium.Unity.Presentation
@@ -15,6 +16,7 @@ namespace Vivarium.Unity.Presentation
         [SerializeField] private Transform viewRoot;
         [SerializeField] private CharacterProfilePanel profilePanel;
         [SerializeField] private CharacterRosterPanel rosterPanel;
+        [SerializeField] private DecisionPanel decisionPanel;
 
         private readonly Dictionary<int, CharacterView> _activeViews = new Dictionary<int, CharacterView>();
         private readonly Stack<CharacterView> _pool = new Stack<CharacterView>();
@@ -27,6 +29,8 @@ namespace Vivarium.Unity.Presentation
         private Func<ICommand, string, CommandEnvelope> _enqueue;
         private Func<CharacterId, ICommand> _travelCommandFactory;
         private CharacterId _inspectedCharacter;
+        private DecisionProjector _decisionProjector;
+        private AuthoredId _interventionDefinitionId;
 
         public int ActiveViewCount => _activeViews.Count;
 
@@ -36,15 +40,26 @@ namespace Vivarium.Unity.Presentation
 
         public void ValidateConfiguration()
         {
-            if (characterViewPrefab == null || viewRoot == null || profilePanel == null || rosterPanel == null)
+            if (characterViewPrefab == null || viewRoot == null || profilePanel == null || rosterPanel == null || decisionPanel == null)
             {
                 throw new InvalidOperationException(
-                    "WorldPresenter requires an authored CharacterView prefab, view root, profile panel, and roster panel.");
+                    "WorldPresenter requires authored character, profile, roster, and decision presentation references.");
             }
         }
 
         public void ConfigureTravel(Func<CharacterId, ICommand> commandFactory) =>
             _travelCommandFactory = commandFactory;
+
+        public void ConfigureDecisionContent(IReadOnlyDictionary<AuthoredId, InterventionDefinition> interventions)
+        {
+            _decisionProjector = new DecisionProjector(interventions);
+            _interventionDefinitionId = AuthoredId.None;
+            foreach (KeyValuePair<AuthoredId, InterventionDefinition> pair in interventions)
+            {
+                _interventionDefinitionId = pair.Key;
+                break;
+            }
+        }
 
         public void Initialize(ProjectionPublisher publisher, Func<ICommand, string, CommandEnvelope> enqueue)
         {
@@ -58,6 +73,7 @@ namespace Vivarium.Unity.Presentation
             _publisher = publisher ?? throw new ArgumentNullException(nameof(publisher));
             _enqueue = enqueue ?? throw new ArgumentNullException(nameof(enqueue));
             profilePanel.Configure(CloseProfile, TravelSelectedCharacter);
+            decisionPanel.Configure(HoldDecision, ReleaseDecision, InterveneInDecision);
             _publisher.Subscribe(OnQuiescence);
         }
 
@@ -81,6 +97,7 @@ namespace Vivarium.Unity.Presentation
             }
 
             rosterPanel.Apply(roster, ToggleFollow);
+            RefreshDecisionPanel(world);
             _visibleThisRefresh.Clear();
 
             foreach (CharacterId characterId in world.Attention.WatchedCharacters)
@@ -158,6 +175,36 @@ namespace Vivarium.Unity.Presentation
             }
 
             _enqueue?.Invoke(new FollowCharacterCommand(characterId, !currentlyFollowed), "roster-toggle");
+        }
+
+        private void RefreshDecisionPanel(WorldState world)
+        {
+            if (_decisionProjector == null)
+            {
+                return;
+            }
+
+            foreach (Decision decision in world.Decisions.All)
+            {
+                decisionPanel.Apply(_decisionProjector.Project(world, decision));
+                return;
+            }
+        }
+
+        private void HoldDecision(DecisionId decisionId) =>
+            _enqueue?.Invoke(new HoldDecisionCommand(decisionId), "hold-button");
+
+        private void ReleaseDecision(DecisionId decisionId) =>
+            _enqueue?.Invoke(new ReleaseDecisionCommand(decisionId), "release-button");
+
+        private void InterveneInDecision(DecisionId decisionId, DecisionInfluenceId influenceId)
+        {
+            if (_interventionDefinitionId.IsSet)
+            {
+                _enqueue?.Invoke(
+                    new ApplyDecisionInterventionCommand(decisionId, _interventionDefinitionId, influenceId),
+                    "intervene-button");
+            }
         }
 
         private CharacterView Acquire(CharacterId characterId)

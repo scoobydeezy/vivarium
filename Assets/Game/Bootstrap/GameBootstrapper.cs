@@ -7,6 +7,9 @@ using Vivarium.Domain.Activities;
 using Vivarium.Domain.Characters;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Content;
+using Vivarium.Domain.Decisions;
+using Vivarium.Domain.Randomness;
+using Vivarium.Domain.Scheduling;
 using Vivarium.Domain.Simulation;
 using Vivarium.Domain.Spatial;
 using Vivarium.Domain.Time;
@@ -67,6 +70,7 @@ namespace Vivarium.Unity.Bootstrap
         private InMemorySaveGameStore _saveStore;
         private float _accumulatedMinutes;
         private readonly List<LocationId> _demoLocations = new List<LocationId>();
+        private readonly List<CharacterId> _demoCharacters = new List<CharacterId>();
 
         /// <summary>The composed simulation. Null until <see cref="Awake"/> has run.</summary>
         public SimulationHost Host => _host;
@@ -108,6 +112,7 @@ namespace Vivarium.Unity.Bootstrap
 
             presenter.ValidateConfiguration();
             presenter.ConfigureTravel(CreateDemoTravelCommand);
+            presenter.ConfigureDecisionContent(_host.Catalog.Interventions);
 
             presenter.Initialize(_host.Projections, (command, diagnostics) => _host.Session.Enqueue(command, diagnostics));
 
@@ -124,6 +129,7 @@ namespace Vivarium.Unity.Bootstrap
         private void SeedDemoCharacters()
         {
             _demoLocations.Clear();
+            _demoCharacters.Clear();
             SeedDemoCharacter("Mina Test", "Demo Room", 1200);
             SeedDemoCharacter("Glen Test", "Demo Cafe", 3200);
             SeedDemoCharacter("Darius Test", "Demo Workshop", 5200);
@@ -135,6 +141,8 @@ namespace Vivarium.Unity.Bootstrap
                 LocationId to = _demoLocations[(i + 1) % _demoLocations.Count];
                 _host.World.TravelNetwork.ConnectBidirectional(from, to, SimDuration.FromMinutes(30), walking);
             }
+
+            SeedDemoDecision(_demoCharacters[0]);
         }
 
         private void SeedDemoCharacter(string characterName, string locationName, long initialHunger)
@@ -153,6 +161,7 @@ namespace Vivarium.Unity.Bootstrap
                 _host.World.Clock.Now);
 
             _host.World.Characters.Add(character.Id, character);
+            _demoCharacters.Add(character.Id);
 
             NeedDefinition hunger = _host.Catalog.Needs[new AuthoredId("need.hunger")];
             var hungerState = new NeedState(
@@ -175,6 +184,44 @@ namespace Vivarium.Unity.Bootstrap
                 location.Id,
                 SimDuration.FromDays(1));
             _host.WatchSignals.SetFollowed(_host.World, character.Id, true);
+        }
+
+        private void SeedDemoDecision(CharacterId characterId)
+        {
+            AuthoredId definitionId = new AuthoredId("decision.job_offer");
+            DecisionDefinition definition = _host.Catalog.Decisions[definitionId];
+            var decision = new Decision(
+                _host.World.RuntimeIds.Decisions.Next(),
+                characterId,
+                definition.Id,
+                _host.World.Clock.Now,
+                _host.World.Clock.Now.Plus(definition.TimeToResolve),
+                definition.Options,
+                new DecisionConflictScope(definition.ConflictScopeKind, characterId.ToRef()),
+                definition.Importance);
+
+            decision.AddInfluence(
+                new AuthoredId("option.accept"),
+                new AuthoredId("influence_category.practical"),
+                new AuthoredId("influence.new_opportunity"),
+                Die.D6,
+                InfluenceVisibility.Full);
+            decision.AddInfluence(
+                new AuthoredId("option.stay"),
+                new AuthoredId("influence_category.personal"),
+                new AuthoredId("influence.familiar_routine"),
+                Die.D8,
+                InfluenceVisibility.Full);
+
+            _host.World.Decisions.Add(decision.Id, decision);
+            _host.World.DecisionDependencies.Register(decision);
+            ScheduledEvent scheduled = _host.World.Scheduler.Schedule(
+                decision.ResolveAt,
+                SchedulePhase.Decision,
+                ScheduledEventTypes.DecisionResolve,
+                new DecisionResolvePayload(decision.Id, characterId));
+            decision.SetPendingResolveEvent(scheduled.Id);
+            _host.World.Publish(new DecisionCreatedEvent(decision.Id, characterId, definition.Id));
         }
 
         private ICommand CreateDemoTravelCommand(CharacterId characterId)

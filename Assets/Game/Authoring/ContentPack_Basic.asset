@@ -34,3 +34,4 @@ MonoBehaviour:
     isTravel: 0
   locationKindIds:
   - location_kind.building
+  includeDemoDecisionContent: 1
