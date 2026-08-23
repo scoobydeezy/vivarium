@@ -14,11 +14,13 @@ namespace Vivarium.Domain.Activities
     public sealed class ActivityStartHandler : ScheduledEventHandler<ActivityStartPayload>
     {
         private readonly ActivityTransitionService _transitions;
+        private readonly CommitmentLifecycleService _commitments;
 
-        public ActivityStartHandler(ActivityTransitionService transitions)
+        public ActivityStartHandler(ActivityTransitionService transitions, CommitmentLifecycleService commitments = null)
             : base(ScheduledEventTypes.ActivityStart)
         {
             _transitions = transitions ?? throw new ArgumentNullException(nameof(transitions));
+            _commitments = commitments ?? new CommitmentLifecycleService();
         }
 
         protected override bool CanExecute(WorldState world, ActivityStartPayload payload)
@@ -37,7 +39,7 @@ namespace Vivarium.Domain.Activities
             // and its window must not have closed (§11.1).
             return world.Commitments.TryGet(payload.CommitmentId, out Commitment commitment)
                 && commitment.Status == CommitmentStatus.Planned
-                && world.Clock.Now <= commitment.LatestStart.Plus(commitment.ExpectedDuration);
+                && world.Clock.Now <= commitment.LatestStart;
         }
 
         protected override void Execute(WorldState world, ActivityStartPayload payload, SimulationContext context)
@@ -58,8 +60,7 @@ namespace Vivarium.Domain.Activities
                 // Unreachable destination: nothing to do but let the commitment lapse.
                 if (commitment != null)
                 {
-                    commitment.MarkMissed();
-                    CommitmentScheduleChanges.Publish(world, commitment.CharacterId);
+                    _commitments.Cancel(world, commitment, CommitmentOutcomeCauseKind.ExternalCancellation);
                 }
                 return;
             }
@@ -76,8 +77,7 @@ namespace Vivarium.Domain.Activities
 
             if (commitment != null)
             {
-                commitment.MarkActive(activity.Id);
-                CommitmentScheduleChanges.Publish(world, commitment.CharacterId);
+                _commitments.Start(world, commitment, activity.Id);
             }
         }
     }
@@ -89,11 +89,13 @@ namespace Vivarium.Domain.Activities
     public sealed class TravelArrivalHandler : ScheduledEventHandler<TravelArrivalPayload>
     {
         private readonly ActivityTransitionService _transitions;
+        private readonly CommitmentLifecycleService _commitments;
 
-        public TravelArrivalHandler(ActivityTransitionService transitions)
+        public TravelArrivalHandler(ActivityTransitionService transitions, CommitmentLifecycleService commitments = null)
             : base(ScheduledEventTypes.TravelArrival)
         {
             _transitions = transitions ?? throw new ArgumentNullException(nameof(transitions));
+            _commitments = commitments ?? new CommitmentLifecycleService();
         }
 
         protected override bool CanExecute(WorldState world, TravelArrivalPayload payload)
@@ -132,8 +134,7 @@ namespace Vivarium.Domain.Activities
 
             if (commitment != null)
             {
-                commitment.MarkActive(next.Id);
-                CommitmentScheduleChanges.Publish(world, commitment.CharacterId);
+                _commitments.Start(world, commitment, next.Id);
             }
         }
     }
@@ -150,12 +151,17 @@ namespace Vivarium.Domain.Activities
     {
         private readonly ActivityResolutionRegistry _resolution;
         private readonly ActivityTransitionService _transitions;
+        private readonly CommitmentLifecycleService _commitments;
 
-        public ActivityCompletionHandler(ActivityResolutionRegistry resolution, ActivityTransitionService transitions)
+        public ActivityCompletionHandler(
+            ActivityResolutionRegistry resolution,
+            ActivityTransitionService transitions,
+            CommitmentLifecycleService commitments = null)
             : base(ScheduledEventTypes.ActivityComplete)
         {
             _resolution = resolution ?? throw new ArgumentNullException(nameof(resolution));
             _transitions = transitions ?? throw new ArgumentNullException(nameof(transitions));
+            _commitments = commitments ?? new CommitmentLifecycleService();
         }
 
         protected override bool CanExecute(WorldState world, ActivityCompletionPayload payload)
@@ -178,8 +184,7 @@ namespace Vivarium.Domain.Activities
 
             if (activity.SourceCommitmentId.IsSet && world.Commitments.TryGet(activity.SourceCommitmentId, out Commitment commitment))
             {
-                commitment.MarkFulfilled();
-                CommitmentScheduleChanges.Publish(world, commitment.CharacterId);
+                _commitments.Fulfill(world, commitment);
             }
 
             // A character always has exactly one primary Activity (invariant 39), so idling is an

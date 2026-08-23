@@ -70,6 +70,7 @@ namespace Vivarium.Application.Persistence
                 Characters = counters.Characters,
                 Activities = counters.Activities,
                 Commitments = counters.Commitments,
+                CommitmentOutcomes = counters.CommitmentOutcomes,
                 Relationships = counters.Relationships,
                 Decisions = counters.Decisions,
                 Locations = counters.Locations,
@@ -119,6 +120,7 @@ namespace Vivarium.Application.Persistence
                     data.RuntimeIdCounters.Characters,
                     data.RuntimeIdCounters.Activities,
                     data.RuntimeIdCounters.Commitments,
+                    data.RuntimeIdCounters.CommitmentOutcomes,
                     data.RuntimeIdCounters.Relationships,
                     data.RuntimeIdCounters.Decisions,
                     data.RuntimeIdCounters.Locations,
@@ -571,6 +573,10 @@ namespace Vivarium.Application.Persistence
                     dto.AdditionalParticipants.Add(commitment.AdditionalParticipants[i].Value);
                 }
 
+                dto.Stakeholders = CommitmentAccountabilityDataMapper.WriteStakeholders(commitment.Stakeholders);
+                dto.HasStakeholderSnapshot = true;
+                dto.AccountabilityPolicy = CommitmentAccountabilityDataMapper.WritePolicy(commitment.AccountabilityPolicy);
+
                 data.Commitments.Add(dto);
             }
         }
@@ -599,7 +605,9 @@ namespace Vivarium.Application.Persistence
                     new AuthoredId(dto.ActivityDefinitionId),
                     new EntityRef((EntityKind)dto.SourceEntityKind, dto.SourceRuntimeId),
                     participants,
-                    new AuthoredId(dto.SourceTemplateId));
+                    new AuthoredId(dto.SourceTemplateId),
+                    CommitmentAccountabilityDataMapper.ReadStakeholders(dto.Stakeholders, dto.HasStakeholderSnapshot),
+                    CommitmentAccountabilityDataMapper.ReadPolicy(dto.AccountabilityPolicy));
 
                 commitment.RestoreStatus((CommitmentStatus)dto.Status, new ActivityInstanceId(dto.FulfillingActivityId));
                 world.Commitments.Add(commitment.Id, commitment);
@@ -1325,6 +1333,7 @@ namespace Vivarium.Application.Persistence
                     InformantEntityKind = (int)entry.Source.Informant.Kind,
                     InformantRuntimeId = entry.Source.Informant.RuntimeId,
                     SourceHistoryEntryId = entry.Source.SourceHistoryEntryId.Value,
+                    SourceOutcomeId = entry.Source.SourceOutcomeId.Value,
                 });
             }
 
@@ -1372,7 +1381,8 @@ namespace Vivarium.Application.Persistence
                     new DiscoverySource(
                         new AuthoredId(dto.SourceChannelId),
                         new EntityRef((EntityKind)dto.InformantEntityKind, dto.InformantRuntimeId),
-                        new HistoryEntryId(dto.SourceHistoryEntryId)),
+                        new HistoryEntryId(dto.SourceHistoryEntryId),
+                        new CommitmentOutcomeId(dto.SourceOutcomeId)),
                     new ObserverRef((ObserverKind)dto.ObserverKind, new CharacterId(dto.ObserverCharacterId))));
             }
 
@@ -1494,6 +1504,7 @@ namespace Vivarium.Application.Persistence
                     OccurredAtMinutes = entry.OccurredAt.TotalMinutes,
                     Tier = (int)entry.Tier,
                     Summary = entry.Summary,
+                    SourceOutcomeId = entry.SourceOutcomeId.Value,
                 };
 
                 for (int i = 0; i < entry.Subjects.Count; i++)
@@ -1527,7 +1538,8 @@ namespace Vivarium.Application.Persistence
                     new SimTime(dto.OccurredAtMinutes),
                     (RetentionTier)dto.Tier,
                     dto.Summary,
-                    subjects));
+                    subjects,
+                    new CommitmentOutcomeId(dto.SourceOutcomeId)));
             }
         }
 
@@ -1735,6 +1747,7 @@ namespace Vivarium.Application.Persistence
                     OccurredAtMinutes = memory.OccurredAt.TotalMinutes,
                     ExplanationId = memory.ExplanationId.Value,
                     SourceHistoryEntryId = memory.SourceHistoryEntryId.Value,
+                    SourceOutcomeId = memory.SourceOutcomeId.Value,
                 };
                 foreach (KeyValuePair<AuthoredId, long> effect in memory.ChannelEffects)
                 {
@@ -1768,7 +1781,8 @@ namespace Vivarium.Application.Persistence
                     new SimTime(source.OccurredAtMinutes),
                     new AuthoredId(source.ExplanationId),
                     effects,
-                    new HistoryEntryId(source.SourceHistoryEntryId)));
+                    new HistoryEntryId(source.SourceHistoryEntryId),
+                    new CommitmentOutcomeId(source.SourceOutcomeId)));
             }
             direction.RestoreState(
                 dto.HasFamiliarityProgression

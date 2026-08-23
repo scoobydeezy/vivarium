@@ -45,7 +45,8 @@ namespace Vivarium.Domain.History
             SimTime occurredAt,
             RetentionTier tier,
             string summary,
-            IReadOnlyList<EntityRef> subjects = null)
+            IReadOnlyList<EntityRef> subjects = null,
+            CommitmentOutcomeId sourceOutcomeId = default)
         {
             Id = id;
             Kind = kind;
@@ -53,6 +54,7 @@ namespace Vivarium.Domain.History
             Tier = tier;
             Summary = summary;
             Subjects = subjects ?? NoSubjects;
+            SourceOutcomeId = sourceOutcomeId;
         }
 
         public HistoryEntryId Id { get; }
@@ -69,6 +71,9 @@ namespace Vivarium.Domain.History
 
         /// <summary>Who it involved. Weak references — subjects may since have been retired (§7.1).</summary>
         public IReadOnlyList<EntityRef> Subjects { get; }
+
+        /// <summary>Weak provenance link; the denormalized summary remains meaningful if it expires.</summary>
+        public CommitmentOutcomeId SourceOutcomeId { get; }
 
         /// <summary>Compacts the entry into a smaller representation at a lower fidelity (§37).</summary>
         public void CompactTo(RetentionTier tier, string compactedSummary)

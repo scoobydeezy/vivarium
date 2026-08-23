@@ -55,6 +55,7 @@ namespace Vivarium.Domain.Simulation
             RelationshipIndex = new RelationshipIndex();
             DecisionDependencies = new DecisionDependencyIndex();
             CommitmentConflicts = new CommitmentConflictIndex();
+            CommitmentOutcomes = new CommitmentOutcomeLedger();
 
             Knowledge = new KnowledgeLedger();
             Attention = new AttentionState();
@@ -106,6 +107,8 @@ namespace Vivarium.Domain.Simulation
 
         /// <summary>Active commitment-conflict identity projection. Rebuilt from Decisions after load.</summary>
         public CommitmentConflictIndex CommitmentConflicts { get; }
+
+        public CommitmentOutcomeLedger CommitmentOutcomes { get; }
 
         /// <summary>What the player knows — not a view of truth (§22).</summary>
         public KnowledgeLedger Knowledge { get; }

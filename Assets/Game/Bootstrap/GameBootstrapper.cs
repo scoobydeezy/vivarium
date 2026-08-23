@@ -43,6 +43,7 @@ namespace Vivarium.Unity.Bootstrap
         private static readonly AuthoredId ContextWorkPressure = new AuthoredId("decision_context.work_pressure");
         private static readonly AuthoredId ModifierDislikedColleague = new AuthoredId("activity_modifier.disliked_colleague_present");
         private static readonly AuthoredId SocialCalibrationStandard = new AuthoredId("social.calibration.standard");
+        private static readonly AuthoredId AccountabilitySocialCommitment = new AuthoredId("accountability.social_commitment");
         [Header("Content")]
         [SerializeField] private ContentPackAsset contentPack;
 
@@ -265,7 +266,8 @@ namespace Vivarium.Unity.Bootstrap
                 cafe,
                 70,
                 ActivityDining,
-                new[] { glen }));
+                new[] { glen },
+                accountabilityPolicy: _catalog.CommitmentAccountabilityPolicies[AccountabilitySocialCommitment]));
             ScheduleCommitmentReveal(revealAt, new CommitmentBecomesKnownPayload(
                 mina,
                 new AuthoredId("commitment.help_darius_close_bakery"),
@@ -275,7 +277,8 @@ namespace Vivarium.Unity.Bootstrap
                 workshop,
                 90,
                 ActivityHelpingAtBakery,
-                new[] { darius }));
+                new[] { darius },
+                accountabilityPolicy: _catalog.CommitmentAccountabilityPolicies[AccountabilitySocialCommitment]));
         }
 
         private void ScheduleCommitmentReveal(SimTime revealAt, CommitmentBecomesKnownPayload payload) =>

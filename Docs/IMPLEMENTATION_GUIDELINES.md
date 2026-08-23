@@ -328,6 +328,40 @@ routine intent; broader n-way clustering remains deferred. Player-facing project
 Keep/Give-up plan and distinguish the feasibility cutoff as a hard deadline. Unity authors the same
 Decision, activities, and obligations and covers the full appearance/presentation path in PlayMode.
 
+### Completed checkpoint — Commitment outcomes and accountability
+
+Product direction on **2026-08-23** selected `CommitmentOutcomesAccountabilityBrief.md` as the feedback
+slice that makes the commitment-conflict Decision causally matter. `CommitmentLifecycleService` now owns
+all runtime Commitment status mutation. Terminal transitions validate the four locked Outcome/Cause
+pairings, allocate one immutable outcome identity, and publish one canonical event; window expiration is
+real scheduled work at `LatestStart + 1 minute`, and external cancellation is explicitly non-blaming.
+
+Commitments snapshot Character/non-Character-capable stakeholder references and an authored
+most-specific-wins accountability policy. Save schema v6 persists those authoritative snapshots on both
+materialized Commitments and pending reveal payloads, along with the outcome allocator and weak outcome
+provenance on durable artifacts. Legacy v5 state receives a no-op policy rather than retroactively
+inventing consequences. The outcome ledger is session-retained Ephemeral historical authority (and is
+therefore deliberately absent after a save boundary once its durable consequences have settled); its
+idempotency set and all routing/index projections are non-persisted implementation state.
+
+At handler order 100, the canonical consequence path maps simulation truth into stakeholder attribution,
+records character Knowledge, applies authored evidence through the existing joint social-belief update,
+and optionally creates one directional memory/history artifact and salient channel deltas. No
+consequence code reads authoritative cause directly. Routine fulfillment is evidence-only: it changes
+the live Reliance appraisal without accumulating Trust or memory. Relinquishment/missed/explicit breach
+content may add Trust/Resentment and a Significant memory; external cancellation never blames the actor.
+Every durable consequence carries `SourceOutcomeId` plus denormalized explanatory data, so outcome
+pruning cannot erase its meaning.
+
+The Golden Scenario now includes authored Dependability evidence and a Reliance-based later Decision.
+From the same deterministic initial world, Glen receives a strictly weaker Influence for relying on Mina
+after she relinquishes dinner than after she fulfills it. Saving before the conflict reveal, loading, and
+replaying produces the exact same later Influence. Focused lifecycle, pairing, policy-precedence,
+expiration, snapshot, and provenance tests bring the headless suite to **152 tests**. Institutional
+stakeholder effects, disclosure-driven attribution correction, broader cause taxonomy, global
+reputation, and actual Defer semantics remain deliberately deferred.
+The headless determinism and save/load modes both produce `B3591F428A8BC06C`.
+
 ## Implementation checklist
 
 Use the applicable checks, not boilerplate for its own sake.
@@ -378,6 +412,7 @@ Commitment → planned Travel → shared-context Interaction → Work
 → contextual pressure + Need threshold → living Decision
 → Watch/Hold → Knowledge discovery → intervention → deterministic resolution
 → consequence changes Activity/Commitment → new obligations create a hard-deadline plan Decision
+→ outcome accountability changes stakeholder belief/history → later Reliance Decision changes
 → preserved intent continues through Activity/Travel → save/reload equivalence
 ```
 

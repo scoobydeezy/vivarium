@@ -18,6 +18,7 @@ namespace Vivarium.Domain.Knowledge
         public static readonly AuthoredId DecisionInfluence = new AuthoredId("fact.decision.influence");
         public static readonly AuthoredId ReportedSocialBelief = new AuthoredId("fact.social.reported_belief");
         public static readonly AuthoredId PerceivedGroupOpinion = new AuthoredId("fact.social.perceived_group_opinion");
+        public static readonly AuthoredId CommitmentOutcomeAttribution = new AuthoredId("fact.commitment.outcome_attribution");
     }
 
     /// <summary>Authored qualitative bands used by <see cref="ObservedValue"/>.</summary>

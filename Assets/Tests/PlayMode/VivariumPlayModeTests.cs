@@ -11,6 +11,8 @@ using Vivarium.Domain.Characters;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Decisions;
 using Vivarium.Domain.Relationships;
+using Vivarium.Domain.Knowledge;
+using Vivarium.Domain.Social;
 using Vivarium.Domain.Spatial;
 using Vivarium.Domain.Time;
 using Vivarium.Unity.Authoring;
@@ -322,6 +324,10 @@ namespace Vivarium.Unity.Tests
         public IEnumerator Golden_scenario_surfaces_concrete_commitment_conflict_after_leave_work()
         {
             Assert.That(_bootstrapper.Host.Catalog.Decisions.ContainsKey(CommitmentConflictDecisionId), Is.True);
+            Assert.That(_bootstrapper.Host.Catalog.CommitmentAccountabilityPolicies.ContainsKey(
+                new AuthoredId("accountability.social_commitment")), Is.True);
+            Assert.That(_bootstrapper.Host.Catalog.SocialEvidence.ContainsKey(
+                new AuthoredId("social.action.commitment_breach")), Is.True);
             Assert.That(TryFindDecision(CommitmentConflictDecisionId, out Decision _), Is.False);
 
             _bootstrapper.Host.Session.Advance(SimDuration.FromHours(1));
@@ -340,6 +346,27 @@ namespace Vivarium.Unity.Tests
             DecisionPanel panel = Object.FindAnyObjectByType<DecisionPanel>();
             Assert.That(panel.DisplayedText, Does.Contain("hard deadline"));
             Assert.That(panel.DisplayedText, Does.Contain("Dinner With Glen"));
+
+            _bootstrapper.Host.Session.Advance(conflict.ResolveAt - _bootstrapper.Host.World.Clock.Now);
+            Assert.That(conflict.Status, Is.EqualTo(DecisionStatus.Resolved));
+            Commitment relinquished = null;
+            foreach (Commitment commitment in _bootstrapper.Host.World.Commitments.All)
+                if (commitment.Status == CommitmentStatus.Relinquished)
+                {
+                    relinquished = commitment;
+                    break;
+                }
+            Assert.That(relinquished, Is.Not.Null);
+            Assert.That(relinquished.AccountabilityPolicy.Id,
+                Is.EqualTo(new AuthoredId("accountability.social_commitment")));
+            StakeholderRef stakeholder = relinquished.Stakeholders[0];
+            var observer = new CharacterId(stakeholder.Entity.RuntimeId);
+            Assert.That(_bootstrapper.Host.World.Knowledge.TryGetSocialBelief(
+                ObserverRef.Character(observer), relinquished.CharacterId, out BeliefDistribution _), Is.True);
+            Assert.That(_bootstrapper.Host.World.RelationshipIndex.TryGetBetween(
+                observer, relinquished.CharacterId, out RelationshipId accountabilityRelationship), Is.True);
+            Assert.That(_bootstrapper.Host.World.Relationships.Get(accountabilityRelationship)
+                .From(observer).Memories.Count, Is.EqualTo(1));
         }
 
         private Character FirstCharacter()

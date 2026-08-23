@@ -10,6 +10,7 @@ using Vivarium.Domain.Content;
 using Vivarium.Domain.Decisions;
 using Vivarium.Domain.Characters;
 using Vivarium.Domain.Relationships;
+using Vivarium.Domain.Knowledge;
 using Vivarium.Domain.Simulation;
 using Vivarium.Domain.Spatial;
 using Vivarium.Domain.Scheduling;
@@ -293,6 +294,79 @@ namespace Vivarium.SimRunner.Tests
             Assert.Equal(AuthoritativeSignature(fixture.Host.World), AuthoritativeSignature(restored.World));
         }
 
+        [Fact]
+        public void CommitmentAccountabilityChangesTheLaterRelianceDecisionAndReplaysAcrossSave()
+        {
+            Fixture kept = Create();
+            Fixture breached = Create();
+            kept.Host.Session.Advance(SimDuration.FromHours(6));
+            breached.Host.Session.Advance(SimDuration.FromHours(6));
+
+            Commitment keptDinner = FindCommitment(kept.Host.World, SampleContent.CommitmentDinnerWithGlen);
+            Commitment breachedDinner = FindCommitment(breached.Host.World, SampleContent.CommitmentDinnerWithGlen);
+            var lifecycle = new CommitmentLifecycleService();
+            lifecycle.Start(kept.Host.World, keptDinner, kept.Host.World.RuntimeIds.Activities.Next());
+            CommitmentOutcome fulfilled = lifecycle.Fulfill(kept.Host.World, keptDinner);
+            Decision breachConflict = FindCommitmentConflict(breached.Host.World, breached.Layout.Mina);
+            CommitmentOutcome relinquished = lifecycle.Relinquish(
+                breached.Host.World, breachedDinner, breachConflict.Id);
+            kept.Host.Session.Advance(SimDuration.Zero);
+            breached.Host.Session.Advance(SimDuration.Zero);
+
+            long keptReliance = GenerateRelianceInfluence(kept);
+            long breachedReliance = GenerateRelianceInfluence(breached);
+            Assert.True(keptReliance > breachedReliance,
+                $"Fulfillment should support more Reliance than relinquishment ({keptReliance} vs {breachedReliance}).");
+
+            Relationship keptFriendship = Friendship(kept);
+            Relationship breachedFriendship = Friendship(breached);
+            Assert.Empty(keptFriendship.From(kept.Layout.Glen).Memories);
+            RelationshipMemory breachMemory = Assert.Single(
+                breachedFriendship.From(breached.Layout.Glen).Memories);
+            Assert.Equal(relinquished.Id, breachMemory.SourceOutcomeId);
+            Assert.Equal(-1200, breachedFriendship.From(breached.Layout.Glen)
+                .ChannelAt(RelationshipChannels.TrustJudgment, breached.Host.World.Clock.Now));
+            Assert.Equal(0, keptFriendship.From(kept.Layout.Glen)
+                .ChannelAt(RelationshipChannels.TrustJudgment, kept.Host.World.Clock.Now));
+            Assert.Contains(breached.Host.World.Knowledge.AllObservers,
+                entry => entry.Observer.Equals(ObserverRef.Character(breached.Layout.Glen)) &&
+                         entry.Key.Kind == FactKinds.CommitmentOutcomeAttribution &&
+                         entry.Source.SourceOutcomeId == relinquished.Id);
+            Assert.DoesNotContain(kept.Host.World.HistoryLedger.Entries,
+                entry => entry.SourceOutcomeId == fulfilled.Id);
+
+            // Save before the conflict is introduced, then replay the breach path and require the exact
+            // later Influence evaluation. The policy itself is carried by the pending reveal payload.
+            Fixture replaySource = Create();
+            replaySource.Host.Session.Advance(
+                SimDuration.FromHours(5).Plus(SimDuration.FromMinutes(45)));
+            SaveGameData beforeConflict = replaySource.Host.Session.Save("before-accountability-conflict");
+            WorldState replayWorld = replaySource.Host.SaveMapper.Restore(beforeConflict);
+            SimulationHost replayHost = SimulationBootstrapper.CreateFromRestoredWorld(
+                replayWorld,
+                replaySource.Catalog,
+                beforeConflict.LastCommandSequence,
+                1,
+                null,
+                replaySource.Store,
+                replaySource.Clock);
+            var replay = new Fixture
+            {
+                Catalog = replaySource.Catalog,
+                Host = replayHost,
+                Layout = replaySource.Layout,
+                Store = replaySource.Store,
+                Clock = replaySource.Clock,
+            };
+            replay.Host.Session.Advance(SimDuration.FromMinutes(15));
+            Commitment replayDinner = FindCommitment(replay.Host.World, SampleContent.CommitmentDinnerWithGlen);
+            Decision replayConflict = FindCommitmentConflict(replay.Host.World, replay.Layout.Mina);
+            new CommitmentLifecycleService().Relinquish(replay.Host.World, replayDinner, replayConflict.Id);
+            replay.Host.Session.Advance(SimDuration.Zero);
+
+            Assert.Equal(breachedReliance, GenerateRelianceInfluence(replay));
+        }
+
         private static Fixture Create()
         {
             DefinitionCatalog catalog = SampleContent.Build();
@@ -336,7 +410,8 @@ namespace Vivarium.SimRunner.Tests
             RuntimeIdCounters ids = world.RuntimeIds.Snapshot();
             text.Append("clock:").Append(world.Clock.Now.TotalMinutes)
                 .Append("|ids:").Append(ids.Characters).Append(',').Append(ids.Activities).Append(',')
-                .Append(ids.Commitments).Append(',').Append(ids.Relationships).Append(',').Append(ids.Decisions)
+                .Append(ids.Commitments).Append(',').Append(ids.CommitmentOutcomes).Append(',')
+                .Append(ids.Relationships).Append(',').Append(ids.Decisions)
                 .Append(',').Append(ids.ScheduledEvents).Append(',').Append(ids.HistoryEntries).Append(',').Append(ids.EventSequence);
 
             foreach (ScheduledEvent scheduled in world.Scheduler.PendingEvents)
@@ -413,6 +488,31 @@ namespace Vivarium.SimRunner.Tests
                     decision.DefinitionId == SampleContent.DecisionCommitmentConflict)
                     return decision;
             return null;
+        }
+
+        private static Commitment FindCommitment(WorldState world, AuthoredId kind) =>
+            world.Commitments.All.Single(commitment => commitment.Kind == kind);
+
+        private static Relationship Friendship(Fixture fixture)
+        {
+            Assert.True(fixture.Host.World.RelationshipIndex.TryGetBetween(
+                fixture.Layout.Mina, fixture.Layout.Glen, out RelationshipId relationshipId));
+            return fixture.Host.World.Relationships.Get(relationshipId);
+        }
+
+        private static long GenerateRelianceInfluence(Fixture fixture)
+        {
+            Relationship friendship = Friendship(fixture);
+            fixture.Host.World.Publish(new InteractionOccurredEvent(
+                fixture.Layout.Glen,
+                fixture.Layout.Mina,
+                fixture.Layout.Cafe,
+                friendship.Id));
+            fixture.Host.Session.Advance(SimDuration.Zero);
+            Decision decision = fixture.Host.World.Decisions.All.Single(item =>
+                item.IsActive && item.CharacterId == fixture.Layout.Glen &&
+                item.DefinitionId == SampleContent.DecisionRelyOnPerson);
+            return Assert.Single(decision.Influences).Evaluation.ExpectedScore;
         }
 
         private static int CountCommitmentsWithStatus(WorldState world, CommitmentStatus status)

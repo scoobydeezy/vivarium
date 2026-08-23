@@ -69,13 +69,15 @@ namespace Vivarium.Domain.Social
             ObserverRef observer,
             AuthoredId actionDefinitionId,
             SimTime observedAt,
-            AuthoredId sourceContext)
+            AuthoredId sourceContext,
+            CommitmentOutcomeId sourceOutcomeId = default)
         {
             ActorId = actorId;
             Observer = observer;
             ActionDefinitionId = actionDefinitionId;
             ObservedAt = observedAt;
             SourceContext = sourceContext;
+            SourceOutcomeId = sourceOutcomeId;
         }
 
         public CharacterId ActorId { get; }
@@ -83,6 +85,7 @@ namespace Vivarium.Domain.Social
         public AuthoredId ActionDefinitionId { get; }
         public SimTime ObservedAt { get; }
         public AuthoredId SourceContext { get; }
+        public CommitmentOutcomeId SourceOutcomeId { get; }
     }
 
     /// <summary>Deterministic scalar Kalman updates over the joint latent vector.</summary>

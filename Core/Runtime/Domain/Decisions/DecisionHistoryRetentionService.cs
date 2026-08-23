@@ -22,6 +22,10 @@ namespace Vivarium.Domain.Decisions
                 }
             }
             world.HistoryLedger.Prune(olderThan, maxTierToPrune);
+            // CommitmentOutcome records have Ephemeral retention and share the same historical
+            // cutoff. Durable memories/knowledge retain denormalized meaning plus weak provenance.
+            if ((int)maxTierToPrune >= (int)RetentionTier.Ephemeral)
+                world.CommitmentOutcomes.PruneBefore(olderThan);
             for (int i = 0; i < removing.Count; i++) world.Decisions.Remove(removing[i]);
             return removing.Count;
         }

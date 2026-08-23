@@ -138,7 +138,8 @@ namespace Vivarium.SimRunner
                 layout.Cafe,
                 70,
                 SampleContent.ActivityDining,
-                new[] { layout.Glen }));
+                new[] { layout.Glen },
+                accountabilityPolicy: host.Catalog.CommitmentAccountabilityPolicies[SampleContent.AccountabilitySocialCommitment]));
             ScheduleCommitmentReveal(world, revealAt, new CommitmentBecomesKnownPayload(
                 layout.Mina,
                 SampleContent.CommitmentHelpDariusCloseBakery,
@@ -148,7 +149,8 @@ namespace Vivarium.SimRunner
                 layout.Bakery,
                 90,
                 SampleContent.ActivityHelpingAtBakery,
-                new[] { layout.Darius }));
+                new[] { layout.Darius },
+                accountabilityPolicy: host.Catalog.CommitmentAccountabilityPolicies[SampleContent.AccountabilitySocialCommitment]));
 
             return layout;
         }

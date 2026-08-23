@@ -443,6 +443,84 @@ MonoBehaviour:
         coefficient: 3000
       observedValue: 4000
       noiseVariance: 30000000
+  - actionDefinitionId: social.action.commitment_fulfilled
+    explanationId: social.explanation.commitment_fulfilled
+    measurements:
+    - authoredId: social.measurement.commitment_fulfilled
+      projection:
+      - dimensionId: social.dimension.discipline
+        coefficient: 7000
+      - dimensionId: social.dimension.stability
+        coefficient: 3000
+      observedValue: 4500
+      noiseVariance: 30000000
+  - actionDefinitionId: social.action.commitment_breach
+    explanationId: social.explanation.commitment_breach
+    measurements:
+    - authoredId: social.measurement.commitment_breach
+      projection:
+      - dimensionId: social.dimension.discipline
+        coefficient: 7000
+      - dimensionId: social.dimension.stability
+        coefficient: 3000
+      observedValue: -6000
+      noiseVariance: 30000000
+  commitmentAccountabilityPolicies:
+  - authoredId: accountability.social_commitment
+    defaultConsequences:
+      hasMemory: 0
+      memoryKind:
+      memoryExplanationId:
+      memoryRetentionTier: 0
+      evidenceActionId:
+      channelDeltas: []
+    byOutcome:
+    - outcome: 0
+      consequences:
+        hasMemory: 0
+        memoryKind:
+        memoryExplanationId:
+        memoryRetentionTier: 0
+        evidenceActionId: social.action.commitment_fulfilled
+        channelDeltas: []
+    - outcome: 1
+      consequences:
+        hasMemory: 1
+        memoryKind: relationship.memory.commitment_breach
+        memoryExplanationId: relationship.explanation.commitment_breach
+        memoryRetentionTier: 2
+        evidenceActionId: social.action.commitment_breach
+        channelDeltas:
+        - authoredId: relationship.channel.trust_judgment
+          value: -1200
+        - authoredId: relationship.channel.resentment
+          value: 900
+    - outcome: 2
+      consequences:
+        hasMemory: 1
+        memoryKind: relationship.memory.commitment_breach
+        memoryExplanationId: relationship.explanation.commitment_breach
+        memoryRetentionTier: 2
+        evidenceActionId: social.action.commitment_breach
+        channelDeltas:
+        - authoredId: relationship.channel.trust_judgment
+          value: -1200
+        - authoredId: relationship.channel.resentment
+          value: 900
+    - outcome: 3
+      consequences:
+        hasMemory: 1
+        memoryKind: relationship.memory.commitment_breach
+        memoryExplanationId: relationship.explanation.commitment_breach
+        memoryRetentionTier: 2
+        evidenceActionId: social.action.commitment_breach
+        channelDeltas:
+        - authoredId: relationship.channel.trust_judgment
+          value: -1200
+        - authoredId: relationship.channel.resentment
+          value: 900
+    byRole: []
+    specificOverrides: []
   socialPressures:
   - authoredId: social.pressure.seek_company
     rules: []

@@ -79,6 +79,7 @@ namespace Vivarium.Application.Persistence
         public long OccurredAtMinutes;
         public string ExplanationId;
         public int SourceHistoryEntryId;
+        public int SourceOutcomeId;
         public List<AuthoredLongData> ChannelEffects = new List<AuthoredLongData>();
     }
 

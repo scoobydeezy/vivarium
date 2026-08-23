@@ -69,7 +69,8 @@ namespace Vivarium.Domain.Activities
                             template.ActivityDefinitionId,
                             template.Source,
                             null,
-                            template.Id);
+                            template.Id,
+                            accountabilityPolicy: template.AccountabilityPolicy);
 
                         world.Commitments.Add(commitment.Id, commitment);
                         created.Add(commitment);
@@ -162,6 +163,13 @@ namespace Vivarium.Domain.Activities
                     commitment.Id,
                     commitment.ActivityDefinitionId,
                     commitment.LocationId),
+                dependencies);
+
+            world.Scheduler.Schedule(
+                commitment.LatestStart.Plus(SimDuration.FromMinutes(1)),
+                SchedulePhase.Expiration,
+                ScheduledEventTypes.CommitmentWindowExpired,
+                new CommitmentWindowExpiredPayload(commitment.Id, commitment.CharacterId),
                 dependencies);
 
             if (context.Trace.IsEnabled)

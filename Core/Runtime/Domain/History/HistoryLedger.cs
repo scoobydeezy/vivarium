@@ -33,9 +33,10 @@ namespace Vivarium.Domain.History
             SimTime occurredAt,
             RetentionTier tier,
             string summary,
-            IReadOnlyList<EntityRef> subjects = null)
+            IReadOnlyList<EntityRef> subjects = null,
+            CommitmentOutcomeId sourceOutcomeId = default)
         {
-            var entry = new HistoryEntry(_ids.Next(), kind, occurredAt, tier, summary, subjects);
+            var entry = new HistoryEntry(_ids.Next(), kind, occurredAt, tier, summary, subjects, sourceOutcomeId);
             _entries.Add(entry);
             return entry;
         }

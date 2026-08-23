@@ -155,7 +155,9 @@ namespace Vivarium.Domain.Decisions
     /// <summary>Changes commitment intent only. It never invokes Activity or planner code.</summary>
     public sealed class CommitmentConflictDecisionOutcomeHandler : DomainEventHandler<DecisionResolvedEvent>
     {
-        public CommitmentConflictDecisionOutcomeHandler() : base(DecisionDomainEventTypes.DecisionResolved) { }
+        private readonly CommitmentLifecycleService _commitments;
+        public CommitmentConflictDecisionOutcomeHandler(CommitmentLifecycleService commitments)
+            : base(DecisionDomainEventTypes.DecisionResolved) => _commitments = commitments;
         protected override void Handle(DecisionResolvedEvent e, WorldState world, SimulationContext context)
         {
             Decision decision = world.Decisions.Get(e.DecisionId);
@@ -169,23 +171,22 @@ namespace Vivarium.Domain.Decisions
             for (int i = 0; i < plan.Relinquish.Count; i++)
                 if (world.Commitments.TryGet(plan.Relinquish[i], out Commitment c) && c.Status == CommitmentStatus.Planned)
                 {
-                    c.Relinquish();
+                    _commitments.Relinquish(world, c, decision.Id);
                     changed.Add(c.Id);
                 }
             if (changed.Count == 0) return;
-            for (int i = 0; i < changed.Count; i++) world.Publish(new CommitmentRelinquishedEvent(decision.CharacterId, changed[i]));
-            CommitmentScheduleChanges.Publish(world, decision.CharacterId);
         }
     }
 
     /// <summary>Routine planner reaction to the commitment-domain consequence.</summary>
-    public sealed class CommitmentIntentPlanningHandler : DomainEventHandler<CommitmentRelinquishedEvent>
+    public sealed class CommitmentIntentPlanningHandler : DomainEventHandler<CommitmentOutcomeOccurredEvent>
     {
         private readonly SchedulePlanner _planner;
         public CommitmentIntentPlanningHandler(SchedulePlanner planner)
-            : base(ActivityDomainEventTypes.CommitmentRelinquished) => _planner = planner;
-        protected override void Handle(CommitmentRelinquishedEvent e, WorldState world, SimulationContext context)
+            : base(ActivityDomainEventTypes.CommitmentOutcomeOccurred) => _planner = planner;
+        protected override void Handle(CommitmentOutcomeOccurredEvent e, WorldState world, SimulationContext context)
         {
+            if (e.Outcome.Outcome != CommitmentOutcomeKind.Relinquished) return;
             foreach (Commitment c in world.Commitments.All)
                 if (c.CharacterId == e.CharacterId && c.Status == CommitmentStatus.Planned)
                     _planner.TryPlanCommitmentStart(context, c);

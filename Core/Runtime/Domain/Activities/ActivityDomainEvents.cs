@@ -13,8 +13,10 @@ namespace Vivarium.Domain.Activities
         public static readonly AuthoredId CharacterDeparted = new AuthoredId("domain.character.departed");
         public static readonly AuthoredId CommitmentScheduleChanged =
             new AuthoredId("domain.commitment.schedule_changed");
-        public static readonly AuthoredId CommitmentRelinquished =
-            new AuthoredId("domain.commitment.relinquished");
+        public static readonly AuthoredId CommitmentStatusChanged =
+            new AuthoredId("domain.commitment.status_changed");
+        public static readonly AuthoredId CommitmentOutcomeOccurred =
+            new AuthoredId("domain.commitment.outcome_occurred");
     }
 
     /// <summary>A character began a new primary Activity (§29.1).</summary>
@@ -106,16 +108,36 @@ namespace Vivarium.Domain.Activities
         public int ScheduleRevision { get; }
     }
 
-    public sealed class CommitmentRelinquishedEvent : IDomainEvent
+    public sealed class CommitmentStatusChangedEvent : IDomainEvent
     {
-        public CommitmentRelinquishedEvent(CharacterId characterId, CommitmentId commitmentId)
+        public CommitmentStatusChangedEvent(
+            CommitmentId commitmentId,
+            CharacterId characterId,
+            CommitmentStatus previousStatus,
+            CommitmentStatus newStatus)
+        {
+            CommitmentId = commitmentId;
+            CharacterId = characterId;
+            PreviousStatus = previousStatus;
+            NewStatus = newStatus;
+        }
+        public AuthoredId EventType => ActivityDomainEventTypes.CommitmentStatusChanged;
+        public CommitmentId CommitmentId { get; }
+        public CharacterId CharacterId { get; }
+        public CommitmentStatus PreviousStatus { get; }
+        public CommitmentStatus NewStatus { get; }
+    }
+
+    public sealed class CommitmentOutcomeOccurredEvent : IDomainEvent
+    {
+        public CommitmentOutcomeOccurredEvent(CharacterId characterId, CommitmentOutcome outcome)
         {
             CharacterId = characterId;
-            CommitmentId = commitmentId;
+            Outcome = outcome;
         }
-        public AuthoredId EventType => ActivityDomainEventTypes.CommitmentRelinquished;
+        public AuthoredId EventType => ActivityDomainEventTypes.CommitmentOutcomeOccurred;
         public CharacterId CharacterId { get; }
-        public CommitmentId CommitmentId { get; }
+        public CommitmentOutcome Outcome { get; }
     }
 
     /// <summary>One authority for revisioning and announcing commitment-intent changes.</summary>
@@ -127,5 +149,20 @@ namespace Vivarium.Domain.Activities
             world.Publish(new CommitmentScheduleChangedEvent(characterId, revision));
             return revision;
         }
+    }
+
+    /// <summary>Publishes one schedule revision after a Commitment lifecycle transition.</summary>
+    public sealed class CommitmentStatusScheduleChangeHandler : DomainEventHandler<CommitmentStatusChangedEvent>
+    {
+        public CommitmentStatusScheduleChangeHandler() : base(ActivityDomainEventTypes.CommitmentStatusChanged) { }
+        protected override void Handle(CommitmentStatusChangedEvent e, WorldState world, SimulationContext context) =>
+            CommitmentScheduleChanges.Publish(world, e.CharacterId);
+    }
+
+    public sealed class CommitmentOutcomeScheduleChangeHandler : DomainEventHandler<CommitmentOutcomeOccurredEvent>
+    {
+        public CommitmentOutcomeScheduleChangeHandler() : base(ActivityDomainEventTypes.CommitmentOutcomeOccurred) { }
+        protected override void Handle(CommitmentOutcomeOccurredEvent e, WorldState world, SimulationContext context) =>
+            CommitmentScheduleChanges.Publish(world, e.CharacterId);
     }
 }

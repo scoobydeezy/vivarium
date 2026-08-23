@@ -20,5 +20,6 @@ namespace Vivarium.Domain.Common
         Employment = 9,
         ScheduledEvent = 10,
         HistoryEntry = 11,
+        CommitmentOutcome = 12,
     }
 }

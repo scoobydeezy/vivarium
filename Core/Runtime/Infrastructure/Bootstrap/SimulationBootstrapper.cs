@@ -213,6 +213,7 @@ namespace Vivarium.Infrastructure.Bootstrap
                 ? new SocialInteractionRelevance(world, catalog, interactionPressure, AppraisalLenses.Affiliation)
                 : null;
             var interactions = new InteractionService(interactionCandidates, knowledgeDiscovery, interactionRelevance);
+            var commitmentLifecycle = new CommitmentLifecycleService();
 
             foreach (KeyValuePair<AuthoredId, DecisionDefinition> pair in catalog.Decisions)
             {
@@ -228,9 +229,10 @@ namespace Vivarium.Infrastructure.Bootstrap
 
             // Scheduler handler registry. Registration is explicit and ordered by hand (§11.3, §12.1).
             var scheduledHandlers = new ScheduledEventHandlerRegistry();
-            scheduledHandlers.Register(new ActivityStartHandler(transitions));
-            scheduledHandlers.Register(new TravelArrivalHandler(transitions));
-            scheduledHandlers.Register(new ActivityCompletionHandler(activityResolution, transitions));
+            scheduledHandlers.Register(new ActivityStartHandler(transitions, commitmentLifecycle));
+            scheduledHandlers.Register(new TravelArrivalHandler(transitions, commitmentLifecycle));
+            scheduledHandlers.Register(new ActivityCompletionHandler(activityResolution, transitions, commitmentLifecycle));
+            scheduledHandlers.Register(new CommitmentWindowExpiredHandler(commitmentLifecycle));
             scheduledHandlers.Register(new NeedThresholdHandler());
             scheduledHandlers.Register(new DecisionResolveHandler(decisionResolution, holdPolicy));
             scheduledHandlers.Register(new CommitmentConflictAutoResolveHandler(decisionResolution));
@@ -241,8 +243,11 @@ namespace Vivarium.Infrastructure.Bootstrap
             domainHandlers.Register(new NeedThresholdDecisionGenerationHandler(catalog, decisionSignals), 100);
             domainHandlers.Register(new CommitmentConflictDecisionGenerationHandler(catalog, decisionSignals), 100);
             domainHandlers.Register(new DecisionActivityOutcomeHandler(catalog, transitions), 100);
-            domainHandlers.Register(new CommitmentConflictDecisionOutcomeHandler(), 110);
-            domainHandlers.Register(new CommitmentIntentPlanningHandler(planner), 100);
+            domainHandlers.Register(new CommitmentConflictDecisionOutcomeHandler(commitmentLifecycle), 110);
+            domainHandlers.Register(new CommitmentOutcomeConsequenceHandler(catalog, socialBeliefs), 100);
+            domainHandlers.Register(new CommitmentStatusScheduleChangeHandler(), 200);
+            domainHandlers.Register(new CommitmentOutcomeScheduleChangeHandler(), 200);
+            domainHandlers.Register(new CommitmentIntentPlanningHandler(planner), 300);
             domainHandlers.Register(new CharacterArrivedInteractionHandler(interactions), 100);
             domainHandlers.Register(new TravelStartedInteractionHandler(interactions), 100);
             domainHandlers.Register(new SocialInteractionDecisionGenerationHandler(catalog), 150);

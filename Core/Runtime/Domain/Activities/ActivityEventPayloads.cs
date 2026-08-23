@@ -36,7 +36,9 @@ namespace Vivarium.Domain.Activities
             LocationId locationId,
             int priority,
             AuthoredId activityDefinitionId,
-            IReadOnlyList<CharacterId> additionalParticipants = null)
+            IReadOnlyList<CharacterId> additionalParticipants = null,
+            IReadOnlyList<StakeholderRef> stakeholders = null,
+            CommitmentAccountabilityPolicy accountabilityPolicy = null)
         {
             CharacterId = characterId;
             Kind = kind;
@@ -46,7 +48,9 @@ namespace Vivarium.Domain.Activities
             LocationId = locationId;
             Priority = priority;
             ActivityDefinitionId = activityDefinitionId;
-            AdditionalParticipants = additionalParticipants ?? new CharacterId[0];
+            AdditionalParticipants = Copy(additionalParticipants);
+            Stakeholders = stakeholders == null ? null : Copy(stakeholders);
+            AccountabilityPolicy = accountabilityPolicy ?? CommitmentAccountabilityPolicy.None;
         }
 
         public CharacterId CharacterId { get; }
@@ -58,6 +62,24 @@ namespace Vivarium.Domain.Activities
         public int Priority { get; }
         public AuthoredId ActivityDefinitionId { get; }
         public IReadOnlyList<CharacterId> AdditionalParticipants { get; }
+        public IReadOnlyList<StakeholderRef> Stakeholders { get; }
+        public CommitmentAccountabilityPolicy AccountabilityPolicy { get; }
+
+        private static CharacterId[] Copy(IReadOnlyList<CharacterId> source)
+        {
+            if (source == null) return new CharacterId[0];
+            var result = new CharacterId[source.Count];
+            for (int i = 0; i < result.Length; i++) result[i] = source[i];
+            return result;
+        }
+
+        private static StakeholderRef[] Copy(IReadOnlyList<StakeholderRef> source)
+        {
+            var result = new StakeholderRef[source.Count];
+            for (int i = 0; i < result.Length; i++) result[i] = source[i];
+            System.Array.Sort(result);
+            return result;
+        }
     }
 
     /// <summary>Begin the Activity that fulfils a planned Commitment (§29.5).</summary>

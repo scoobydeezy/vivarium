@@ -103,6 +103,24 @@ namespace Vivarium.Domain.Common
         public static bool operator !=(CommitmentId a, CommitmentId b) => a.Value != b.Value;
     }
 
+    /// <summary>Identity of one immutable terminal Commitment outcome.</summary>
+    public readonly struct CommitmentOutcomeId : IRuntimeId, IEquatable<CommitmentOutcomeId>, IComparable<CommitmentOutcomeId>
+    {
+        public static readonly CommitmentOutcomeId None = default;
+        public CommitmentOutcomeId(int value) => Value = value;
+        public int Value { get; }
+        public EntityKind Kind => EntityKind.CommitmentOutcome;
+        public bool IsSet => Value > 0;
+        public EntityRef ToRef() => new EntityRef(EntityKind.CommitmentOutcome, Value);
+        public bool Equals(CommitmentOutcomeId other) => Value == other.Value;
+        public override bool Equals(object obj) => obj is CommitmentOutcomeId other && Equals(other);
+        public override int GetHashCode() => Value;
+        public int CompareTo(CommitmentOutcomeId other) => Value.CompareTo(other.Value);
+        public override string ToString() => IsSet ? "CommitmentOutcome#" + Value : "<none>";
+        public static bool operator ==(CommitmentOutcomeId a, CommitmentOutcomeId b) => a.Value == b.Value;
+        public static bool operator !=(CommitmentOutcomeId a, CommitmentOutcomeId b) => a.Value != b.Value;
+    }
+
     /// <summary>Identity of a <see cref="Relationships.Relationship"/>.</summary>
     public readonly struct RelationshipId : IRuntimeId, IEquatable<RelationshipId>, IComparable<RelationshipId>
     {

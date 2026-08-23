@@ -75,9 +75,16 @@ namespace Vivarium.SimRunner
         public static readonly AuthoredId StayOptionMarker = new AuthoredId("decision.option_marker.finish_shift");
         public static readonly AuthoredId SocialCalibrationStandard = new AuthoredId("social.calibration.standard");
         public static readonly AuthoredId SocialPressureSeekCompany = new AuthoredId("social.pressure.seek_company");
+        public static readonly AuthoredId SocialEvidenceCommitmentFulfilled = new AuthoredId("social.action.commitment_fulfilled");
+        public static readonly AuthoredId SocialEvidenceCommitmentBreach = new AuthoredId("social.action.commitment_breach");
+        public static readonly AuthoredId AccountabilitySocialCommitment = new AuthoredId("accountability.social_commitment");
         public static readonly AuthoredId DecisionSeekCompany = new AuthoredId("decision.seek_company");
+        public static readonly AuthoredId DecisionRelyOnPerson = new AuthoredId("decision.rely_on_person");
         public static readonly AuthoredId OptionSeekCompany = new AuthoredId("option.seek_company");
         public static readonly AuthoredId OptionAvoidCompany = new AuthoredId("option.avoid_company");
+        public static readonly AuthoredId OptionRely = new AuthoredId("option.rely_on_person");
+        public static readonly AuthoredId OptionDoItSelf = new AuthoredId("option.do_it_self");
+        public static readonly AuthoredId SocialPressureReliance = new AuthoredId("social.pressure.reliance");
 
         /// <summary>Home and the bakery are wired into the travel network by <see cref="SampleWorld"/>.</summary>
         public static DefinitionCatalog Build(int contentVersion = 1)
@@ -190,7 +197,19 @@ namespace Vivarium.SimRunner
                         30000000),
                 },
                 new AuthoredId("social.explanation.friendly_interaction")));
+            builder.Add(CommitmentEvidence(
+                SocialEvidenceCommitmentFulfilled,
+                new AuthoredId("social.measurement.commitment_fulfilled"),
+                4500,
+                new AuthoredId("social.explanation.commitment_fulfilled")));
+            builder.Add(CommitmentEvidence(
+                SocialEvidenceCommitmentBreach,
+                new AuthoredId("social.measurement.commitment_breach"),
+                -6000,
+                new AuthoredId("social.explanation.commitment_breach")));
+            builder.Add(SocialCommitmentAccountabilityPolicy());
             builder.Add(new SocialPressureDefinition(SocialPressureSeekCompany, new SocialFactorRule[0]));
+            builder.Add(new SocialPressureDefinition(SocialPressureReliance, new SocialFactorRule[0]));
             builder.Add(new SocialPressureDefinition(
                 new AuthoredId("social.pressure.interaction_relevance"),
                 new SocialFactorRule[0]));
@@ -219,8 +238,74 @@ namespace Vivarium.SimRunner
                     new DecisionRelationshipOutcome(OptionSeekCompany, RelationshipChannels.Affection, 1000),
                     new DecisionRelationshipOutcome(OptionAvoidCompany, RelationshipChannels.Resentment, 500),
                 }));
+            builder.Add(new DecisionDefinition(
+                DecisionRelyOnPerson,
+                new[]
+                {
+                    new DecisionOption(OptionRely, "Rely on them", 0),
+                    new DecisionOption(OptionDoItSelf, "Do it myself", 1),
+                },
+                SimDuration.FromMinutes(10),
+                new AuthoredId("conflict_scope.reliance_target"),
+                importance: 14,
+                socialTrigger: new SocialInteractionDecisionTrigger(
+                    SocialPressureReliance,
+                    AppraisalLenses.Reliance,
+                    new SocialDecisionInfluenceSpec(
+                        OptionRely,
+                        OptionDoItSelf,
+                        CategorySocial,
+                        new AuthoredId("influence.person_seems_reliable"),
+                        new AuthoredId("influence.person_seems_unreliable"),
+                        InfluenceVisibility.Full))));
 
             return builder.Build();
+        }
+
+        private static SocialEvidenceDefinition CommitmentEvidence(
+            AuthoredId actionId,
+            AuthoredId measurementId,
+            long observedValue,
+            AuthoredId explanationId) =>
+            new SocialEvidenceDefinition(
+                actionId,
+                new[]
+                {
+                    new SocialEvidenceMeasurement(
+                        measurementId,
+                        new[]
+                        {
+                            new SocialLinearTerm(SocialDimensions.Discipline, 7000),
+                            new SocialLinearTerm(SocialDimensions.Stability, 3000),
+                        },
+                        observedValue,
+                        30000000),
+                },
+                explanationId);
+
+        private static CommitmentAccountabilityPolicy SocialCommitmentAccountabilityPolicy()
+        {
+            var breachDeltas = new System.Collections.Generic.SortedDictionary<AuthoredId, long>
+            {
+                [RelationshipChannels.TrustJudgment] = -1200,
+                [RelationshipChannels.Resentment] = 900,
+            };
+            var breach = new CommitmentConsequenceSet(
+                new CommitmentMemoryConsequence(
+                    new AuthoredId("relationship.memory.commitment_breach"),
+                    new AuthoredId("relationship.explanation.commitment_breach")),
+                SocialEvidenceCommitmentBreach,
+                breachDeltas);
+            return new CommitmentAccountabilityPolicy(
+                byOutcome: new System.Collections.Generic.SortedDictionary<CommitmentOutcomeKind, CommitmentConsequenceSet>
+                {
+                    [CommitmentOutcomeKind.Fulfilled] = new CommitmentConsequenceSet(
+                        evidenceActionId: SocialEvidenceCommitmentFulfilled),
+                    [CommitmentOutcomeKind.Relinquished] = breach,
+                    [CommitmentOutcomeKind.Missed] = breach,
+                    [CommitmentOutcomeKind.Cancelled] = breach,
+                },
+                id: AccountabilitySocialCommitment);
         }
 
         private static DecisionOption MarkedOption(AuthoredId id, AuthoredId label, int order, AuthoredId marker)

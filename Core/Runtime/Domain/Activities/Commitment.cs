@@ -39,6 +39,7 @@ namespace Vivarium.Domain.Activities
     public sealed class Commitment
     {
         private static readonly CharacterId[] NoParticipants = new CharacterId[0];
+        private static readonly StakeholderRef[] NoStakeholders = new StakeholderRef[0];
 
         public Commitment(
             CommitmentId id,
@@ -52,7 +53,9 @@ namespace Vivarium.Domain.Activities
             AuthoredId activityDefinitionId = default,
             EntityRef source = default,
             IReadOnlyList<CharacterId> additionalParticipants = null,
-            AuthoredId sourceTemplateId = default)
+            AuthoredId sourceTemplateId = default,
+            IReadOnlyList<StakeholderRef> stakeholders = null,
+            CommitmentAccountabilityPolicy accountabilityPolicy = null)
         {
             if (!id.IsSet)
             {
@@ -74,8 +77,12 @@ namespace Vivarium.Domain.Activities
             Priority = priority;
             ActivityDefinitionId = activityDefinitionId;
             Source = source;
-            AdditionalParticipants = additionalParticipants ?? NoParticipants;
+            AdditionalParticipants = CopyParticipants(additionalParticipants);
             SourceTemplateId = sourceTemplateId;
+            Stakeholders = stakeholders == null
+                ? DefaultStakeholders(AdditionalParticipants)
+                : CopyStakeholders(stakeholders);
+            AccountabilityPolicy = accountabilityPolicy ?? CommitmentAccountabilityPolicy.None;
             Status = CommitmentStatus.Planned;
         }
 
@@ -118,6 +125,10 @@ namespace Vivarium.Domain.Activities
         /// </summary>
         public AuthoredId SourceTemplateId { get; }
 
+        public IReadOnlyList<StakeholderRef> Stakeholders { get; }
+
+        public CommitmentAccountabilityPolicy AccountabilityPolicy { get; }
+
         public CommitmentStatus Status { get; private set; }
 
         public ActivityInstanceId FulfillingActivityId { get; private set; }
@@ -131,7 +142,7 @@ namespace Vivarium.Domain.Activities
         public bool OverlapsWindowOf(Commitment other) =>
             EarliestStart < other.ExpectedEnd && other.EarliestStart < ExpectedEnd;
 
-        public void MarkActive(ActivityInstanceId activityId)
+        internal void TransitionToActive(ActivityInstanceId activityId)
         {
             Status = CommitmentStatus.Active;
             FulfillingActivityId = activityId;
@@ -144,14 +155,34 @@ namespace Vivarium.Domain.Activities
             FulfillingActivityId = fulfillingActivityId;
         }
 
-        public void MarkFulfilled() => Status = CommitmentStatus.Fulfilled;
-
-        public void MarkMissed() => Status = CommitmentStatus.Missed;
-
-        public void Cancel() => Status = CommitmentStatus.Cancelled;
-
-        public void Relinquish() => Status = CommitmentStatus.Relinquished;
+        internal void TransitionTo(CommitmentStatus status) => Status = status;
 
         public override string ToString() => $"{Kind} for {CharacterId} at {EarliestStart} ({Status})";
+
+        private static IReadOnlyList<StakeholderRef> DefaultStakeholders(IReadOnlyList<CharacterId> participants)
+        {
+            if (participants == null || participants.Count == 0) return NoStakeholders;
+            var result = new StakeholderRef[participants.Count];
+            for (int i = 0; i < participants.Count; i++)
+                result[i] = new StakeholderRef(participants[i].ToRef(), StakeholderRole.Counterparty);
+            Array.Sort(result);
+            return result;
+        }
+
+        private static IReadOnlyList<CharacterId> CopyParticipants(IReadOnlyList<CharacterId> source)
+        {
+            if (source == null || source.Count == 0) return NoParticipants;
+            var result = new CharacterId[source.Count];
+            for (int i = 0; i < result.Length; i++) result[i] = source[i];
+            return result;
+        }
+
+        private static IReadOnlyList<StakeholderRef> CopyStakeholders(IReadOnlyList<StakeholderRef> source)
+        {
+            var result = new StakeholderRef[source.Count];
+            for (int i = 0; i < source.Count; i++) result[i] = source[i];
+            Array.Sort(result);
+            return result;
+        }
     }
 }

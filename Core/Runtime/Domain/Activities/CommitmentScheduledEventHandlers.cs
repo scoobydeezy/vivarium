@@ -29,10 +29,33 @@ namespace Vivarium.Domain.Activities
                 payload.LocationId,
                 payload.Priority,
                 payload.ActivityDefinitionId,
-                additionalParticipants: payload.AdditionalParticipants);
+                additionalParticipants: payload.AdditionalParticipants,
+                stakeholders: payload.Stakeholders,
+                accountabilityPolicy: payload.AccountabilityPolicy);
 
             world.Commitments.Add(commitment.Id, commitment);
             CommitmentScheduleChanges.Publish(world, commitment.CharacterId);
         }
+    }
+
+    /// <summary>Produces a Missed outcome only after the inclusive start window has elapsed.</summary>
+    public sealed class CommitmentWindowExpiredHandler : ScheduledEventHandler<CommitmentWindowExpiredPayload>
+    {
+        private readonly CommitmentLifecycleService _commitments;
+
+        public CommitmentWindowExpiredHandler(CommitmentLifecycleService commitments)
+            : base(ScheduledEventTypes.CommitmentWindowExpired) => _commitments = commitments;
+
+        protected override bool CanExecute(WorldState world, CommitmentWindowExpiredPayload payload) =>
+            world.Commitments.TryGet(payload.CommitmentId, out Commitment commitment) &&
+            commitment.CharacterId == payload.CharacterId &&
+            commitment.Status == CommitmentStatus.Planned &&
+            world.Clock.Now > commitment.LatestStart;
+
+        protected override void Execute(
+            WorldState world,
+            CommitmentWindowExpiredPayload payload,
+            SimulationContext context) =>
+            _commitments.MissWindow(world, world.Commitments.Get(payload.CommitmentId));
     }
 }

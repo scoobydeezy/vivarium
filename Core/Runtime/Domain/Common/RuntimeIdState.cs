@@ -13,6 +13,7 @@ namespace Vivarium.Domain.Common
             Characters = new MonotonicIdAllocator<CharacterId>(v => new CharacterId(v), restoredCounters.Characters);
             Activities = new MonotonicIdAllocator<ActivityInstanceId>(v => new ActivityInstanceId(v), restoredCounters.Activities);
             Commitments = new MonotonicIdAllocator<CommitmentId>(v => new CommitmentId(v), restoredCounters.Commitments);
+            CommitmentOutcomes = new MonotonicIdAllocator<CommitmentOutcomeId>(v => new CommitmentOutcomeId(v), restoredCounters.CommitmentOutcomes);
             Relationships = new MonotonicIdAllocator<RelationshipId>(v => new RelationshipId(v), restoredCounters.Relationships);
             Decisions = new MonotonicIdAllocator<DecisionId>(v => new DecisionId(v), restoredCounters.Decisions);
             Locations = new MonotonicIdAllocator<LocationId>(v => new LocationId(v), restoredCounters.Locations);
@@ -27,6 +28,8 @@ namespace Vivarium.Domain.Common
         public IIdAllocator<ActivityInstanceId> Activities { get; }
 
         public IIdAllocator<CommitmentId> Commitments { get; }
+
+        public IIdAllocator<CommitmentOutcomeId> CommitmentOutcomes { get; }
 
         public IIdAllocator<RelationshipId> Relationships { get; }
 
@@ -50,6 +53,7 @@ namespace Vivarium.Domain.Common
             Characters.IssuedCount,
             Activities.IssuedCount,
             Commitments.IssuedCount,
+            CommitmentOutcomes.IssuedCount,
             Relationships.IssuedCount,
             Decisions.IssuedCount,
             Locations.IssuedCount,
@@ -66,6 +70,7 @@ namespace Vivarium.Domain.Common
             int characters,
             int activities,
             int commitments,
+            int commitmentOutcomes,
             int relationships,
             int decisions,
             int locations,
@@ -77,6 +82,7 @@ namespace Vivarium.Domain.Common
             Characters = characters;
             Activities = activities;
             Commitments = commitments;
+            CommitmentOutcomes = commitmentOutcomes;
             Relationships = relationships;
             Decisions = decisions;
             Locations = locations;
@@ -91,6 +97,8 @@ namespace Vivarium.Domain.Common
         public int Activities { get; }
 
         public int Commitments { get; }
+
+        public int CommitmentOutcomes { get; }
 
         public int Relationships { get; }
 

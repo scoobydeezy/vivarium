@@ -26,7 +26,8 @@ namespace Vivarium.Domain.Relationships
             SimTime occurredAt,
             AuthoredId explanationId,
             IReadOnlyDictionary<AuthoredId, long> channelEffects,
-            HistoryEntryId sourceHistoryEntryId = default)
+            HistoryEntryId sourceHistoryEntryId = default,
+            CommitmentOutcomeId sourceOutcomeId = default)
         {
             if (!memoryKind.IsSet)
             {
@@ -38,6 +39,7 @@ namespace Vivarium.Domain.Relationships
             ExplanationId = explanationId;
             ChannelEffects = channelEffects ?? new SortedDictionary<AuthoredId, long>();
             SourceHistoryEntryId = sourceHistoryEntryId;
+            SourceOutcomeId = sourceOutcomeId;
         }
 
         public AuthoredId MemoryKind { get; }
@@ -45,6 +47,7 @@ namespace Vivarium.Domain.Relationships
         public AuthoredId ExplanationId { get; }
         public IReadOnlyDictionary<AuthoredId, long> ChannelEffects { get; }
         public HistoryEntryId SourceHistoryEntryId { get; }
+        public CommitmentOutcomeId SourceOutcomeId { get; }
     }
 
     /// <summary>

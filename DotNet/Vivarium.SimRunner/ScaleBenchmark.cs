@@ -130,6 +130,7 @@ namespace Vivarium.SimRunner
             hash = StableHash.Combine(hash, ids.Characters);
             hash = StableHash.Combine(hash, ids.Activities);
             hash = StableHash.Combine(hash, ids.Commitments);
+            hash = StableHash.Combine(hash, ids.CommitmentOutcomes);
             hash = StableHash.Combine(hash, ids.Relationships);
             hash = StableHash.Combine(hash, ids.Decisions);
             hash = StableHash.Combine(hash, ids.ScheduledEvents);

@@ -21,7 +21,7 @@ namespace Vivarium.Application.Persistence
         /// <summary>
         /// The current persisted shape. Bump on any structural change and add a migration (§39).
         /// </summary>
-        public const int CurrentSchemaVersion = 5;
+        public const int CurrentSchemaVersion = 6;
 
         /// <summary>Determines whether the persisted shape can be understood or migrated (§39.1).</summary>
         public int SchemaVersion = CurrentSchemaVersion;
@@ -99,6 +99,7 @@ namespace Vivarium.Application.Persistence
         public int Characters;
         public int Activities;
         public int Commitments;
+        public int CommitmentOutcomes;
         public int Relationships;
         public int Decisions;
         public int Locations;
@@ -218,6 +219,55 @@ namespace Vivarium.Application.Persistence
         public int Status;
         public int FulfillingActivityId;
         public List<int> AdditionalParticipants = new List<int>();
+        public List<CommitmentStakeholderData> Stakeholders = new List<CommitmentStakeholderData>();
+        public bool HasStakeholderSnapshot;
+        public CommitmentAccountabilityPolicyData AccountabilityPolicy;
+    }
+
+    public sealed class CommitmentStakeholderData
+    {
+        public int EntityKind;
+        public int RuntimeId;
+        public int Role;
+    }
+
+    public sealed class CommitmentAccountabilityPolicyData
+    {
+        public string Id;
+        public CommitmentConsequenceSetData Default;
+        public List<CommitmentOutcomeConsequenceData> ByOutcome = new List<CommitmentOutcomeConsequenceData>();
+        public List<CommitmentRoleConsequenceData> ByRole = new List<CommitmentRoleConsequenceData>();
+        public List<CommitmentAccountabilityOverrideData> SpecificOverrides = new List<CommitmentAccountabilityOverrideData>();
+    }
+
+    public sealed class CommitmentConsequenceSetData
+    {
+        public string MemoryKind;
+        public string MemoryExplanationId;
+        public int MemoryRetentionTier;
+        public string EvidenceActionId;
+        public List<AuthoredLongData> ChannelDeltas = new List<AuthoredLongData>();
+    }
+
+    public sealed class CommitmentOutcomeConsequenceData
+    {
+        public int Outcome;
+        public CommitmentConsequenceSetData Consequences;
+    }
+
+    public sealed class CommitmentRoleConsequenceData
+    {
+        public int Role;
+        public CommitmentConsequenceSetData Consequences;
+    }
+
+    public sealed class CommitmentAccountabilityOverrideData
+    {
+        public int Outcome;
+        public int Role;
+        public bool HasPerceivedCause;
+        public int PerceivedCause;
+        public CommitmentConsequenceSetData Consequences;
     }
 
     public sealed class LocationData
@@ -533,6 +583,7 @@ namespace Vivarium.Application.Persistence
         public int InformantEntityKind;
         public int InformantRuntimeId;
         public int SourceHistoryEntryId;
+        public int SourceOutcomeId;
     }
 
     /// <summary>
@@ -574,6 +625,7 @@ namespace Vivarium.Application.Persistence
         public int Tier;
         public string Summary;
         public List<EntityRefData> Subjects = new List<EntityRefData>();
+        public int SourceOutcomeId;
     }
 
     public sealed class EntityRefData
@@ -638,5 +690,13 @@ namespace Vivarium.Application.Persistence
         public List<string> Strings = new List<string>();
 
         public List<long> Numbers = new List<long>();
+
+        // Optional definition-derived snapshots used by commitment-introduction events. Older saves
+        // omit these fields and therefore migrate to a no-op accountability policy.
+        public List<CommitmentStakeholderData> CommitmentStakeholders = new List<CommitmentStakeholderData>();
+
+        public bool HasCommitmentStakeholderSnapshot;
+
+        public CommitmentAccountabilityPolicyData CommitmentAccountabilityPolicy;
     }
 }

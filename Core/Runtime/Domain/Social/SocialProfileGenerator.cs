@@ -45,6 +45,7 @@ namespace Vivarium.Domain.Social
             character.SetAppraisalField(GenerateField(character, AppraisalLenses.Affiliation, calibrationProfileId, 0));
             character.SetAppraisalField(GenerateField(character, AppraisalLenses.Respect, calibrationProfileId, 100));
             character.SetAppraisalField(GenerateField(character, AppraisalLenses.Comfort, calibrationProfileId, 200));
+            character.SetAppraisalField(GenerateField(character, AppraisalLenses.Reliance, calibrationProfileId, 300));
         }
 
         private AppraisalField GenerateField(
@@ -108,6 +109,7 @@ namespace Vivarium.Domain.Social
         {
             if (lens == AppraisalLenses.Respect) return SocialDimensions.Discipline;
             if (lens == AppraisalLenses.Comfort) return SocialDimensions.Attunement;
+            if (lens == AppraisalLenses.Reliance) return SocialDimensions.Discipline;
             return SocialDimensions.Warmth;
         }
 
@@ -130,6 +132,11 @@ namespace Vivarium.Domain.Social
                 if (dimension == SocialDimensions.Warmth) return 4000;
                 if (dimension == SocialDimensions.Attunement) return 5500;
                 if (dimension == SocialDimensions.Stability) return 2500;
+            }
+            else if (lens == AppraisalLenses.Reliance)
+            {
+                if (dimension == SocialDimensions.Discipline) return 6000;
+                if (dimension == SocialDimensions.Stability) return 4000;
             }
 
             return 0;

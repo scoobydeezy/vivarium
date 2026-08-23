@@ -90,7 +90,14 @@ namespace Vivarium.Application.Persistence
             numbers[6] = typed.AdditionalParticipants.Count;
             for (int i = 0; i < typed.AdditionalParticipants.Count; i++)
                 numbers[7 + i] = typed.AdditionalParticipants[i].Value;
-            return PayloadData.Of(new[] { typed.Kind.Value, typed.ActivityDefinitionId.Value }, numbers);
+            ScheduledEventPayloadData data = PayloadData.Of(
+                new[] { typed.Kind.Value, typed.ActivityDefinitionId.Value }, numbers);
+            data.CommitmentStakeholders =
+                CommitmentAccountabilityDataMapper.WriteStakeholders(typed.Stakeholders);
+            data.HasCommitmentStakeholderSnapshot = typed.Stakeholders != null;
+            data.CommitmentAccountabilityPolicy =
+                CommitmentAccountabilityDataMapper.WritePolicy(typed.AccountabilityPolicy);
+            return data;
         }
 
         public IScheduledEventPayload Decode(ScheduledEventPayloadData data)
@@ -108,7 +115,10 @@ namespace Vivarium.Application.Persistence
                 new LocationId((int)PayloadData.Number(data, 4)),
                 (int)PayloadData.Number(data, 5),
                 new AuthoredId(PayloadData.String(data, 1)),
-                participants);
+                participants,
+                CommitmentAccountabilityDataMapper.ReadStakeholders(
+                    data.CommitmentStakeholders, data.HasCommitmentStakeholderSnapshot),
+                CommitmentAccountabilityDataMapper.ReadPolicy(data.CommitmentAccountabilityPolicy));
         }
     }
 

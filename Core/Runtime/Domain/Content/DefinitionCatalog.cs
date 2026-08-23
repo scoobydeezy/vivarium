@@ -35,6 +35,7 @@ namespace Vivarium.Domain.Content
             IReadOnlyDictionary<AuthoredId, CommitmentTemplate> commitmentTemplates,
             IReadOnlyDictionary<AuthoredId, AppraisalCalibrationProfile> appraisalCalibrations,
             IReadOnlyDictionary<AuthoredId, SocialEvidenceDefinition> socialEvidence,
+            IReadOnlyDictionary<AuthoredId, CommitmentAccountabilityPolicy> commitmentAccountabilityPolicies,
             IReadOnlyDictionary<AuthoredId, SocialPressureDefinition> socialPressures)
         {
             ContentVersion = contentVersion;
@@ -47,6 +48,7 @@ namespace Vivarium.Domain.Content
             CommitmentTemplates = commitmentTemplates;
             AppraisalCalibrations = appraisalCalibrations;
             SocialEvidence = socialEvidence;
+            CommitmentAccountabilityPolicies = commitmentAccountabilityPolicies;
             SocialPressures = socialPressures;
         }
 
@@ -71,6 +73,8 @@ namespace Vivarium.Domain.Content
 
         public IReadOnlyDictionary<AuthoredId, SocialEvidenceDefinition> SocialEvidence { get; }
 
+        public IReadOnlyDictionary<AuthoredId, CommitmentAccountabilityPolicy> CommitmentAccountabilityPolicies { get; }
+
         public IReadOnlyDictionary<AuthoredId, SocialPressureDefinition> SocialPressures { get; }
 
         /// <summary>Mutable builder. Validate before building — see <see cref="ContentValidator"/>.</summary>
@@ -85,6 +89,7 @@ namespace Vivarium.Domain.Content
             private readonly Dictionary<AuthoredId, CommitmentTemplate> _commitmentTemplates = new Dictionary<AuthoredId, CommitmentTemplate>();
             private readonly Dictionary<AuthoredId, AppraisalCalibrationProfile> _appraisalCalibrations = new Dictionary<AuthoredId, AppraisalCalibrationProfile>();
             private readonly Dictionary<AuthoredId, SocialEvidenceDefinition> _socialEvidence = new Dictionary<AuthoredId, SocialEvidenceDefinition>();
+            private readonly Dictionary<AuthoredId, CommitmentAccountabilityPolicy> _commitmentAccountabilityPolicies = new Dictionary<AuthoredId, CommitmentAccountabilityPolicy>();
             private readonly Dictionary<AuthoredId, SocialPressureDefinition> _socialPressures = new Dictionary<AuthoredId, SocialPressureDefinition>();
             private readonly List<string> _errors = new List<string>();
 
@@ -111,6 +116,9 @@ namespace Vivarium.Domain.Content
 
             public Builder Add(SocialEvidenceDefinition definition) => AddTo(_socialEvidence, definition.ActionDefinitionId, definition, "social evidence");
 
+            public Builder Add(CommitmentAccountabilityPolicy definition) =>
+                AddTo(_commitmentAccountabilityPolicies, definition.Id, definition, "commitment accountability policy");
+
             public Builder Add(SocialPressureDefinition definition) => AddTo(_socialPressures, definition.Id, definition, "social pressure");
 
             public DefinitionCatalog Build()
@@ -132,6 +140,7 @@ namespace Vivarium.Domain.Content
                     _commitmentTemplates,
                     _appraisalCalibrations,
                     _socialEvidence,
+                    _commitmentAccountabilityPolicies,
                     _socialPressures);
             }
 
@@ -316,7 +325,28 @@ namespace Vivarium.Domain.Content
                 }
             }
 
+            foreach (KeyValuePair<AuthoredId, CommitmentAccountabilityPolicy> pair in catalog.CommitmentAccountabilityPolicies)
+            {
+                ValidateConsequences(pair.Key, pair.Value.Default, catalog, errors);
+                foreach (KeyValuePair<CommitmentOutcomeKind, CommitmentConsequenceSet> rule in pair.Value.ByOutcome)
+                    ValidateConsequences(pair.Key, rule.Value, catalog, errors);
+                foreach (KeyValuePair<StakeholderRole, CommitmentConsequenceSet> rule in pair.Value.ByRole)
+                    ValidateConsequences(pair.Key, rule.Value, catalog, errors);
+                for (int i = 0; i < pair.Value.SpecificOverrides.Count; i++)
+                    ValidateConsequences(pair.Key, pair.Value.SpecificOverrides[i].Consequences, catalog, errors);
+            }
+
             return errors;
+        }
+
+        private static void ValidateConsequences(
+            AuthoredId policyId,
+            CommitmentConsequenceSet consequences,
+            DefinitionCatalog catalog,
+            List<string> errors)
+        {
+            if (consequences.EvidenceActionId.IsSet && !catalog.SocialEvidence.ContainsKey(consequences.EvidenceActionId))
+                errors.Add($"commitment accountability policy '{policyId}' references unknown social evidence '{consequences.EvidenceActionId}'");
         }
     }
 }

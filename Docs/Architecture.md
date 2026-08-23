@@ -189,6 +189,21 @@ Working implementations:
   resolved plan marks sacrificed intent `Relinquished`; a separate routine-planner reaction schedules
   Activity/Travel for preserved intent. Save schema v5 persists plans, conflict identity, deadline,
   interventions, and the deadline event while rebuilding only indexes/routes.
+- **Commitment outcomes and accountability** — `CommitmentLifecycleService` is the sole runtime
+  authority for Commitment status transitions. Each terminal transition validates the locked
+  Outcome/Cause pairing, allocates one immutable `CommitmentOutcomeId`, records an Ephemeral outcome,
+  and publishes one canonical event. Materialized Commitments snapshot role-bearing `StakeholderRef`s
+  and a most-specific-wins `CommitmentAccountabilityPolicy`; both the Commitment and a pending
+  `CommitmentBecomesKnownPayload` persist that snapshot across content hot reload and save/load.
+  `CommitmentAttributionMapper` is the only boundary that reads authoritative cause. The ordered
+  consequence handler sees only stakeholder-facing attribution, records character-scoped Knowledge,
+  routes authored evidence through the existing covariance-aware social belief updater, and optionally
+  creates one directional memory/history record plus salient channel deltas. Every durable artifact
+  carries a weak `SourceOutcomeId` and a denormalized explanation. Routine fulfillment contributes only
+  Dependability-relevant evidence; it does not mutate Trust or create memory. External cancellation is
+  observed without blaming the actor. Accountability settles at handler order 100, before schedule and
+  social-belief-dependent Decision reactions. Ephemeral outcomes prune on the same history-retention
+  cutoff while their Significant/Legacy artifacts remain meaningful.
 - **Golden Scenario commitment conflict** — `CommitmentBecomesKnownPayload` is persisted scheduled
   scenario input: at its authored reveal instant it materializes one authoritative Commitment and
   publishes the normal schedule-change event. The detector deterministically selects the first
@@ -206,6 +221,10 @@ Working implementations:
   Decisions migrate without inventing a program; schema-v2 Influences still migrate as supporting
   legacy reasons. Schema v5 adds authoritative commitment-conflict plans, instance identity, and hard
   deadlines without persisting the active-conflict index.
+  Schema v6 adds the CommitmentOutcome allocator plus Commitment stakeholder/accountability snapshots
+  and weak outcome provenance on Knowledge, RelationshipMemory, and History. Outcome ledgers and
+  idempotency indexes are not save caches: settled durable consequences are authoritative, while pending
+  policy snapshots are carried by their scheduled payload.
 - **Scale regression gate** — the normal suite repeats a 250-character/six-hour workload and requires
   identical authoritative hashes and deterministic work counts under structural per-character ceilings.
   An opt-in 1,000-character/one-day tier enforces initial wall-clock and heap budgets while the CLI
@@ -216,7 +235,9 @@ Intentionally thin, pending game-design decisions:
 - **Decision generation breadth.** Need-threshold, social-interaction, and joint commitment-infeasibility
   triggers now generate content-backed Decisions. Other circumstances remain content-driven additions.
 - **Consequences breadth.** Resolved options can change the primary Activity, a directional relationship
-  channel, or Commitment intent through Preserve/Relinquish. Employment and actual Defer behavior remain
+  channel, or Commitment intent through Preserve/Relinquish. Commitment outcomes now feed stakeholder
+  attribution, memories, directional channels, and live social belief/Reliance. Employment,
+  institutional-stakeholder reactions, later attribution correction, and actual Defer behavior remain
   unimplemented.
 - **Save serialization format.** Explicitly deferred (§57). `ISaveGameSerializer` is defined;
   `InMemorySaveGameStore` exercises mapping without committing to an encoding.
@@ -289,6 +310,11 @@ The test suite is organised around the §58 invariants rather than around classe
 | Held generated Decision resolves identically offline after reload | `GoldenScenarioTests` |
 | Mixed travel/Decision/Need/Commitment offline checkpoint is equivalent | `GoldenScenarioTests` |
 | Scheduled obligations generate a concrete plan Decision identically across reload | `GoldenScenarioTests`, `VivariumPlayModeTests` |
+| Terminal Commitment transitions validate, mint one outcome, and survive expiration reload | `CommitmentOutcomeTests`, `CommitmentOutcomePersistenceTests` |
+| Accountability policy/stakeholder snapshots round-trip without persisting derived routing | `CommitmentOutcomePersistenceTests`, `GoldenScenarioTests` |
+| Routine fulfillment changes Reliance evidence without Trust/memory mutation | `GoldenScenarioTests` |
+| Breach attribution produces provenance-linked belief, memory, history, and channel effects once | `GoldenScenarioTests`, `VivariumPlayModeTests` |
+| Same initial world yields a weaker later Reliance Influence after breach, exactly across pre-conflict reload | `GoldenScenarioTests` |
 | Authored Unity Need crossing generates the projectable Decision | `VivariumPlayModeTests` |
 | Decision history feed is causal, bounded, filtered, and newest-first | `CommandAndProjectionTests` |
 | Unity Decision feed refreshes after intervention at quiescence | `VivariumPlayModeTests` |

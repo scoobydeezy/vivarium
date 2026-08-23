@@ -7,6 +7,7 @@ using Vivarium.Domain.Decisions;
 using Vivarium.Domain.Spatial;
 using Vivarium.Domain.Time;
 using Vivarium.Domain.Social;
+using Vivarium.Domain.History;
 
 namespace Vivarium.Unity.Authoring
 {
@@ -45,6 +46,7 @@ namespace Vivarium.Unity.Authoring
         [Header("Social model")]
         [SerializeField] private AppraisalCalibrationEntry[] appraisalCalibrations = new AppraisalCalibrationEntry[0];
         [SerializeField] private SocialEvidenceEntry[] socialEvidence = new SocialEvidenceEntry[0];
+        [SerializeField] private CommitmentAccountabilityPolicyEntry[] commitmentAccountabilityPolicies = new CommitmentAccountabilityPolicyEntry[0];
         [SerializeField] private SocialPressureEntry[] socialPressures = new SocialPressureEntry[0];
 
         public int ContentVersion => contentVersion;
@@ -97,6 +99,10 @@ namespace Vivarium.Unity.Authoring
             for (int i = 0; i < socialEvidence.Length; i++)
             {
                 builder.Add(socialEvidence[i].ToDefinition());
+            }
+            for (int i = 0; i < commitmentAccountabilityPolicies.Length; i++)
+            {
+                builder.Add(commitmentAccountabilityPolicies[i].ToDefinition());
             }
             for (int i = 0; i < socialPressures.Length; i++)
             {
@@ -481,6 +487,91 @@ namespace Vivarium.Unity.Authoring
                 for (int i = 0; i < result.Length; i++) result[i] = projection[i].ToDefinition();
                 return new SocialEvidenceMeasurement(new AuthoredId(authoredId), result, observedValue, noiseVariance);
             }
+        }
+
+        [System.Serializable]
+        public struct CommitmentAccountabilityPolicyEntry
+        {
+            public string authoredId;
+            public CommitmentConsequenceSetEntry defaultConsequences;
+            public CommitmentOutcomeConsequenceEntry[] byOutcome;
+            public CommitmentRoleConsequenceEntry[] byRole;
+            public CommitmentAccountabilityOverrideEntry[] specificOverrides;
+
+            public CommitmentAccountabilityPolicy ToDefinition()
+            {
+                var outcomes = new SortedDictionary<CommitmentOutcomeKind, CommitmentConsequenceSet>();
+                for (int i = 0; i < (byOutcome?.Length ?? 0); i++)
+                    outcomes[byOutcome[i].outcome] = byOutcome[i].consequences.ToDefinition();
+                var roles = new SortedDictionary<StakeholderRole, CommitmentConsequenceSet>();
+                for (int i = 0; i < (byRole?.Length ?? 0); i++)
+                    roles[byRole[i].role] = byRole[i].consequences.ToDefinition();
+                var overrides = new CommitmentAccountabilityOverride[specificOverrides?.Length ?? 0];
+                for (int i = 0; i < overrides.Length; i++) overrides[i] = specificOverrides[i].ToDefinition();
+                return new CommitmentAccountabilityPolicy(
+                    defaultConsequences.ToDefinition(), outcomes, roles, overrides, new AuthoredId(authoredId));
+            }
+        }
+
+        [System.Serializable]
+        public struct CommitmentOutcomeConsequenceEntry
+        {
+            public CommitmentOutcomeKind outcome;
+            public CommitmentConsequenceSetEntry consequences;
+        }
+
+        [System.Serializable]
+        public struct CommitmentRoleConsequenceEntry
+        {
+            public StakeholderRole role;
+            public CommitmentConsequenceSetEntry consequences;
+        }
+
+        [System.Serializable]
+        public struct CommitmentAccountabilityOverrideEntry
+        {
+            public CommitmentOutcomeKind outcome;
+            public StakeholderRole role;
+            public bool matchPerceivedCause;
+            public PerceivedCommitmentCause perceivedCause;
+            public CommitmentConsequenceSetEntry consequences;
+            public CommitmentAccountabilityOverride ToDefinition() => new CommitmentAccountabilityOverride(
+                outcome, role, consequences.ToDefinition(),
+                matchPerceivedCause ? (PerceivedCommitmentCause?)perceivedCause : null);
+        }
+
+        [System.Serializable]
+        public struct CommitmentConsequenceSetEntry
+        {
+            public bool hasMemory;
+            public string memoryKind;
+            public string memoryExplanationId;
+            public RetentionTier memoryRetentionTier;
+            public string evidenceActionId;
+            public AuthoredLongEntry[] channelDeltas;
+
+            public CommitmentConsequenceSet ToDefinition()
+            {
+                var deltas = new SortedDictionary<AuthoredId, long>();
+                for (int i = 0; i < (channelDeltas?.Length ?? 0); i++)
+                    deltas[new AuthoredId(channelDeltas[i].authoredId)] = channelDeltas[i].value;
+                return new CommitmentConsequenceSet(
+                    hasMemory
+                        ? new CommitmentMemoryConsequence(
+                            new AuthoredId(memoryKind),
+                            new AuthoredId(memoryExplanationId),
+                            memoryRetentionTier)
+                        : null,
+                    new AuthoredId(evidenceActionId),
+                    deltas);
+            }
+        }
+
+        [System.Serializable]
+        public struct AuthoredLongEntry
+        {
+            public string authoredId;
+            public long value;
         }
 
         [System.Serializable]

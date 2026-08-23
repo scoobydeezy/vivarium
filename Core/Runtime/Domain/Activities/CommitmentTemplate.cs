@@ -27,7 +27,8 @@ namespace Vivarium.Domain.Activities
             int priority,
             AuthoredId activityDefinitionId = default,
             SimDuration startWindow = default,
-            EntityRef source = default)
+            EntityRef source = default,
+            CommitmentAccountabilityPolicy accountabilityPolicy = null)
         {
             if (!id.IsSet)
             {
@@ -50,6 +51,7 @@ namespace Vivarium.Domain.Activities
             ActivityDefinitionId = activityDefinitionId;
             StartWindow = startWindow;
             Source = source;
+            AccountabilityPolicy = accountabilityPolicy ?? CommitmentAccountabilityPolicy.None;
         }
 
         public AuthoredId Id { get; }
@@ -77,6 +79,8 @@ namespace Vivarium.Domain.Activities
         public SimDuration StartWindow { get; }
 
         public EntityRef Source { get; }
+
+        public CommitmentAccountabilityPolicy AccountabilityPolicy { get; }
 
         public bool OccursOnDay(int day) => (ActiveDaysMask & (1 << (((day % CycleLengthDays) + CycleLengthDays) % CycleLengthDays))) != 0;
 

@@ -34,11 +34,16 @@ namespace Vivarium.Domain.Knowledge
     /// </summary>
     public readonly struct DiscoverySource
     {
-        public DiscoverySource(AuthoredId channelId, EntityRef informant = default, HistoryEntryId sourceHistoryEntryId = default)
+        public DiscoverySource(
+            AuthoredId channelId,
+            EntityRef informant = default,
+            HistoryEntryId sourceHistoryEntryId = default,
+            CommitmentOutcomeId sourceOutcomeId = default)
         {
             ChannelId = channelId;
             Informant = informant;
             SourceHistoryEntryId = sourceHistoryEntryId;
+            SourceOutcomeId = sourceOutcomeId;
         }
 
         public AuthoredId ChannelId { get; }
@@ -48,6 +53,9 @@ namespace Vivarium.Domain.Knowledge
 
         /// <summary>Optional weak pointer into history. Never required for the entry to remain valid.</summary>
         public HistoryEntryId SourceHistoryEntryId { get; }
+
+        /// <summary>Optional weak pointer to the lifecycle fact that caused this observation.</summary>
+        public CommitmentOutcomeId SourceOutcomeId { get; }
 
         public static DiscoverySource Channel(AuthoredId channelId) => new DiscoverySource(channelId);
 
@@ -64,5 +72,6 @@ namespace Vivarium.Domain.Knowledge
         public static readonly AuthoredId Inspection = new AuthoredId("discovery.inspection");
         public static readonly AuthoredId DecisionOutcome = new AuthoredId("discovery.decision_outcome");
         public static readonly AuthoredId Hearsay = new AuthoredId("discovery.hearsay");
+        public static readonly AuthoredId Accountability = new AuthoredId("discovery.commitment_accountability");
     }
 }

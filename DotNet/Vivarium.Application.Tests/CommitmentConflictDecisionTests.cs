@@ -77,8 +77,10 @@ namespace Vivarium.Application.Tests
             Assert.True(fixture.Host.Session.Execute(new ApplyDecisionInterventionCommand(
                 decision.Id, TestWorld.InterventionStepUp, decision.Influences[0].Id)).IsSuccess);
 
-            second.Cancel();
-            PublishScheduleChange(fixture);
+            new CommitmentLifecycleService().Cancel(
+                fixture.Host.World,
+                second,
+                CommitmentOutcomeCauseKind.ExternalCancellation);
             fixture.Host.Session.Advance(SimDuration.Zero);
 
             Assert.Equal(DecisionStatus.Dissolved, decision.Status);
