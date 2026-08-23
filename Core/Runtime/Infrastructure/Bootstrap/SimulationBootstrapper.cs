@@ -234,6 +234,7 @@ namespace Vivarium.Infrastructure.Bootstrap
             scheduledHandlers.Register(new NeedThresholdHandler());
             scheduledHandlers.Register(new DecisionResolveHandler(decisionResolution, holdPolicy));
             scheduledHandlers.Register(new CommitmentConflictAutoResolveHandler(decisionResolution));
+            scheduledHandlers.Register(new CommitmentBecomesKnownHandler());
 
             // Content-backed reactions use explicit stable order (§12.1).
             var domainHandlers = new OrderedDomainEventHandlerRegistry();

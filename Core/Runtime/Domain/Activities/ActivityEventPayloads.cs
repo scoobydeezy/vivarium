@@ -1,5 +1,7 @@
+using System.Collections.Generic;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Scheduling;
+using Vivarium.Domain.Time;
 
 namespace Vivarium.Domain.Activities
 {
@@ -14,8 +16,48 @@ namespace Vivarium.Domain.Activities
         public static readonly AuthoredId NeedThreshold = new AuthoredId("event.need.threshold");
         public static readonly AuthoredId DecisionResolve = new AuthoredId("event.decision.resolve");
         public static readonly AuthoredId AutoResolveCommitmentConflict = new AuthoredId("event.decision.commitment_conflict.auto_resolve");
+        public static readonly AuthoredId CommitmentBecomesKnown = new AuthoredId("event.commitment.becomes_known");
         public static readonly AuthoredId CommitmentWindowExpired = new AuthoredId("event.commitment.window_expired");
         public static readonly AuthoredId InteractionOpportunity = new AuthoredId("event.social.interaction_opportunity");
+    }
+
+    /// <summary>
+    /// Introduces a future obligation at the instant the character learns or accepts it. This keeps
+    /// authored scenario timing separate from the commitment's own execution window.
+    /// </summary>
+    public sealed class CommitmentBecomesKnownPayload : IScheduledEventPayload
+    {
+        public CommitmentBecomesKnownPayload(
+            CharacterId characterId,
+            AuthoredId kind,
+            SimTime earliestStart,
+            SimTime latestStart,
+            SimDuration expectedDuration,
+            LocationId locationId,
+            int priority,
+            AuthoredId activityDefinitionId,
+            IReadOnlyList<CharacterId> additionalParticipants = null)
+        {
+            CharacterId = characterId;
+            Kind = kind;
+            EarliestStart = earliestStart;
+            LatestStart = latestStart;
+            ExpectedDuration = expectedDuration;
+            LocationId = locationId;
+            Priority = priority;
+            ActivityDefinitionId = activityDefinitionId;
+            AdditionalParticipants = additionalParticipants ?? new CharacterId[0];
+        }
+
+        public CharacterId CharacterId { get; }
+        public AuthoredId Kind { get; }
+        public SimTime EarliestStart { get; }
+        public SimTime LatestStart { get; }
+        public SimDuration ExpectedDuration { get; }
+        public LocationId LocationId { get; }
+        public int Priority { get; }
+        public AuthoredId ActivityDefinitionId { get; }
+        public IReadOnlyList<CharacterId> AdditionalParticipants { get; }
     }
 
     /// <summary>Begin the Activity that fulfils a planned Commitment (§29.5).</summary>

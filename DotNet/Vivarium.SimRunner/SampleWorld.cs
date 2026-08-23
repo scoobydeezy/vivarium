@@ -5,6 +5,7 @@ using Vivarium.Domain.Common;
 using Vivarium.Domain.Decisions;
 using Vivarium.Domain.Relationships;
 using Vivarium.Domain.Simulation;
+using Vivarium.Domain.Scheduling;
 using Vivarium.Domain.Spatial;
 using Vivarium.Domain.Social;
 using Vivarium.Domain.Time;
@@ -123,8 +124,44 @@ namespace Vivarium.SimRunner
                 host.Planner.TryPlanCommitmentStart(context, glensCommitments[i]);
             }
 
+            // After the established leave-work beat, Mina learns that dinner with Glen and helping
+            // Darius close the bakery occupy the same evening. Intent becomes authoritative only when
+            // it is known, so the conflict is not visible before its cause.
+            SimTime revealAt = world.Clock.Now.Plus(SimDuration.FromHours(6));
+            SimTime commitmentStart = world.Clock.Now.Plus(SimDuration.FromHours(7));
+            ScheduleCommitmentReveal(world, revealAt, new CommitmentBecomesKnownPayload(
+                layout.Mina,
+                SampleContent.CommitmentDinnerWithGlen,
+                commitmentStart,
+                commitmentStart.Plus(SimDuration.FromMinutes(10)),
+                SimDuration.FromMinutes(90),
+                layout.Cafe,
+                70,
+                SampleContent.ActivityDining,
+                new[] { layout.Glen }));
+            ScheduleCommitmentReveal(world, revealAt, new CommitmentBecomesKnownPayload(
+                layout.Mina,
+                SampleContent.CommitmentHelpDariusCloseBakery,
+                commitmentStart,
+                commitmentStart.Plus(SimDuration.FromMinutes(10)),
+                SimDuration.FromMinutes(90),
+                layout.Bakery,
+                90,
+                SampleContent.ActivityHelpingAtBakery,
+                new[] { layout.Darius }));
+
             return layout;
         }
+
+        private static void ScheduleCommitmentReveal(
+            WorldState world,
+            SimTime revealAt,
+            CommitmentBecomesKnownPayload payload) =>
+            world.Scheduler.Schedule(
+                revealAt,
+                SchedulePhase.Preparation,
+                ScheduledEventTypes.CommitmentBecomesKnown,
+                payload);
 
         private static LocationId AddLocation(WorldState world, LocationId parent, AuthoredId kind, string name)
         {

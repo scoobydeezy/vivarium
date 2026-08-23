@@ -32,6 +32,18 @@ MonoBehaviour:
     producesOutcome: 1
     supportsInteractiveResolution: 1
     isTravel: 0
+  - authoredId: activity.dining
+    displayName: Dining
+    defaultDurationMinutes: 90
+    producesOutcome: 0
+    supportsInteractiveResolution: 0
+    isTravel: 0
+  - authoredId: activity.helping_at_bakery
+    displayName: Helping at the bakery
+    defaultDurationMinutes: 90
+    producesOutcome: 0
+    supportsInteractiveResolution: 0
+    isTravel: 0
   locationKindIds:
   - location_kind.building
   decisions:
@@ -204,6 +216,175 @@ MonoBehaviour:
         categoryId: influence_category.practical
         positiveLabelId: Reliability
         negativeLabelId: Unreliability
+        visibility: 31
+  - authoredId: decision.commitment_conflict
+    options:
+    - authoredId: option.preserve_first_relinquish_second
+      labelId: Preserve first / relinquish second
+      orderIndex: 0
+      context:
+      - key: decision.parameter.commitment
+        kind: 2
+        entityKind: 3
+        runtimeId: 0
+      - key: decision.parameter.preserved_commitment
+        kind: 2
+        entityKind: 3
+        runtimeId: 0
+      - key: decision.parameter.relinquished_commitment
+        kind: 2
+        entityKind: 3
+        runtimeId: 0
+    - authoredId: option.preserve_second_relinquish_first
+      labelId: Preserve second / relinquish first
+      orderIndex: 1
+      context:
+      - key: decision.parameter.commitment
+        kind: 2
+        entityKind: 3
+        runtimeId: 0
+      - key: decision.parameter.preserved_commitment
+        kind: 2
+        entityKind: 3
+        runtimeId: 0
+      - key: decision.parameter.relinquished_commitment
+        kind: 2
+        entityKind: 3
+        runtimeId: 0
+    timeToResolveMinutes: 10
+    conflictScopeKindId: conflict_scope.schedule
+    importance: 30
+    holdEligible: 0
+    dependencies: []
+    influences: []
+    activityOutcomes: []
+    commitmentConflictTrigger: 1
+    relationshipOutcomes: []
+    reasoningProgram:
+      bindings:
+      - bindingId: binding.commitment_conflict.honorability.preserved
+        considerationId: consideration.commitment_honorability
+        definitionVersion: 1
+        parameterSchema:
+        - parameterId: decision.parameter.actor
+          kind: 2
+          required: 1
+        - parameterId: decision.parameter.commitment
+          kind: 2
+          required: 1
+        - parameterId: decision.parameter.target
+          kind: 2
+          required: 1
+        parameterBindings:
+        - parameterId: decision.parameter.actor
+          source: 0
+        - parameterId: decision.parameter.commitment
+          source: 2
+          sourceParameterId: decision.parameter.preserved_commitment
+        - parameterId: decision.parameter.target
+          source: 2
+          sourceParameterId: decision.parameter.preserved_commitment
+        signals:
+        - signalId: decision.signal.commitment.priority
+          providerId: decision.signal_provider.commitment
+        - signalId: decision.signal.commitment.urgency
+          providerId: decision.signal_provider.commitment
+        - signalId: decision.signal.commitment.travel_burden
+          providerId: decision.signal_provider.commitment
+        field:
+          authoredId: field.commitment_conflict.honorability
+          bias: 0
+          revision: 1
+          linearTerms:
+          - signalId: decision.signal.commitment.priority
+            coefficient: 6000
+            provenanceId: reason.commitment.priority
+          - signalId: decision.signal.commitment.urgency
+            coefficient: 4000
+            provenanceId: reason.commitment.urgency
+          - signalId: decision.signal.commitment.travel_burden
+            coefficient: -4000
+            provenanceId: reason.commitment.travel
+          pairwiseTerms: []
+          idealPoint: []
+          idealFactors: []
+        reasonChannelId: reason_channel.commitment_honorability
+        consolidationPolicy: 0
+        scaleId: reason_scale.commitment_honorability
+        scaleThresholds:
+        - minimumMagnitude: 0
+          dieSides: 4
+        - minimumMagnitude: 2000
+          dieSides: 6
+        - minimumMagnitude: 4000
+          dieSides: 8
+        - minimumMagnitude: 6000
+          dieSides: 10
+        categoryId: influence_category.practical
+        positiveLabelId: influence.commitment_worth_honoring
+        negativeLabelId: influence.commitment_costly_to_honor
+        visibility: 31
+      - bindingId: binding.commitment_conflict.honorability.relinquished
+        considerationId: consideration.commitment_honorability
+        definitionVersion: 1
+        parameterSchema:
+        - parameterId: decision.parameter.actor
+          kind: 2
+          required: 1
+        - parameterId: decision.parameter.commitment
+          kind: 2
+          required: 1
+        - parameterId: decision.parameter.target
+          kind: 2
+          required: 1
+        parameterBindings:
+        - parameterId: decision.parameter.actor
+          source: 0
+        - parameterId: decision.parameter.commitment
+          source: 2
+          sourceParameterId: decision.parameter.relinquished_commitment
+        - parameterId: decision.parameter.target
+          source: 2
+          sourceParameterId: decision.parameter.relinquished_commitment
+        signals:
+        - signalId: decision.signal.commitment.priority
+          providerId: decision.signal_provider.commitment
+        - signalId: decision.signal.commitment.urgency
+          providerId: decision.signal_provider.commitment
+        - signalId: decision.signal.commitment.travel_burden
+          providerId: decision.signal_provider.commitment
+        field:
+          authoredId: field.commitment_conflict.honorability
+          bias: 0
+          revision: 1
+          linearTerms:
+          - signalId: decision.signal.commitment.priority
+            coefficient: -6000
+            provenanceId: reason.commitment.priority
+          - signalId: decision.signal.commitment.urgency
+            coefficient: -4000
+            provenanceId: reason.commitment.urgency
+          - signalId: decision.signal.commitment.travel_burden
+            coefficient: 4000
+            provenanceId: reason.commitment.travel
+          pairwiseTerms: []
+          idealPoint: []
+          idealFactors: []
+        reasonChannelId: reason_channel.commitment_honorability
+        consolidationPolicy: 0
+        scaleId: reason_scale.commitment_honorability
+        scaleThresholds:
+        - minimumMagnitude: 0
+          dieSides: 4
+        - minimumMagnitude: 2000
+          dieSides: 6
+        - minimumMagnitude: 4000
+          dieSides: 8
+        - minimumMagnitude: 6000
+          dieSides: 10
+        categoryId: influence_category.practical
+        positiveLabelId: influence.commitment_worth_honoring
+        negativeLabelId: influence.commitment_costly_to_honor
         visibility: 31
   - authoredId: decision.seek_company
     options:

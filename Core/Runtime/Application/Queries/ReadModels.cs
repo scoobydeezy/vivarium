@@ -154,11 +154,16 @@ namespace Vivarium.Application.Queries
     /// <summary>One option and the influences the player can see arguing for it (§17, §26).</summary>
     public sealed class DecisionOptionView
     {
-        public DecisionOptionView(string optionId, string label, IReadOnlyList<InfluenceView> influences)
+        public DecisionOptionView(
+            string optionId,
+            string label,
+            IReadOnlyList<InfluenceView> influences,
+            string intentSummary = null)
         {
             OptionId = optionId;
             Label = label;
             Influences = influences;
+            IntentSummary = intentSummary;
         }
 
         public string OptionId { get; }
@@ -170,6 +175,9 @@ namespace Vivarium.Application.Queries
         /// not even as a count (§26).
         /// </summary>
         public IReadOnlyList<InfluenceView> Influences { get; }
+
+        /// <summary>Concrete runtime intent represented by this option, when it carries a plan.</summary>
+        public string IntentSummary { get; }
     }
 
     /// <summary>The player-facing decision encounter (§17, §26, §35).</summary>
@@ -186,7 +194,8 @@ namespace Vivarium.Application.Queries
             bool isHeld,
             bool canBeHeld,
             IReadOnlyList<DecisionOptionView> options,
-            DecisionResolutionView resolution)
+            DecisionResolutionView resolution,
+            bool hasHardDeadline = false)
         {
             DecisionId = decisionId;
             CharacterId = characterId;
@@ -199,6 +208,7 @@ namespace Vivarium.Application.Queries
             CanBeHeld = canBeHeld;
             Options = options;
             Resolution = resolution;
+            HasHardDeadline = hasHardDeadline;
         }
 
         public int DecisionId { get; }
@@ -227,6 +237,9 @@ namespace Vivarium.Application.Queries
 
         /// <summary><c>null</c> while unresolved.</summary>
         public DecisionResolutionView Resolution { get; }
+
+        /// <summary>The resolve time is an authoritative feasibility boundary, not a soft timer.</summary>
+        public bool HasHardDeadline { get; }
     }
 
     /// <summary>The outcome, once there is one (§18).</summary>

@@ -315,9 +315,18 @@ Save schema v5 persists plan payloads, conflict episode identity, deadline state
 scheduled work. It does not persist the conflict or reasoning indexes. Focused coverage proves whole-set
 feasibility, plan identity and deduplication, distinct per-target reasons, hard-deadline Hold behavior,
 dissolution/refund recap, commitment-only consequences, index rebuild, and deterministic save/load
-resolution. The full headless solution passes **145 tests**. Actual Defer behavior, changing-road
+resolution. The full headless solution passes **146 tests**. Actual Defer behavior, changing-road
 revalidation, n-way clustering policy, intervention resource balances, and dissolve/regenerate cooldowns
 remain explicitly deferred.
+
+The Golden Scenario integration now follows the completed leave-work encounter with two meaningful
+obligations becoming known at an authored simulation instant: dinner with Glen and helping Darius close
+the bakery. The reveal itself is persistent scheduled input, and save/load before it produces the same
+Commitments, conflict Decision, resolution, and consequence as uninterrupted execution. The v0 detector
+selects the first infeasible pair in canonical Commitment-ID order while ignoring unrelated future
+routine intent; broader n-way clustering remains deferred. Player-facing projections name each concrete
+Keep/Give-up plan and distinguish the feasibility cutoff as a hard deadline. Unity authors the same
+Decision, activities, and obligations and covers the full appearance/presentation path in PlayMode.
 
 ## Implementation checklist
 
@@ -368,7 +377,8 @@ The roadmap converges on this causal chain:
 Commitment → planned Travel → shared-context Interaction → Work
 → contextual pressure + Need threshold → living Decision
 → Watch/Hold → Knowledge discovery → intervention → deterministic resolution
-→ consequence changes Activity/Commitment → further Travel → save/reload equivalence
+→ consequence changes Activity/Commitment → new obligations create a hard-deadline plan Decision
+→ preserved intent continues through Activity/Travel → save/reload equivalence
 ```
 
 Use ugly, small content and roughly 8–12 characters until this chain is interesting and trustworthy.

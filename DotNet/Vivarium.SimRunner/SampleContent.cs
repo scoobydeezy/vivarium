@@ -35,6 +35,8 @@ namespace Vivarium.SimRunner
 
         public static readonly AuthoredId ActivityWorking = new AuthoredId("activity.working");
         public static readonly AuthoredId ActivitySleeping = new AuthoredId("activity.sleeping");
+        public static readonly AuthoredId ActivityDining = new AuthoredId("activity.dining");
+        public static readonly AuthoredId ActivityHelpingAtBakery = new AuthoredId("activity.helping_at_bakery");
 
         public static readonly AuthoredId LocationKindWorld = new AuthoredId("location_kind.world");
         public static readonly AuthoredId LocationKindTown = new AuthoredId("location_kind.town");
@@ -43,6 +45,8 @@ namespace Vivarium.SimRunner
         public static readonly AuthoredId TravelModeWalking = new AuthoredId("travel_mode.walking");
 
         public static readonly AuthoredId CommitmentWorkShift = new AuthoredId("commitment.work_shift");
+        public static readonly AuthoredId CommitmentDinnerWithGlen = new AuthoredId("commitment.dinner_with_glen");
+        public static readonly AuthoredId CommitmentHelpDariusCloseBakery = new AuthoredId("commitment.help_darius_close_bakery");
         public static readonly AuthoredId TemplateBakeryShift = new AuthoredId("routine.bakery_shift");
 
         public static readonly AuthoredId DecisionJobOffer = new AuthoredId("decision.job_offer");
@@ -106,6 +110,8 @@ namespace Vivarium.SimRunner
 
             builder.Add(new ActivityDefinition(ActivityWorking, "Working", SimDuration.FromHours(6), true, true));
             builder.Add(new ActivityDefinition(ActivitySleeping, "Sleeping", SimDuration.FromHours(8), false));
+            builder.Add(new ActivityDefinition(ActivityDining, "Dining", SimDuration.FromMinutes(90), false));
+            builder.Add(new ActivityDefinition(ActivityHelpingAtBakery, "Helping at the bakery", SimDuration.FromMinutes(90), false));
             builder.Add(new ActivityDefinition(WellKnownActivities.Waiting, "Waiting", SimDuration.FromHours(1), false));
             builder.Add(new ActivityDefinition(WellKnownActivities.Traveling, "Traveling", SimDuration.FromMinutes(10), false, false, true));
 

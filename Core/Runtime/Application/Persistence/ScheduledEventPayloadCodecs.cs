@@ -4,6 +4,7 @@ using Vivarium.Domain.Activities;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Decisions;
 using Vivarium.Domain.Scheduling;
+using Vivarium.Domain.Time;
 
 namespace Vivarium.Application.Persistence
 {
@@ -65,9 +66,49 @@ namespace Vivarium.Application.Persistence
             registry.Register(new TravelArrivalPayloadCodec());
             registry.Register(new NeedThresholdPayloadCodec());
             registry.Register(new CommitmentWindowExpiredPayloadCodec());
+            registry.Register(new CommitmentBecomesKnownPayloadCodec());
             registry.Register(new DecisionResolvePayloadCodec());
             registry.Register(new CommitmentConflictAutoResolvePayloadCodec());
             return registry;
+        }
+    }
+
+    public sealed class CommitmentBecomesKnownPayloadCodec : IScheduledEventPayloadCodec
+    {
+        public AuthoredId EventType => ScheduledEventTypes.CommitmentBecomesKnown;
+
+        public ScheduledEventPayloadData Encode(IScheduledEventPayload payload)
+        {
+            var typed = (CommitmentBecomesKnownPayload)payload;
+            var numbers = new long[7 + typed.AdditionalParticipants.Count];
+            numbers[0] = typed.CharacterId.Value;
+            numbers[1] = typed.EarliestStart.TotalMinutes;
+            numbers[2] = typed.LatestStart.TotalMinutes;
+            numbers[3] = typed.ExpectedDuration.TotalMinutes;
+            numbers[4] = typed.LocationId.Value;
+            numbers[5] = typed.Priority;
+            numbers[6] = typed.AdditionalParticipants.Count;
+            for (int i = 0; i < typed.AdditionalParticipants.Count; i++)
+                numbers[7 + i] = typed.AdditionalParticipants[i].Value;
+            return PayloadData.Of(new[] { typed.Kind.Value, typed.ActivityDefinitionId.Value }, numbers);
+        }
+
+        public IScheduledEventPayload Decode(ScheduledEventPayloadData data)
+        {
+            int count = (int)PayloadData.Number(data, 6);
+            var participants = new CharacterId[count];
+            for (int i = 0; i < count; i++)
+                participants[i] = new CharacterId((int)PayloadData.Number(data, 7 + i));
+            return new CommitmentBecomesKnownPayload(
+                new CharacterId((int)PayloadData.Number(data, 0)),
+                new AuthoredId(PayloadData.String(data, 0)),
+                new SimTime(PayloadData.Number(data, 1)),
+                new SimTime(PayloadData.Number(data, 2)),
+                SimDuration.FromMinutes(PayloadData.Number(data, 3)),
+                new LocationId((int)PayloadData.Number(data, 4)),
+                (int)PayloadData.Number(data, 5),
+                new AuthoredId(PayloadData.String(data, 1)),
+                participants);
         }
     }
 

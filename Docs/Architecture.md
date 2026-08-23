@@ -189,6 +189,15 @@ Working implementations:
   resolved plan marks sacrificed intent `Relinquished`; a separate routine-planner reaction schedules
   Activity/Travel for preserved intent. Save schema v5 persists plans, conflict identity, deadline,
   interventions, and the deadline event while rebuilding only indexes/routes.
+- **Golden Scenario commitment conflict** — `CommitmentBecomesKnownPayload` is persisted scheduled
+  scenario input: at its authored reveal instant it materializes one authoritative Commitment and
+  publishes the normal schedule-change event. The detector deterministically selects the first
+  individually feasible but jointly infeasible pair by Commitment ID, so unrelated future routine
+  occurrences can coexist without suppressing the v0 two-plan encounter. After the existing
+  leave-work beat, Mina learns that dinner with Glen conflicts with helping Darius close the bakery.
+  The same content shape runs in the headless and Unity compositions. `DecisionProjector` translates
+  the runtime plan into concrete Keep/Give-up text and identifies its feasibility cutoff as a hard
+  deadline; Unity deterministically presents the highest-importance active Decision.
 - **Commands and queries** — deterministic ingress queue, dispatcher, projections published only at
   quiescent boundaries, knowledge-filtered decision views (§2.2.1, §26, §35).
 - **Persistence** — versioned DTOs, explicit payload codecs, revision persistence, index rebuilding on
@@ -218,8 +227,9 @@ Intentionally thin, pending game-design decisions:
   social evidence/pressure, and interventions into the validated Domain catalog. Demo characters receive deterministic social
   profiles. The smoke scene schedules two shared work Commitments: Mina and Glen
   interact while travelling, Mina arrives beside a disliked working colleague and gains Work pressure,
-  then a real hunger crossing generates the compiled, explainable leave-work Decision. `WorldPresenter` surfaces the
-  resulting knowledge-filtered projection and sends
+  then a real hunger crossing generates the compiled, explainable leave-work Decision. After that beat,
+  two scheduled obligations become known and generate the authored commitment-conflict Decision.
+  `WorldPresenter` surfaces the resulting knowledge-filtered projection and sends
   Hold, Release, and intervention Commands. A bounded newest-first Decision history projection promotes
   appearance, successful intervention, and resolution events into explanatory recent History and is
   rendered at quiescence alongside the encounter. Character/roster/travel surfaces remain deliberately
@@ -278,6 +288,7 @@ The test suite is organised around the §58 invariants rather than around classe
 | Full Golden Scenario causal chain | `GoldenScenarioTests` |
 | Held generated Decision resolves identically offline after reload | `GoldenScenarioTests` |
 | Mixed travel/Decision/Need/Commitment offline checkpoint is equivalent | `GoldenScenarioTests` |
+| Scheduled obligations generate a concrete plan Decision identically across reload | `GoldenScenarioTests`, `VivariumPlayModeTests` |
 | Authored Unity Need crossing generates the projectable Decision | `VivariumPlayModeTests` |
 | Decision history feed is causal, bounded, filtered, and newest-first | `CommandAndProjectionTests` |
 | Unity Decision feed refreshes after intervention at quiescence | `VivariumPlayModeTests` |

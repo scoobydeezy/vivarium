@@ -40,8 +40,25 @@ namespace Vivarium.Domain.Decisions
             foreach (Commitment c in world.Commitments.All)
                 if (c.CharacterId == e.CharacterId && c.Status == CommitmentStatus.Planned) planned.Add(c);
             planned.Sort((a, b) => a.Id.CompareTo(b.Id));
-            var ids = new CommitmentId[planned.Count];
-            for (int i = 0; i < planned.Count; i++) ids[i] = planned[i].Id;
+            Commitment first = null;
+            Commitment second = null;
+            CommitmentFeasibilityResult joint = null;
+            for (int i = 0; i < planned.Count && first == null; i++)
+                for (int j = i + 1; j < planned.Count; j++)
+                {
+                    CommitmentFeasibilityResult candidate = _feasibility.Evaluate(
+                        world, e.CharacterId, new[] { planned[i], planned[j] });
+                    if (candidate.IsJointlyFeasible) continue;
+                    if (!_feasibility.Evaluate(world, e.CharacterId, new[] { planned[i] }).IsJointlyFeasible ||
+                        !_feasibility.Evaluate(world, e.CharacterId, new[] { planned[j] }).IsJointlyFeasible) continue;
+                    first = planned[i];
+                    second = planned[j];
+                    joint = candidate;
+                    break;
+                }
+            var ids = first == null
+                ? new CommitmentId[0]
+                : new[] { first.Id, second.Id };
 
             var stale = new List<Decision>();
             foreach (Decision d in world.Decisions.All)
@@ -49,8 +66,7 @@ namespace Vivarium.Domain.Decisions
                     !d.CommitmentConflictKey.HasSameParticipants(e.CharacterId, ids)) stale.Add(d);
             for (int i = 0; i < stale.Count; i++) Dissolve(world, context, stale[i]);
 
-            if (planned.Count != 2) return;
-            CommitmentFeasibilityResult joint = _feasibility.Evaluate(world, e.CharacterId, planned);
+            if (first == null) return;
             Decision existing = null;
             bool haveExisting = world.CommitmentConflicts.TryFindByParticipants(e.CharacterId, ids, out DecisionId existingId) &&
                 world.Decisions.TryGet(existingId, out existing) && existing.IsActive;
@@ -59,13 +75,6 @@ namespace Vivarium.Domain.Decisions
                 if (haveExisting) Dissolve(world, context, existing);
                 return;
             }
-
-            for (int i = 0; i < planned.Count; i++)
-                if (!_feasibility.Evaluate(world, e.CharacterId, new[] { planned[i] }).IsJointlyFeasible)
-                {
-                    if (haveExisting) Dissolve(world, context, existing);
-                    return;
-                }
 
             if (haveExisting)
             {
@@ -84,8 +93,8 @@ namespace Vivarium.Domain.Decisions
                 if (definition.ReasoningProgram == null || definition.Options.Count != 2) continue;
                 var options = new[]
                 {
-                    BoundPlanOption(definition.Options[0], planned[0], planned[1]),
-                    BoundPlanOption(definition.Options[1], planned[1], planned[0]),
+                    BoundPlanOption(definition.Options[0], first, second),
+                    BoundPlanOption(definition.Options[1], second, first),
                 };
                 var key = new CommitmentConflictKey(e.CharacterId, ids, e.ScheduleRevision);
                 var dependencies = new[] { EventDependency.Capture(world.Revisions,

@@ -186,9 +186,20 @@ namespace Vivarium.Unity.Presentation
                 return;
             }
 
+            Decision selected = null;
             foreach (Decision decision in world.Decisions.All)
             {
-                decisionPanel.Apply(_decisionProjector.Project(world, decision));
+                if (!decision.IsActive) continue;
+                if (selected == null || decision.Importance > selected.Importance ||
+                    (decision.Importance == selected.Importance && decision.ResolveAt < selected.ResolveAt) ||
+                    (decision.Importance == selected.Importance && decision.ResolveAt == selected.ResolveAt &&
+                     decision.Id.CompareTo(selected.Id) < 0))
+                    selected = decision;
+            }
+
+            if (selected != null)
+            {
+                decisionPanel.Apply(_decisionProjector.Project(world, selected));
                 return;
             }
 

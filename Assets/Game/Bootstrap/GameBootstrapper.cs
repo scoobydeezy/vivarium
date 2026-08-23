@@ -11,6 +11,7 @@ using Vivarium.Domain.Decisions;
 using Vivarium.Domain.Relationships;
 using Vivarium.Domain.Social;
 using Vivarium.Domain.Simulation;
+using Vivarium.Domain.Scheduling;
 using Vivarium.Domain.Spatial;
 using Vivarium.Domain.Time;
 using Vivarium.Infrastructure.Bootstrap;
@@ -37,6 +38,8 @@ namespace Vivarium.Unity.Bootstrap
     public sealed class GameBootstrapper : MonoBehaviour
     {
         private static readonly AuthoredId ActivityWorking = new AuthoredId("activity.working");
+        private static readonly AuthoredId ActivityDining = new AuthoredId("activity.dining");
+        private static readonly AuthoredId ActivityHelpingAtBakery = new AuthoredId("activity.helping_at_bakery");
         private static readonly AuthoredId ContextWorkPressure = new AuthoredId("decision_context.work_pressure");
         private static readonly AuthoredId ModifierDislikedColleague = new AuthoredId("activity_modifier.disliked_colleague_present");
         private static readonly AuthoredId SocialCalibrationStandard = new AuthoredId("social.calibration.standard");
@@ -158,6 +161,7 @@ namespace Vivarium.Unity.Bootstrap
 
             SeedWorkCommitment(mina, workshop);
             SeedWorkCommitment(glen, workshop);
+            SeedCommitmentConflictReveal(mina, glen, darius, cafe, workshop);
             _host.Session.Advance(SimDuration.Zero);
         }
 
@@ -242,6 +246,44 @@ namespace Vivarium.Unity.Bootstrap
             _host.World.BumpRevision(commitment.ScheduleRevisionKey);
             _host.Planner.TryPlanCommitmentStart(_host.Simulation, commitment);
         }
+
+        private void SeedCommitmentConflictReveal(
+            CharacterId mina,
+            CharacterId glen,
+            CharacterId darius,
+            LocationId cafe,
+            LocationId workshop)
+        {
+            SimTime revealAt = _host.World.Clock.Now.Plus(SimDuration.FromHours(1));
+            SimTime startsAt = _host.World.Clock.Now.Plus(SimDuration.FromHours(2));
+            ScheduleCommitmentReveal(revealAt, new CommitmentBecomesKnownPayload(
+                mina,
+                new AuthoredId("commitment.dinner_with_glen"),
+                startsAt,
+                startsAt.Plus(SimDuration.FromMinutes(10)),
+                SimDuration.FromMinutes(90),
+                cafe,
+                70,
+                ActivityDining,
+                new[] { glen }));
+            ScheduleCommitmentReveal(revealAt, new CommitmentBecomesKnownPayload(
+                mina,
+                new AuthoredId("commitment.help_darius_close_bakery"),
+                startsAt,
+                startsAt.Plus(SimDuration.FromMinutes(10)),
+                SimDuration.FromMinutes(90),
+                workshop,
+                90,
+                ActivityHelpingAtBakery,
+                new[] { darius }));
+        }
+
+        private void ScheduleCommitmentReveal(SimTime revealAt, CommitmentBecomesKnownPayload payload) =>
+            _host.World.Scheduler.Schedule(
+                revealAt,
+                SchedulePhase.Preparation,
+                ScheduledEventTypes.CommitmentBecomesKnown,
+                payload);
 
         private static void ConfigureDemoRules(SimulationHost host)
         {

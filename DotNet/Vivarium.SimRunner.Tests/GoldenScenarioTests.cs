@@ -1,4 +1,5 @@
 using System.Text;
+using System.Linq;
 using Vivarium.Application.Commands;
 using Vivarium.Application.Persistence;
 using Vivarium.Application.Queries;
@@ -242,6 +243,56 @@ namespace Vivarium.SimRunner.Tests
             Assert.Contains(fixture.Layout.Glen, restored.World.Spatial.DirectOccupantsOf(fixture.Layout.Home));
         }
 
+        [Fact]
+        public void GoldenScenarioIntroducesAndResolvesAPlayerFacingCommitmentConflictAcrossReload()
+        {
+            Fixture fixture = Create();
+
+            // The original leave-work encounter has completed; the future obligations are not known yet.
+            fixture.Host.Session.Advance(SimDuration.FromHours(5).Plus(SimDuration.FromMinutes(45)));
+            Assert.DoesNotContain(fixture.Host.World.Decisions.All,
+                d => d.IsActive && d.DefinitionId == SampleContent.DecisionCommitmentConflict);
+            SaveGameData beforeReveal = fixture.Host.Session.Save("before-commitment-conflict");
+
+            fixture.Host.Session.Advance(SimDuration.FromMinutes(15));
+            Decision uninterrupted = FindCommitmentConflict(fixture.Host.World, fixture.Layout.Mina);
+
+            WorldState restoredWorld = fixture.Host.SaveMapper.Restore(beforeReveal);
+            SimulationHost restored = SimulationBootstrapper.CreateFromRestoredWorld(
+                restoredWorld,
+                fixture.Catalog,
+                beforeReveal.LastCommandSequence,
+                1,
+                null,
+                fixture.Store,
+                fixture.Clock);
+            restored.Session.Advance(SimDuration.FromMinutes(15));
+            Decision reloaded = FindCommitmentConflict(restored.World, fixture.Layout.Mina);
+
+            Assert.Equal(uninterrupted.Id, reloaded.Id);
+            Assert.Equal(uninterrupted.ResolveAt, reloaded.ResolveAt);
+            Assert.Equal(2, uninterrupted.CommitmentConflictKey.ParticipatingCommitmentIds.Count);
+            Assert.True(fixture.Host.World.Commitments.All.Count() > 2); // unrelated routine intent coexists
+
+            DecisionView view = new DecisionProjector(fixture.Catalog.Interventions)
+                .Project(fixture.Host.World, uninterrupted);
+            Assert.True(view.HasHardDeadline);
+            Assert.Contains("Keep Dinner With Glen", view.Options[0].IntentSummary);
+            Assert.Contains("give up Help Darius Close Bakery", view.Options[0].IntentSummary);
+            Assert.Equal(view.Options[0].IntentSummary, view.Options[0].Label);
+
+            SimDuration untilDeadline = uninterrupted.ResolveAt - fixture.Host.World.Clock.Now;
+            fixture.Host.Session.Advance(untilDeadline);
+            restored.Session.Advance(untilDeadline);
+
+            Assert.Equal(DecisionStatus.Resolved, uninterrupted.Status);
+            Assert.Equal(uninterrupted.Resolution.ChosenOptionId, reloaded.Resolution.ChosenOptionId);
+            Assert.Equal(1, CountCommitmentsWithStatus(fixture.Host.World, CommitmentStatus.Relinquished));
+            Assert.Equal(1, CountConflictCommitmentsNotWithStatus(
+                fixture.Host.World, uninterrupted, CommitmentStatus.Relinquished));
+            Assert.Equal(AuthoritativeSignature(fixture.Host.World), AuthoritativeSignature(restored.World));
+        }
+
         private static Fixture Create()
         {
             DefinitionCatalog catalog = SampleContent.Build();
@@ -354,6 +405,42 @@ namespace Vivarium.SimRunner.Tests
 
             return null;
         }
+
+        private static Decision FindCommitmentConflict(WorldState world, CharacterId character)
+        {
+            foreach (Decision decision in world.Decisions.All)
+                if (decision.IsActive && decision.CharacterId == character &&
+                    decision.DefinitionId == SampleContent.DecisionCommitmentConflict)
+                    return decision;
+            return null;
+        }
+
+        private static int CountCommitmentsWithStatus(WorldState world, CommitmentStatus status)
+        {
+            int count = 0;
+            foreach (Commitment commitment in world.Commitments.All)
+                if (commitment.Status == status) count++;
+            return count;
+        }
+
+        private static int CountConflictCommitmentsWithStatus(
+            WorldState world,
+            Decision decision,
+            CommitmentStatus status)
+        {
+            int count = 0;
+            for (int i = 0; i < decision.CommitmentConflictKey.ParticipatingCommitmentIds.Count; i++)
+                if (world.Commitments.Get(decision.CommitmentConflictKey.ParticipatingCommitmentIds[i]).Status == status)
+                    count++;
+            return count;
+        }
+
+        private static int CountConflictCommitmentsNotWithStatus(
+            WorldState world,
+            Decision decision,
+            CommitmentStatus status) =>
+            decision.CommitmentConflictKey.ParticipatingCommitmentIds.Count -
+            CountConflictCommitmentsWithStatus(world, decision, status);
 
         private static DecisionInfluence FindInfluence(Decision decision, AuthoredId label)
         {

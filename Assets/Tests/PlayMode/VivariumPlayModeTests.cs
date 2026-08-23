@@ -22,6 +22,7 @@ namespace Vivarium.Unity.Tests
     public sealed class VivariumPlayModeTests
     {
         private static readonly AuthoredId DemoDecisionId = new AuthoredId("decision.leave_work_early");
+        private static readonly AuthoredId CommitmentConflictDecisionId = new AuthoredId("decision.commitment_conflict");
         private GameBootstrapper _bootstrapper;
         private WorldPresenter _presenter;
 
@@ -315,6 +316,30 @@ namespace Vivarium.Unity.Tests
             _bootstrapper.Host.Session.Advance(SimDuration.FromMinutes(2));
             Assert.That(DemoDecision().DefinitionId, Is.EqualTo(DemoDecisionId));
             yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator Golden_scenario_surfaces_concrete_commitment_conflict_after_leave_work()
+        {
+            Assert.That(_bootstrapper.Host.Catalog.Decisions.ContainsKey(CommitmentConflictDecisionId), Is.True);
+            Assert.That(TryFindDecision(CommitmentConflictDecisionId, out Decision _), Is.False);
+
+            _bootstrapper.Host.Session.Advance(SimDuration.FromHours(1));
+            Assert.That(TryFindDecision(CommitmentConflictDecisionId, out Decision conflict), Is.True);
+            Assert.That(conflict.IsActive, Is.True);
+            Assert.That(conflict.CommitmentConflictKey, Is.Not.Null);
+            Assert.That(conflict.CommitmentConflictKey.ParticipatingCommitmentIds.Count, Is.EqualTo(2));
+
+            DecisionView view = new DecisionProjector(_bootstrapper.Host.Catalog.Interventions)
+                .Project(_bootstrapper.Host.World, conflict);
+            Assert.That(view.HasHardDeadline, Is.True);
+            Assert.That(view.Options[0].IntentSummary, Does.Contain("Keep Dinner With Glen"));
+            Assert.That(view.Options[0].IntentSummary, Does.Contain("give up Help Darius Close Bakery"));
+
+            yield return null;
+            DecisionPanel panel = Object.FindAnyObjectByType<DecisionPanel>();
+            Assert.That(panel.DisplayedText, Does.Contain("hard deadline"));
+            Assert.That(panel.DisplayedText, Does.Contain("Dinner With Glen"));
         }
 
         private Character FirstCharacter()

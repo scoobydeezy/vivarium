@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Vivarium.Domain.Characters;
+using Vivarium.Domain.Activities;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Decisions;
 using Vivarium.Domain.Knowledge;
@@ -66,7 +67,12 @@ namespace Vivarium.Application.Queries
                     }
                 }
 
-                options.Add(new DecisionOptionView(option.Id.Value, option.LabelId.Value, influences));
+                string intent = ProjectCommitmentIntent(world, option);
+                options.Add(new DecisionOptionView(
+                    option.Id.Value,
+                    intent ?? option.LabelId.Value,
+                    influences,
+                    intent));
             }
 
             DecisionResolutionView resolution = decision.Resolution == null
@@ -89,7 +95,29 @@ namespace Vivarium.Application.Queries
                 world.Attention.IsHeld(decision.Id),
                 decision.IsActive,
                 options,
-                resolution);
+                resolution,
+                decision.CommitmentConflictKey != null);
+        }
+
+        private static string ProjectCommitmentIntent(WorldState world, DecisionOption option)
+        {
+            CommitmentResolutionPlan plan = option.CommitmentResolutionPlan;
+            if (plan == null || plan.Preserve.Count == 0 || plan.Relinquish.Count == 0) return null;
+            return "Keep " + CommitmentLabel(world, plan.Preserve[0]) +
+                "; give up " + CommitmentLabel(world, plan.Relinquish[0]);
+        }
+
+        private static string CommitmentLabel(WorldState world, CommitmentId id)
+        {
+            if (!world.Commitments.TryGet(id, out Commitment commitment)) return id.ToString();
+            string value = commitment.Kind.Value;
+            int separator = value.LastIndexOf('.');
+            if (separator >= 0) value = value.Substring(separator + 1);
+            string[] words = value.Split('_');
+            for (int i = 0; i < words.Length; i++)
+                if (words[i].Length > 0)
+                    words[i] = char.ToUpperInvariant(words[i][0]) + words[i].Substring(1);
+            return string.Join(" ", words);
         }
 
         private static IReadOnlyList<DecisionReasonExplanationView> ProjectResolvedReasons(DecisionResolution resolution)

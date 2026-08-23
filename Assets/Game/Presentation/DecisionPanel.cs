@@ -68,7 +68,8 @@ namespace Vivarium.Unity.Presentation
                 : $"\nResolved: {view.Resolution.ChosenOptionId} ({view.Resolution.DegreeLabel})";
             _decisionSummary =
                 $"Decision: {view.CharacterName}\n" +
-                $"Status: {view.StatusLabel} — resolves {view.ResolveAtLabel}" +
+                $"Status: {view.StatusLabel} — " +
+                (view.HasHardDeadline ? $"hard deadline {view.ResolveAtLabel}" : $"resolves {view.ResolveAtLabel}") +
                 options + resolution;
             Render();
 
