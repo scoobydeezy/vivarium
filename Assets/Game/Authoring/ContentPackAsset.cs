@@ -239,6 +239,7 @@ namespace Vivarium.Unity.Authoring
             public DecisionInfluenceEntry[] influences;
             public DecisionActivityOutcomeEntry[] activityOutcomes;
             public SocialDecisionTriggerEntry socialTrigger;
+            public bool commitmentConflictTrigger;
             public DecisionRelationshipOutcomeEntry[] relationshipOutcomes;
             public DecisionReasoningProgramEntry reasoningProgram;
 
@@ -281,7 +282,8 @@ namespace Vivarium.Unity.Authoring
                     activityOutcomes: domainOutcomes,
                     socialTrigger: socialTrigger.IsConfigured ? socialTrigger.ToDefinition() : null,
                     relationshipOutcomes: domainRelationshipOutcomes,
-                    reasoningProgram: reasoningProgram.IsConfigured ? reasoningProgram.ToDefinition() : null);
+                    reasoningProgram: reasoningProgram.IsConfigured ? reasoningProgram.ToDefinition() : null,
+                    commitmentConflictTrigger: commitmentConflictTrigger ? new CommitmentConflictDecisionTrigger() : null);
             }
 
             private DecisionDependencyKey[] ToDependencies()

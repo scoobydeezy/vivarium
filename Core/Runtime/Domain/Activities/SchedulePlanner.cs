@@ -82,7 +82,7 @@ namespace Vivarium.Domain.Activities
             if (created.Count > 0)
             {
                 // One bump for the batch: the character's planned schedule changed (§11.2.1).
-                world.BumpRevision(new RevisionKey(characterId.ToRef(), RevisionAspects.Schedule));
+                CommitmentScheduleChanges.Publish(world, characterId);
             }
 
             return created;

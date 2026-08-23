@@ -61,6 +61,10 @@ namespace Vivarium.Domain.Decisions
         public static readonly AuthoredId SelfOption = new AuthoredId("decision.parameter.self_option");
         public static readonly AuthoredId WaitOption = new AuthoredId("decision.parameter.wait_option");
         public static readonly AuthoredId ActivityModifierId = new AuthoredId("decision.parameter.activity_modifier_id");
+        public static readonly AuthoredId Commitment = new AuthoredId("decision.parameter.commitment");
+        public static readonly AuthoredId PreservedCommitment = new AuthoredId("decision.parameter.preserved_commitment");
+        public static readonly AuthoredId RelinquishedCommitment = new AuthoredId("decision.parameter.relinquished_commitment");
+        public static readonly AuthoredId CommitmentConflict = new AuthoredId("decision.parameter.commitment_conflict");
     }
 
     public enum ParameterBindingSource
@@ -391,6 +395,7 @@ namespace Vivarium.Domain.Decisions
             registry.Register(new RelationshipChannelSignalProvider());
             registry.Register(new TravelBurdenSignalProvider());
             registry.Register(new ActivityModifierSignalProvider());
+            registry.Register(new CommitmentSignalProvider());
             return registry;
         }
     }
@@ -403,10 +408,19 @@ namespace Vivarium.Domain.Decisions
         public static readonly AuthoredId RelationshipChannel = new AuthoredId("decision.signal_provider.relationship_channel");
         public static readonly AuthoredId TravelBurden = new AuthoredId("decision.signal_provider.travel_burden");
         public static readonly AuthoredId ActivityModifier = new AuthoredId("decision.signal_provider.activity_modifier");
+        public static readonly AuthoredId Commitment = new AuthoredId("decision.signal_provider.commitment");
         public static readonly AuthoredId[] BuiltIns =
         {
-            DecisionContext, ActorValue, TargetAvailability, RelationshipChannel, TravelBurden, ActivityModifier,
+            DecisionContext, ActorValue, TargetAvailability, RelationshipChannel, TravelBurden,
+            ActivityModifier, Commitment,
         };
+    }
+
+    public static class CommitmentDecisionSignals
+    {
+        public static readonly AuthoredId Priority = new AuthoredId("decision.signal.commitment.priority");
+        public static readonly AuthoredId Urgency = new AuthoredId("decision.signal.commitment.urgency");
+        public static readonly AuthoredId TravelBurden = new AuthoredId("decision.signal.commitment.travel_burden");
     }
 
     internal static class DecisionSignalParameters
@@ -478,6 +492,96 @@ namespace Vivarium.Domain.Decisions
                     SignalApplicability.Known,
                     world.Revisions.Get(revisionKey)),
                 new[] { dependency });
+        }
+    }
+
+    /// <summary>Exposes bounded priority, urgency, and travel burden for a runtime-bound Commitment Option.</summary>
+    public sealed class CommitmentSignalProvider : IDecisionSignalProvider
+    {
+        public AuthoredId Id => DecisionSignalProviderIds.Commitment;
+
+        public ResolvedDecisionSignal Resolve(
+            WorldState world, Decision decision, DecisionOption option, DecisionSignalRequest request,
+            BoundConsiderationParameters parameters)
+        {
+            var scheduleDependency = new DecisionDependencyKey(
+                RevisionAspects.Schedule,
+                decision.CharacterId.ToRef());
+            var scheduleRevision = new RevisionKey(decision.CharacterId.ToRef(), RevisionAspects.Schedule);
+            if (!TryCommitment(world, parameters, decision.CharacterId, out Commitment commitment) ||
+                commitment.Status != CommitmentStatus.Planned)
+            {
+                return new ResolvedDecisionSignal(
+                    new SignalValue(
+                        request.SignalId, 0, 0, SignalApplicability.NotApplicable,
+                        world.Revisions.Get(scheduleRevision)),
+                    new[] { scheduleDependency });
+            }
+
+            long value;
+            var dependencies = new List<DecisionDependencyKey> { scheduleDependency };
+            int sourceRevision = world.Revisions.Get(scheduleRevision);
+            if (request.SignalId == CommitmentDecisionSignals.Priority)
+            {
+                value = IntegerMath.Clamp((long)commitment.Priority * 100, 0, SignalNumeric.Scale);
+            }
+            else if (request.SignalId == CommitmentDecisionSignals.Urgency)
+            {
+                long minutesUntilStart = Math.Max(0, commitment.EarliestStart.Since(world.Clock.Now).TotalMinutes);
+                value = IntegerMath.Clamp(
+                    SignalNumeric.Scale - (minutesUntilStart * 100),
+                    0,
+                    SignalNumeric.Scale);
+            }
+            else if (request.SignalId == CommitmentDecisionSignals.TravelBurden)
+            {
+                var activityDependency = new DecisionDependencyKey(
+                    RevisionAspects.Activity,
+                    decision.CharacterId.ToRef());
+                dependencies.Add(activityDependency);
+                var activityRevision = new RevisionKey(decision.CharacterId.ToRef(), RevisionAspects.Activity);
+                sourceRevision = world.Revisions.Get(activityRevision);
+                value = TravelBurden(world, decision.CharacterId, commitment.LocationId);
+            }
+            else
+            {
+                return new ResolvedDecisionSignal(
+                    new SignalValue(
+                        request.SignalId, 0, 0, SignalApplicability.Unknown, sourceRevision),
+                    dependencies);
+            }
+
+            return new ResolvedDecisionSignal(
+                new SignalValue(request.SignalId, value, 0, SignalApplicability.Known, sourceRevision),
+                dependencies);
+        }
+
+        private static bool TryCommitment(
+            WorldState world,
+            BoundConsiderationParameters parameters,
+            CharacterId actor,
+            out Commitment commitment)
+        {
+            commitment = null;
+            return parameters.TryGet(DecisionReasoningParameters.Commitment, out DecisionParameterValue target) &&
+                target.Kind == DecisionParameterKind.Entity &&
+                target.Entity.Kind == EntityKind.Commitment &&
+                world.Commitments.TryGet(new CommitmentId(target.Entity.RuntimeId), out commitment) &&
+                commitment.CharacterId == actor;
+        }
+
+        private static long TravelBurden(WorldState world, CharacterId actor, LocationId destination)
+        {
+            if (!world.TryGetSpatialContext(actor, out ActivitySpatialContext context) || !context.IsLocated)
+            {
+                return SignalNumeric.Scale;
+            }
+            if (context.LocationId == destination) return 0;
+            if (!world.TravelNetwork.TryPlanRoute(context.LocationId, destination, out TravelPlan plan))
+            {
+                return SignalNumeric.Scale;
+            }
+            return IntegerMath.Clamp(plan.TotalCost.TotalMinutes * 500, 0, SignalNumeric.Scale);
         }
     }
 

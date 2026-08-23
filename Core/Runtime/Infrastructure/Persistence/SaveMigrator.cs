@@ -39,6 +39,7 @@ namespace Vivarium.Infrastructure.Persistence
             Register(new SaveV1ToV2SocialMigration());
             Register(new SaveV2ToV3DecisionPolarityMigration());
             Register(new SaveV3ToV4DecisionReasoningMigration());
+            Register(new SaveV4ToV5CommitmentConflictMigration());
         }
 
         public void Register(ISaveMigration migration)

@@ -13,6 +13,7 @@ namespace Vivarium.Domain.Activities
         public static readonly AuthoredId TravelArrival = new AuthoredId("event.travel.arrival");
         public static readonly AuthoredId NeedThreshold = new AuthoredId("event.need.threshold");
         public static readonly AuthoredId DecisionResolve = new AuthoredId("event.decision.resolve");
+        public static readonly AuthoredId AutoResolveCommitmentConflict = new AuthoredId("event.decision.commitment_conflict.auto_resolve");
         public static readonly AuthoredId CommitmentWindowExpired = new AuthoredId("event.commitment.window_expired");
         public static readonly AuthoredId InteractionOpportunity = new AuthoredId("event.social.interaction_opportunity");
     }

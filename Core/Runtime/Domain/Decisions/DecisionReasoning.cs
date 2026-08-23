@@ -197,7 +197,10 @@ namespace Vivarium.Domain.Decisions
         }
     }
 
-    /// <summary>Default non-stacking consolidation: one option gets one reason per semantic channel.</summary>
+    /// <summary>
+    /// Default non-stacking consolidation: one Option gets one reason per semantic channel and bound
+    /// subject. Distinct people/commitments remain distinct; duplicate readings of the same subject merge.
+    /// </summary>
     public sealed class ReasonConsolidator
     {
         public IReadOnlyList<CandidateReason> Consolidate(IReadOnlyList<CandidateReason> candidates)
@@ -207,7 +210,8 @@ namespace Vivarium.Domain.Decisions
             {
                 CandidateReason candidate = candidates[i];
                 if (candidate == null) continue;
-                string key = candidate.OptionId.Value + "\n" + candidate.Channel.Id.Value;
+                string key = candidate.OptionId.Value + "\n" + candidate.Channel.Id.Value + "\n" +
+                    (int)candidate.Subject.Kind + ":" + candidate.Subject.RuntimeId;
                 if (candidate.Channel.ConsolidationPolicy == ReasonChannelConsolidationPolicy.AllowStacking)
                 {
                     key += "\n" + candidate.ConsiderationId.Value;

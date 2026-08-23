@@ -56,7 +56,11 @@ namespace Vivarium.Domain.Activities
                 }
 
                 // Unreachable destination: nothing to do but let the commitment lapse.
-                commitment?.MarkMissed();
+                if (commitment != null)
+                {
+                    commitment.MarkMissed();
+                    CommitmentScheduleChanges.Publish(world, commitment.CharacterId);
+                }
                 return;
             }
 
@@ -70,7 +74,11 @@ namespace Vivarium.Domain.Activities
                 0,
                 payload.CommitmentId);
 
-            commitment?.MarkActive(activity.Id);
+            if (commitment != null)
+            {
+                commitment.MarkActive(activity.Id);
+                CommitmentScheduleChanges.Publish(world, commitment.CharacterId);
+            }
         }
     }
 
@@ -122,7 +130,11 @@ namespace Vivarium.Domain.Activities
                 0,
                 travel.SourceCommitmentId);
 
-            commitment?.MarkActive(next.Id);
+            if (commitment != null)
+            {
+                commitment.MarkActive(next.Id);
+                CommitmentScheduleChanges.Publish(world, commitment.CharacterId);
+            }
         }
     }
 
@@ -167,6 +179,7 @@ namespace Vivarium.Domain.Activities
             if (activity.SourceCommitmentId.IsSet && world.Commitments.TryGet(activity.SourceCommitmentId, out Commitment commitment))
             {
                 commitment.MarkFulfilled();
+                CommitmentScheduleChanges.Publish(world, commitment.CharacterId);
             }
 
             // A character always has exactly one primary Activity (invariant 39), so idling is an

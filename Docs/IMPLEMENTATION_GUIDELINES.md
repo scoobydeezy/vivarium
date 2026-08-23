@@ -289,6 +289,36 @@ The next vertical slice requires concrete product intent. Continue using impleme
 relationship, Activity, location/travel, availability, urgency, and self-option state; do not introduce a
 general Skill model merely to broaden Decision content.
 
+### Completed checkpoint — commitment-conflict Decision
+
+Product direction on **2026-08-23** selected `CommitmentConflictDecisionBrief.md` for the second
+Decision vertical slice. The implementation replaces pairwise overlap Options with authoritative
+`CommitmentResolutionPlan` payloads and a true whole-set feasibility search. The v0 content remains
+deliberately narrow—two Commitments and two Preserve/Relinquish plans—but the plan and feasibility types
+are n-way-shaped and the tests include a three-Commitment set whose pairs are feasible while the whole
+set is not.
+
+Schedule revisions trigger evaluation; planner passes do not poll or duplicate Decisions. Active
+conflicts retain a canonical participant key plus an episode revision, while the deduplication index is
+rebuilt after load. Feasibility and desirability remain separate. Compiled bindings evaluate preserved
+and relinquished Commitments as distinct subjects within each plan, and ReasonChannel consolidation no
+longer merges different targets merely because their semantic channel matches.
+
+`LatestResolutionAt` is an authoritative derived hard deadline backed by a revision-dependent scheduled
+event and payload codec. A Hold cannot cross it, including offline execution. If a schedule revision
+invalidates the candidate set first, the Decision transitions to `Dissolved`, cancels its deadline,
+releases held capacity, emits the interventions subject to unconditional refund, skips consequences, and
+records an Ephemeral recap. Resolution itself only marks sacrificed Commitments `Relinquished`; a
+separate commitment-domain reaction invokes routine planning for preserved intent.
+
+Save schema v5 persists plan payloads, conflict episode identity, deadline state, interventions, and
+scheduled work. It does not persist the conflict or reasoning indexes. Focused coverage proves whole-set
+feasibility, plan identity and deduplication, distinct per-target reasons, hard-deadline Hold behavior,
+dissolution/refund recap, commitment-only consequences, index rebuild, and deterministic save/load
+resolution. The full headless solution passes **145 tests**. Actual Defer behavior, changing-road
+revalidation, n-way clustering policy, intervention resource balances, and dissolve/regenerate cooldowns
+remain explicitly deferred.
+
 ## Implementation checklist
 
 Use the applicable checks, not boilerplate for its own sake.

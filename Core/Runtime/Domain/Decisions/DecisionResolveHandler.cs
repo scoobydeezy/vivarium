@@ -68,7 +68,9 @@ namespace Vivarium.Domain.Decisions
             DecisionResolution resolution = _resolution.Resolve(decision, context);
             decision.Resolve(resolution);
             world.Attention.Release(decision.Id);
+            world.Attention.SetPolicy(decision.Id, AttentionPolicy.Normal);
             world.DecisionDependencies.Unregister(decision.Id);
+            world.CommitmentConflicts.Unregister(decision.Id);
 
             HistoryEntry history = world.HistoryLedger.Record(
                 new AuthoredId("history.decision_resolved"),
@@ -109,6 +111,36 @@ namespace Vivarium.Domain.Decisions
             }
 
             return _holdPolicy.CharacterCapacityExceeded(heldForCharacter);
+        }
+    }
+
+    /// <summary>A hard feasibility deadline. Holding never permits this Decision to cross it.</summary>
+    public sealed class CommitmentConflictAutoResolveHandler : ScheduledEventHandler<DecisionResolvePayload>
+    {
+        private readonly DecisionResolutionService _resolution;
+        public CommitmentConflictAutoResolveHandler(DecisionResolutionService resolution)
+            : base(Activities.ScheduledEventTypes.AutoResolveCommitmentConflict) =>
+            _resolution = resolution ?? throw new ArgumentNullException(nameof(resolution));
+
+        protected override bool CanExecute(WorldState world, DecisionResolvePayload payload) =>
+            world.Decisions.TryGet(payload.DecisionId, out Decision decision) && decision.IsActive &&
+            decision.CommitmentConflictKey != null;
+
+        protected override void Execute(WorldState world, DecisionResolvePayload payload, SimulationContext context)
+        {
+            Decision decision = world.Decisions.Get(payload.DecisionId);
+            DecisionResolution resolution = _resolution.Resolve(decision, context);
+            decision.Resolve(resolution);
+            world.Attention.Release(decision.Id);
+            world.Attention.SetPolicy(decision.Id, AttentionPolicy.Normal);
+            world.DecisionDependencies.Unregister(decision.Id);
+            world.CommitmentConflicts.Unregister(decision.Id);
+            HistoryEntry history = world.HistoryLedger.Record(
+                new AuthoredId("history.decision_resolved"), world.Clock.Now, RetentionTier.Significant,
+                $"{decision.DefinitionId} → {resolution.ChosenOptionId} ({resolution.Degree})",
+                new[] { decision.CharacterId.ToRef(), decision.Id.ToRef() });
+            decision.LinkResolutionHistory(history.Id);
+            world.Publish(new DecisionResolvedEvent(decision.Id, decision.CharacterId, resolution));
         }
     }
 }

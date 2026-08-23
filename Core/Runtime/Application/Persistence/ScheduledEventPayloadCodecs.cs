@@ -66,6 +66,7 @@ namespace Vivarium.Application.Persistence
             registry.Register(new NeedThresholdPayloadCodec());
             registry.Register(new CommitmentWindowExpiredPayloadCodec());
             registry.Register(new DecisionResolvePayloadCodec());
+            registry.Register(new CommitmentConflictAutoResolvePayloadCodec());
             return registry;
         }
     }
@@ -194,6 +195,19 @@ namespace Vivarium.Application.Persistence
             return PayloadData.Of(null, new long[] { typed.DecisionId.Value, typed.CharacterId.Value });
         }
 
+        public IScheduledEventPayload Decode(ScheduledEventPayloadData data) => new DecisionResolvePayload(
+            new DecisionId((int)PayloadData.Number(data, 0)),
+            new CharacterId((int)PayloadData.Number(data, 1)));
+    }
+
+    public sealed class CommitmentConflictAutoResolvePayloadCodec : IScheduledEventPayloadCodec
+    {
+        public AuthoredId EventType => ScheduledEventTypes.AutoResolveCommitmentConflict;
+        public ScheduledEventPayloadData Encode(IScheduledEventPayload payload)
+        {
+            var typed = (DecisionResolvePayload)payload;
+            return PayloadData.Of(null, new long[] { typed.DecisionId.Value, typed.CharacterId.Value });
+        }
         public IScheduledEventPayload Decode(ScheduledEventPayloadData data) => new DecisionResolvePayload(
             new DecisionId((int)PayloadData.Number(data, 0)),
             new CharacterId((int)PayloadData.Number(data, 1)));

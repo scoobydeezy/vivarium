@@ -31,7 +31,8 @@ namespace Vivarium.Domain.Decisions
             IReadOnlyList<DecisionActivityOutcome> activityOutcomes = null,
             SocialInteractionDecisionTrigger socialTrigger = null,
             IReadOnlyList<DecisionRelationshipOutcome> relationshipOutcomes = null,
-            DecisionReasoningProgram reasoningProgram = null)
+            DecisionReasoningProgram reasoningProgram = null,
+            CommitmentConflictDecisionTrigger commitmentConflictTrigger = null)
         {
             if (!id.IsSet)
             {
@@ -57,6 +58,7 @@ namespace Vivarium.Domain.Decisions
             SocialTrigger = socialTrigger;
             RelationshipOutcomes = relationshipOutcomes ?? new DecisionRelationshipOutcome[0];
             ReasoningProgram = reasoningProgram;
+            CommitmentConflictTrigger = commitmentConflictTrigger;
         }
 
         public AuthoredId Id { get; }
@@ -100,6 +102,9 @@ namespace Vivarium.Domain.Decisions
 
         /// <summary>Optional compiled Consideration program snapshotted by generated instances.</summary>
         public DecisionReasoningProgram ReasoningProgram { get; }
+
+        /// <summary>Optional content rule that creates this Decision for a jointly infeasible commitment set.</summary>
+        public CommitmentConflictDecisionTrigger CommitmentConflictTrigger { get; }
 
         public override string ToString() => Id.ToString();
     }

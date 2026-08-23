@@ -173,13 +173,30 @@ Working implementations:
   explanation lazily from this historical evidence and never re-queries current World state. Resolution
   history is Significant, linked back to its Decision, persisted, and pruned together with the resolved
   Decision/evidence by `DecisionHistoryRetentionService`.
+- **Commitment-conflict Decision** — aspect-scoped commitment schedule changes invoke a
+  `CommitmentFeasibilityService` that searches complete deterministic orderings of the active set; it
+  does not infer joint feasibility from pairwise overlaps. The v0 content slice generates two
+  plan-valued Options (`Preserve A / Relinquish B` and the reverse), while the authoritative
+  `CommitmentResolutionPlan` already carries canonical Preserve/Defer/Relinquish sets. Feasibility
+  removes invalid Options before compiled Considerations rank the remaining plans. Each plan evaluates
+  its preserved and relinquished Commitment as distinct bound subjects, so non-stacking ReasonChannels
+  merge duplicate readings of one subject without merging different people or obligations.
+  `CommitmentConflictKey` retains an episode revision while a rebuildable active-conflict index prevents
+  duplicate generation. A revision-dependent hard deadline auto-resolves even a Held Decision at the
+  correct simulation instant. If the candidate set stops describing reality first, the Decision becomes
+  `Dissolved`: its pending event is cancelled, held capacity is released, interventions are enumerated
+  for unconditional refund, no resolution consequence runs, and an Ephemeral recap is recorded. A
+  resolved plan marks sacrificed intent `Relinquished`; a separate routine-planner reaction schedules
+  Activity/Travel for preserved intent. Save schema v5 persists plans, conflict identity, deadline,
+  interventions, and the deadline event while rebuilding only indexes/routes.
 - **Commands and queries** — deterministic ingress queue, dispatcher, projections published only at
   quiescent boundaries, knowledge-filtered decision views (§2.2.1, §26, §35).
 - **Persistence** — versioned DTOs, explicit payload codecs, revision persistence, index rebuilding on
   load, migration chain with version-drift reporting (§38–§40). Schema v4 additionally persists typed
   Decision/Option context and snapshotted compiled reasoning programs. Schema-v3 direct-influence
   Decisions migrate without inventing a program; schema-v2 Influences still migrate as supporting
-  legacy reasons.
+  legacy reasons. Schema v5 adds authoritative commitment-conflict plans, instance identity, and hard
+  deadlines without persisting the active-conflict index.
 - **Scale regression gate** — the normal suite repeats a 250-character/six-hour workload and requires
   identical authoritative hashes and deterministic work counts under structural per-character ceilings.
   An opt-in 1,000-character/one-day tier enforces initial wall-clock and heap budgets while the CLI
@@ -187,11 +204,11 @@ Working implementations:
 
 Intentionally thin, pending game-design decisions:
 
-- **Decision generation breadth.** One Need-threshold trigger now generates a content-backed Decision;
-  other circumstances and targeted live influence construction remain to be added as concrete content
-  requires them. All headless runner execution paths now use the generated leave-work choice.
-- **Consequences breadth.** Resolved options can change the primary Activity and one social Decision can
-  change a directional relationship channel. Employment and Commitment consequences remain unimplemented.
+- **Decision generation breadth.** Need-threshold, social-interaction, and joint commitment-infeasibility
+  triggers now generate content-backed Decisions. Other circumstances remain content-driven additions.
+- **Consequences breadth.** Resolved options can change the primary Activity, a directional relationship
+  channel, or Commitment intent through Preserve/Relinquish. Employment and actual Defer behavior remain
+  unimplemented.
 - **Save serialization format.** Explicitly deferred (§57). `ISaveGameSerializer` is defined;
   `InMemorySaveGameStore` exercises mapping without committing to an encoding.
 - **Needs → behaviour breadth.** Threshold crossings can generate one Decision type; direct routine,

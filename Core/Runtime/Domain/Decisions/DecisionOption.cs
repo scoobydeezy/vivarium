@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Vivarium.Domain.Common;
+using Vivarium.Domain.Activities;
 
 namespace Vivarium.Domain.Decisions
 {
@@ -21,7 +22,8 @@ namespace Vivarium.Domain.Decisions
             AuthoredId id,
             AuthoredId labelId,
             int orderIndex,
-            IReadOnlyDictionary<AuthoredId, DecisionParameterValue> context = null)
+            IReadOnlyDictionary<AuthoredId, DecisionParameterValue> context = null,
+            CommitmentResolutionPlan commitmentResolutionPlan = null)
         {
             if (!id.IsSet)
             {
@@ -31,6 +33,7 @@ namespace Vivarium.Domain.Decisions
             Id = id;
             LabelId = labelId;
             OrderIndex = orderIndex;
+            CommitmentResolutionPlan = commitmentResolutionPlan?.Copy();
             if (context != null)
             {
                 foreach (KeyValuePair<AuthoredId, DecisionParameterValue> pair in context) _context[pair.Key] = pair.Value;
@@ -48,12 +51,15 @@ namespace Vivarium.Domain.Decisions
 
         public IReadOnlyDictionary<AuthoredId, DecisionParameterValue> Context => _context;
 
+        /// <summary>Optional authoritative plan payload for a commitment-conflict Option.</summary>
+        public CommitmentResolutionPlan CommitmentResolutionPlan { get; }
+
         public void SetContext(AuthoredId parameterId, DecisionParameterValue value) => _context[parameterId] = value;
 
         public bool TryGetContext(AuthoredId parameterId, out DecisionParameterValue value) =>
             _context.TryGetValue(parameterId, out value);
 
-        public DecisionOption Copy() => new DecisionOption(Id, LabelId, OrderIndex, _context);
+        public DecisionOption Copy() => new DecisionOption(Id, LabelId, OrderIndex, _context, CommitmentResolutionPlan);
 
         public override string ToString() => Id.ToString();
     }

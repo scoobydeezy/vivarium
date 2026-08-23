@@ -54,6 +54,7 @@ namespace Vivarium.Domain.Simulation
             Memberships = new MembershipIndex();
             RelationshipIndex = new RelationshipIndex();
             DecisionDependencies = new DecisionDependencyIndex();
+            CommitmentConflicts = new CommitmentConflictIndex();
 
             Knowledge = new KnowledgeLedger();
             Attention = new AttentionState();
@@ -103,6 +104,9 @@ namespace Vivarium.Domain.Simulation
         /// <summary>Targeted decision reevaluation (§17.2). Rebuildable.</summary>
         public DecisionDependencyIndex DecisionDependencies { get; }
 
+        /// <summary>Active commitment-conflict identity projection. Rebuilt from Decisions after load.</summary>
+        public CommitmentConflictIndex CommitmentConflicts { get; }
+
         /// <summary>What the player knows — not a view of truth (§22).</summary>
         public KnowledgeLedger Knowledge { get; }
 
@@ -151,6 +155,7 @@ namespace Vivarium.Domain.Simulation
             Spatial.Clear();
             RelationshipIndex.Clear();
             DecisionDependencies.Clear();
+            CommitmentConflicts.Clear();
 
             foreach (Character character in Characters.All)
             {
@@ -178,6 +183,7 @@ namespace Vivarium.Domain.Simulation
                 if (decision.IsActive)
                 {
                     DecisionDependencies.Register(decision);
+                    CommitmentConflicts.Register(decision);
                 }
             }
 

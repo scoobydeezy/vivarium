@@ -4,6 +4,7 @@ using Vivarium.Domain.Common;
 using Vivarium.Domain.Scheduling;
 using Vivarium.Domain.Simulation;
 using Vivarium.Domain.Time;
+using Vivarium.Domain.Activities;
 
 namespace Vivarium.Domain.Decisions
 {
@@ -18,7 +19,11 @@ namespace Vivarium.Domain.Decisions
             DecisionReasoningProgram reasoningProgram,
             IReadOnlyDictionary<AuthoredId, DecisionParameterValue> context = null,
             DecisionConflictScope conflictScope = default,
-            int importance = 0)
+            int importance = 0,
+            SimTime? absoluteResolveAt = null,
+            AuthoredId resolveEventType = default,
+            IReadOnlyList<EventDependency> resolveDependencies = null,
+            CommitmentConflictKey commitmentConflictKey = null)
         {
             Actor = actor;
             DefinitionId = definitionId;
@@ -28,6 +33,10 @@ namespace Vivarium.Domain.Decisions
             Context = context ?? new SortedDictionary<AuthoredId, DecisionParameterValue>();
             ConflictScope = conflictScope;
             Importance = importance;
+            AbsoluteResolveAt = absoluteResolveAt;
+            ResolveEventType = resolveEventType.IsSet ? resolveEventType : Activities.ScheduledEventTypes.DecisionResolve;
+            ResolveDependencies = resolveDependencies;
+            CommitmentConflictKey = commitmentConflictKey;
         }
 
         public CharacterId Actor { get; }
@@ -38,6 +47,10 @@ namespace Vivarium.Domain.Decisions
         public IReadOnlyDictionary<AuthoredId, DecisionParameterValue> Context { get; }
         public DecisionConflictScope ConflictScope { get; }
         public int Importance { get; }
+        public SimTime? AbsoluteResolveAt { get; }
+        public AuthoredId ResolveEventType { get; }
+        public IReadOnlyList<EventDependency> ResolveDependencies { get; }
+        public CommitmentConflictKey CommitmentConflictKey { get; }
     }
 
     /// <summary>Creates, reasons about, indexes, schedules, and announces one runtime-bound Decision.</summary>
@@ -65,8 +78,10 @@ namespace Vivarium.Domain.Decisions
 
             var decision = new Decision(
                 world.RuntimeIds.Decisions.Next(), request.Actor, request.DefinitionId,
-                world.Clock.Now, world.Clock.Now.Plus(request.TimeToResolve), request.Options,
+                world.Clock.Now, request.AbsoluteResolveAt ?? world.Clock.Now.Plus(request.TimeToResolve), request.Options,
                 request.ConflictScope, request.Importance);
+            if (request.CommitmentConflictKey != null)
+                decision.SetCommitmentConflict(request.CommitmentConflictKey, decision.ResolveAt);
             foreach (KeyValuePair<AuthoredId, DecisionParameterValue> parameter in request.Context)
             {
                 decision.SetContextParameter(parameter.Key, parameter.Value);
@@ -78,8 +93,9 @@ namespace Vivarium.Domain.Decisions
             ScheduledEvent scheduled = world.Scheduler.Schedule(
                 decision.ResolveAt,
                 SchedulePhase.Decision,
-                Activities.ScheduledEventTypes.DecisionResolve,
-                new DecisionResolvePayload(decision.Id, request.Actor));
+                request.ResolveEventType,
+                new DecisionResolvePayload(decision.Id, request.Actor),
+                request.ResolveDependencies);
             decision.SetPendingResolveEvent(scheduled.Id);
             world.Publish(new DecisionCreatedEvent(decision.Id, request.Actor, request.DefinitionId));
             return decision;

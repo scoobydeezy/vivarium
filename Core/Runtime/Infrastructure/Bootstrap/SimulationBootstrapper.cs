@@ -233,11 +233,15 @@ namespace Vivarium.Infrastructure.Bootstrap
             scheduledHandlers.Register(new ActivityCompletionHandler(activityResolution, transitions));
             scheduledHandlers.Register(new NeedThresholdHandler());
             scheduledHandlers.Register(new DecisionResolveHandler(decisionResolution, holdPolicy));
+            scheduledHandlers.Register(new CommitmentConflictAutoResolveHandler(decisionResolution));
 
             // Content-backed reactions use explicit stable order (§12.1).
             var domainHandlers = new OrderedDomainEventHandlerRegistry();
             domainHandlers.Register(new NeedThresholdDecisionGenerationHandler(catalog, decisionSignals), 100);
+            domainHandlers.Register(new CommitmentConflictDecisionGenerationHandler(catalog, decisionSignals), 100);
             domainHandlers.Register(new DecisionActivityOutcomeHandler(catalog, transitions), 100);
+            domainHandlers.Register(new CommitmentConflictDecisionOutcomeHandler(), 110);
+            domainHandlers.Register(new CommitmentIntentPlanningHandler(planner), 100);
             domainHandlers.Register(new CharacterArrivedInteractionHandler(interactions), 100);
             domainHandlers.Register(new TravelStartedInteractionHandler(interactions), 100);
             domainHandlers.Register(new SocialInteractionDecisionGenerationHandler(catalog), 150);
@@ -247,9 +251,11 @@ namespace Vivarium.Infrastructure.Bootstrap
                 new AuthoredId("social.action.interaction"),
                 maxWitnesses: 2), 200);
             domainHandlers.Register(new SocialBeliefDecisionHandler(decisionReevaluation), 300);
+            domainHandlers.Register(new ActivityStartedDecisionReevaluationHandler(decisionReevaluation), 300);
             domainHandlers.Register(new DecisionRelationshipOutcomeHandler(catalog), 200);
             domainHandlers.Register(new DecisionCreatedHistoryHandler(), 900);
             domainHandlers.Register(new DecisionInterventionHistoryHandler(), 900);
+            domainHandlers.Register(new DecisionDissolvedHistoryHandler(), 900);
 
             var settlement = new SettlementLoop(scheduledHandlers, domainHandlers);
             var projections = new ProjectionPublisher();

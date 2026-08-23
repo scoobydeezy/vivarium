@@ -1,5 +1,6 @@
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Events;
+using Vivarium.Domain.Simulation;
 
 namespace Vivarium.Domain.Activities
 {
@@ -10,6 +11,10 @@ namespace Vivarium.Domain.Activities
         public static readonly AuthoredId ActivityCompleted = new AuthoredId("domain.activity.completed");
         public static readonly AuthoredId CharacterArrived = new AuthoredId("domain.character.arrived");
         public static readonly AuthoredId CharacterDeparted = new AuthoredId("domain.character.departed");
+        public static readonly AuthoredId CommitmentScheduleChanged =
+            new AuthoredId("domain.commitment.schedule_changed");
+        public static readonly AuthoredId CommitmentRelinquished =
+            new AuthoredId("domain.commitment.relinquished");
     }
 
     /// <summary>A character began a new primary Activity (§29.1).</summary>
@@ -86,5 +91,41 @@ namespace Vivarium.Domain.Activities
         public CharacterId CharacterId { get; }
 
         public LocationId LocationId { get; }
+    }
+
+    /// <summary>A character's authoritative commitment intent changed and feasibility must be revisited.</summary>
+    public sealed class CommitmentScheduleChangedEvent : IDomainEvent
+    {
+        public CommitmentScheduleChangedEvent(CharacterId characterId, int scheduleRevision)
+        {
+            CharacterId = characterId;
+            ScheduleRevision = scheduleRevision;
+        }
+        public AuthoredId EventType => ActivityDomainEventTypes.CommitmentScheduleChanged;
+        public CharacterId CharacterId { get; }
+        public int ScheduleRevision { get; }
+    }
+
+    public sealed class CommitmentRelinquishedEvent : IDomainEvent
+    {
+        public CommitmentRelinquishedEvent(CharacterId characterId, CommitmentId commitmentId)
+        {
+            CharacterId = characterId;
+            CommitmentId = commitmentId;
+        }
+        public AuthoredId EventType => ActivityDomainEventTypes.CommitmentRelinquished;
+        public CharacterId CharacterId { get; }
+        public CommitmentId CommitmentId { get; }
+    }
+
+    /// <summary>One authority for revisioning and announcing commitment-intent changes.</summary>
+    public static class CommitmentScheduleChanges
+    {
+        public static int Publish(WorldState world, CharacterId characterId)
+        {
+            int revision = world.BumpRevision(new RevisionKey(characterId.ToRef(), RevisionAspects.Schedule));
+            world.Publish(new CommitmentScheduleChangedEvent(characterId, revision));
+            return revision;
+        }
     }
 }

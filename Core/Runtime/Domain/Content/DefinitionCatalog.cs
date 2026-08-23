@@ -246,6 +246,22 @@ namespace Vivarium.Domain.Content
                 {
                     errors.Add($"decision '{decision.Id}' cannot use both legacy SocialTrigger and compiled reasoning");
                 }
+                int triggerCount = (decision.Trigger == null ? 0 : 1) +
+                    (decision.SocialTrigger == null ? 0 : 1) +
+                    (decision.CommitmentConflictTrigger == null ? 0 : 1);
+                if (triggerCount > 1)
+                {
+                    errors.Add($"decision '{decision.Id}' declares more than one generation trigger");
+                }
+                if (decision.CommitmentConflictTrigger != null)
+                {
+                    if (decision.Options.Count != 2)
+                        errors.Add($"decision '{decision.Id}' commitment-conflict v0 requires exactly two Option templates");
+                    if (decision.ReasoningProgram == null)
+                        errors.Add($"decision '{decision.Id}' commitment-conflict requires compiled reasoning");
+                    if (decision.ActivityOutcomes.Count > 0)
+                        errors.Add($"decision '{decision.Id}' commitment-conflict consequences must mutate Commitment intent, not authored Activities");
+                }
                 IReadOnlyList<string> reasoningErrors = DecisionReasoningProgramValidator.Validate(
                     decision.ReasoningProgram, decision.Options, DecisionSignalProviderIds.BuiltIns);
                 for (int i = 0; i < reasoningErrors.Count; i++)

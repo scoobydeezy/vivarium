@@ -21,7 +21,7 @@ namespace Vivarium.Application.Persistence
         /// <summary>
         /// The current persisted shape. Bump on any structural change and add a migration (§39).
         /// </summary>
-        public const int CurrentSchemaVersion = 4;
+        public const int CurrentSchemaVersion = 5;
 
         /// <summary>Determines whether the persisted shape can be understood or migrated (§39.1).</summary>
         public int SchemaVersion = CurrentSchemaVersion;
@@ -295,6 +295,10 @@ namespace Vivarium.Application.Persistence
         public List<AuthoredLongData> SnapshottedParameters = new List<AuthoredLongData>();
         public List<DecisionParameterData> ContextParameters = new List<DecisionParameterData>();
         public DecisionReasoningProgramData ReasoningProgram;
+        public bool HasCommitmentConflict;
+        public int ConflictInstanceRevision;
+        public long LatestResolutionAtMinutes;
+        public List<int> ConflictCommitmentIds = new List<int>();
 
         public bool HasResolution;
         public string ResolvedOptionId;
@@ -311,6 +315,15 @@ namespace Vivarium.Application.Persistence
         public string LabelId;
         public int OrderIndex;
         public List<DecisionParameterData> Context = new List<DecisionParameterData>();
+        public CommitmentResolutionPlanData CommitmentResolutionPlan;
+    }
+
+    public sealed class CommitmentResolutionPlanData
+    {
+        public string PlanId;
+        public List<int> Preserve = new List<int>();
+        public List<int> Defer = new List<int>();
+        public List<int> Relinquish = new List<int>();
     }
 
     public sealed class DecisionParameterData

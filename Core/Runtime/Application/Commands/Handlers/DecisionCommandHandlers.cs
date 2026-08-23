@@ -151,6 +151,13 @@ namespace Vivarium.Application.Commands.Handlers
             // that time has already passed while it was held.
             if (context.World.Decisions.TryGet(command.DecisionId, out Decision decision) && decision.IsActive)
             {
+                // A Held Decision may still own a hard-deadline event. Do not create a second generic
+                // resolution event merely because the player released it before that deadline.
+                if (decision.PendingResolveEventId.IsSet &&
+                    context.World.Scheduler.Contains(decision.PendingResolveEventId))
+                {
+                    return Result.Ok();
+                }
                 Domain.Time.SimTime resolveAt = decision.ResolveAt < context.World.Clock.Now
                     ? context.World.Clock.Now
                     : decision.ResolveAt;

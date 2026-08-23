@@ -20,6 +20,9 @@ namespace Vivarium.Domain.Activities
         Missed = 3,
 
         Cancelled = 4,
+
+        /// <summary>Intentionally given up as the outcome of a commitment conflict.</summary>
+        Relinquished = 5,
     }
 
     /// <summary>
@@ -146,6 +149,8 @@ namespace Vivarium.Domain.Activities
         public void MarkMissed() => Status = CommitmentStatus.Missed;
 
         public void Cancel() => Status = CommitmentStatus.Cancelled;
+
+        public void Relinquish() => Status = CommitmentStatus.Relinquished;
 
         public override string ToString() => $"{Kind} for {CharacterId} at {EarliestStart} ({Status})";
     }

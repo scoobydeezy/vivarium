@@ -715,6 +715,14 @@ namespace Vivarium.Application.Persistence
                     ConflictScopeEntityKind = (int)decision.ConflictScope.Subject.Kind,
                     ConflictScopeRuntimeId = decision.ConflictScope.Subject.RuntimeId,
                 };
+                if (decision.CommitmentConflictKey != null)
+                {
+                    dto.HasCommitmentConflict = true;
+                    dto.ConflictInstanceRevision = decision.CommitmentConflictKey.ConflictInstanceRevision;
+                    dto.LatestResolutionAtMinutes = decision.LatestResolutionAt.TotalMinutes;
+                    for (int c = 0; c < decision.CommitmentConflictKey.ParticipatingCommitmentIds.Count; c++)
+                        dto.ConflictCommitmentIds.Add(decision.CommitmentConflictKey.ParticipatingCommitmentIds[c].Value);
+                }
 
                 for (int i = 0; i < decision.Options.Count; i++)
                 {
@@ -728,6 +736,10 @@ namespace Vivarium.Application.Persistence
                     foreach (KeyValuePair<AuthoredId, DecisionParameterValue> parameter in option.Context)
                     {
                         optionData.Context.Add(WriteDecisionParameter(parameter.Key, parameter.Value));
+                    }
+                    if (option.CommitmentResolutionPlan != null)
+                    {
+                        optionData.CommitmentResolutionPlan = WriteCommitmentPlan(option.CommitmentResolutionPlan);
                     }
                     dto.Options.Add(optionData);
                 }
@@ -852,7 +864,8 @@ namespace Vivarium.Application.Persistence
                         context[new AuthoredId(parameter.Key)] = ReadDecisionParameter(parameter);
                     }
                     options[o] = new DecisionOption(
-                        new AuthoredId(option.Id), new AuthoredId(option.LabelId), option.OrderIndex, context);
+                        new AuthoredId(option.Id), new AuthoredId(option.LabelId), option.OrderIndex, context,
+                        ReadCommitmentPlan(option.CommitmentResolutionPlan));
                 }
 
                 var decision = new Decision(
@@ -866,6 +879,14 @@ namespace Vivarium.Application.Persistence
                         new AuthoredId(dto.ConflictScopeKind),
                         new EntityRef((EntityKind)dto.ConflictScopeEntityKind, dto.ConflictScopeRuntimeId)),
                     dto.Importance);
+                if (dto.HasCommitmentConflict)
+                {
+                    var participants = new CommitmentId[dto.ConflictCommitmentIds.Count];
+                    for (int c = 0; c < participants.Length; c++) participants[c] = new CommitmentId(dto.ConflictCommitmentIds[c]);
+                    decision.RestoreCommitmentConflict(
+                        new CommitmentConflictKey(new CharacterId(dto.CharacterId), participants, dto.ConflictInstanceRevision),
+                        new SimTime(dto.LatestResolutionAtMinutes));
+                }
 
                 // Ascending influence id, so restored ids match the ids interventions were bound to.
                 dto.Influences.Sort((a, b) => a.Id.CompareTo(b.Id));
@@ -970,6 +991,27 @@ namespace Vivarium.Application.Persistence
 
                 world.Decisions.Add(decision.Id, decision);
             }
+        }
+
+        private static CommitmentResolutionPlanData WriteCommitmentPlan(CommitmentResolutionPlan plan)
+        {
+            var dto = new CommitmentResolutionPlanData { PlanId = plan.PlanId.Value };
+            for (int i = 0; i < plan.Preserve.Count; i++) dto.Preserve.Add(plan.Preserve[i].Value);
+            for (int i = 0; i < plan.Defer.Count; i++) dto.Defer.Add(plan.Defer[i].Value);
+            for (int i = 0; i < plan.Relinquish.Count; i++) dto.Relinquish.Add(plan.Relinquish[i].Value);
+            return dto;
+        }
+
+        private static CommitmentResolutionPlan ReadCommitmentPlan(CommitmentResolutionPlanData dto)
+        {
+            if (dto == null) return null;
+            var preserve = new CommitmentId[dto.Preserve.Count];
+            var defer = new CommitmentId[dto.Defer.Count];
+            var relinquish = new CommitmentId[dto.Relinquish.Count];
+            for (int i = 0; i < preserve.Length; i++) preserve[i] = new CommitmentId(dto.Preserve[i]);
+            for (int i = 0; i < defer.Length; i++) defer[i] = new CommitmentId(dto.Defer[i]);
+            for (int i = 0; i < relinquish.Length; i++) relinquish[i] = new CommitmentId(dto.Relinquish[i]);
+            return new CommitmentResolutionPlan(new AuthoredId(dto.PlanId), preserve, defer, relinquish);
         }
 
         private static DecisionParameterData WriteDecisionParameter(

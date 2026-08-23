@@ -43,4 +43,16 @@ namespace Vivarium.Domain.Decisions
                 new[] { domainEvent.CharacterId.ToRef(), domainEvent.DecisionId.ToRef() });
         }
     }
+
+    public sealed class DecisionDissolvedHistoryHandler : DomainEventHandler<DecisionDissolvedEvent>
+    {
+        public static readonly AuthoredId HistoryKind = new AuthoredId("history.decision_dissolved");
+        public DecisionDissolvedHistoryHandler() : base(DecisionDomainEventTypes.DecisionDissolved) { }
+        protected override void Handle(DecisionDissolvedEvent e, WorldState world, SimulationContext context)
+        {
+            world.HistoryLedger.Record(HistoryKind, e.DissolvedAt, RetentionTier.Ephemeral,
+                $"{e.Reason}; refunded {e.InterventionsToRefund.Count} intervention(s)",
+                new[] { e.CharacterId.ToRef(), e.DecisionId.ToRef() });
+        }
+    }
 }

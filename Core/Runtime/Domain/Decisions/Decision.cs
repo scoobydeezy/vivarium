@@ -4,6 +4,7 @@ using Vivarium.Domain.Common;
 using Vivarium.Domain.History;
 using Vivarium.Domain.Scheduling;
 using Vivarium.Domain.Time;
+using Vivarium.Domain.Activities;
 
 namespace Vivarium.Domain.Decisions
 {
@@ -18,6 +19,9 @@ namespace Vivarium.Domain.Decisions
 
         /// <summary>Made irrelevant by world events before resolving.</summary>
         Superseded = 3,
+
+        /// <summary>The choice stopped being real before it resolved; no consequence pipeline ran.</summary>
+        Dissolved = 4,
     }
 
     /// <summary>
@@ -150,6 +154,9 @@ namespace Vivarium.Domain.Decisions
 
         public DecisionResolution Resolution { get; private set; }
         public HistoryEntryId ResolutionHistoryEntryId { get; private set; }
+
+        public CommitmentConflictKey CommitmentConflictKey { get; private set; }
+        public SimTime LatestResolutionAt { get; private set; }
 
         /// <summary>The scheduled resolution event, retained so it can be cancelled or moved (§11.1).</summary>
         public ScheduledEventId PendingResolveEventId { get; private set; }
@@ -400,6 +407,27 @@ namespace Vivarium.Domain.Decisions
 
         public void SetPendingResolveEvent(ScheduledEventId eventId) => PendingResolveEventId = eventId;
 
+        public void SetCommitmentConflict(CommitmentConflictKey key, SimTime latestResolutionAt)
+        {
+            RequireActive();
+            CommitmentConflictKey = key ?? throw new ArgumentNullException(nameof(key));
+            LatestResolutionAt = latestResolutionAt;
+            ResolveAt = latestResolutionAt;
+        }
+
+        public void UpdateLatestResolutionAt(SimTime latestResolutionAt)
+        {
+            RequireActive();
+            LatestResolutionAt = latestResolutionAt;
+            ResolveAt = latestResolutionAt;
+        }
+
+        public void RestoreCommitmentConflict(CommitmentConflictKey key, SimTime latestResolutionAt)
+        {
+            CommitmentConflictKey = key;
+            LatestResolutionAt = latestResolutionAt;
+        }
+
         /// <summary>
         /// Reinstates an influence exactly as saved, including its stable id (§38).
         /// <para>
@@ -482,6 +510,8 @@ namespace Vivarium.Domain.Decisions
         public void Expire() => Status = DecisionStatus.Expired;
 
         public void Supersede() => Status = DecisionStatus.Superseded;
+
+        public void Dissolve() => Status = DecisionStatus.Dissolved;
 
         public override string ToString() => $"{DefinitionId} for {CharacterId} ({Status}, {_influences.Count} influences)";
 

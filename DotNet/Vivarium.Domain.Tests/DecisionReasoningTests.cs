@@ -74,6 +74,22 @@ namespace Vivarium.Domain.Tests
         }
 
         [Fact]
+        public void DefaultReasonChannelKeepsDistinctBoundTargetsSeparate()
+        {
+            Decision decision = Decision(1);
+            SocialDecisionInfluenceSpec spec = Spec();
+            CandidateReason first = new InterpersonalComfortConsideration().Evaluate(
+                decision, Target, Evaluation(2500, AppraisalStrength.Minor), spec);
+            CandidateReason second = new InterpersonalComfortConsideration().Evaluate(
+                decision, new CharacterId(Target.Value + 1), Evaluation(2500, AppraisalStrength.Minor), spec);
+
+            IReadOnlyList<CandidateReason> result = new ReasonConsolidator().Consolidate(new[] { first, second });
+
+            Assert.Equal(2, result.Count);
+            Assert.NotEqual(result[0].Subject, result[1].Subject);
+        }
+
+        [Fact]
         public void CompiledProgramEvaluatesTargetAndTargetlessOptionsInOneDecision()
         {
             var world = new WorldState(41, SimTime.Epoch);

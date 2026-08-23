@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Events;
 
@@ -10,6 +11,7 @@ namespace Vivarium.Domain.Decisions
         public static readonly AuthoredId DecisionResolved = new AuthoredId("domain.decision.resolved");
         public static readonly AuthoredId DecisionInfluencesChanged = new AuthoredId("domain.decision.influences_changed");
         public static readonly AuthoredId DecisionInterventionApplied = new AuthoredId("domain.decision.intervention_applied");
+        public static readonly AuthoredId DecisionDissolved = new AuthoredId("domain.decision.dissolved");
     }
 
     /// <summary>A new Decision entered the world.</summary>
@@ -91,5 +93,32 @@ namespace Vivarium.Domain.Decisions
         public CharacterId CharacterId { get; }
         public AuthoredId InterventionDefinitionId { get; }
         public DecisionInfluenceId InfluenceId { get; }
+    }
+
+    public sealed class DecisionDissolvedEvent : IDomainEvent
+    {
+        private readonly AppliedIntervention[] _interventions;
+
+        public DecisionDissolvedEvent(
+            DecisionId decisionId,
+            CharacterId characterId,
+            AuthoredId reason,
+            IReadOnlyList<AppliedIntervention> interventions,
+            Domain.Time.SimTime dissolvedAt)
+        {
+            DecisionId = decisionId;
+            CharacterId = characterId;
+            Reason = reason;
+            DissolvedAt = dissolvedAt;
+            _interventions = new AppliedIntervention[interventions?.Count ?? 0];
+            for (int i = 0; i < _interventions.Length; i++) _interventions[i] = interventions[i];
+        }
+
+        public AuthoredId EventType => DecisionDomainEventTypes.DecisionDissolved;
+        public DecisionId DecisionId { get; }
+        public CharacterId CharacterId { get; }
+        public AuthoredId Reason { get; }
+        public IReadOnlyList<AppliedIntervention> InterventionsToRefund => _interventions;
+        public Domain.Time.SimTime DissolvedAt { get; }
     }
 }

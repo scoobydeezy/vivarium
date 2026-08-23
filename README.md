@@ -3299,6 +3299,15 @@ These are the rules future code must preserve.
 97. Compiled Decision dependency routing is derived at `(DecisionId, BindingId, OptionId)` granularity, is never persisted, and is deterministically rebuilt from the snapshotted program and current Signal providers after load.
 98. Each retained resolution roll freezes its semantic reason, signed evaluation result, uncertainty, Signal inputs, source revisions, and compact contribution evidence; explanation projections read only that snapshot, and it is pruned with the linked Decision history record.
 99. Unity-authored Decision reasoning is converted into the same typed compiled program used headlessly and is linted before play for provider capability, parameter and Option compatibility, requested Signals, ReasonChannel/scale validity, and legacy-path conflicts; catalog construction repeats authoritative validation.
+100. Commitment-conflict Decision Options carry canonical Preserve/Defer/Relinquish plans; individual Commitment IDs are not themselves the choice.
+101. Commitment conflict is determined by genuine joint feasibility of the candidate set; pairwise overlap or pairwise compatibility is not sufficient.
+102. Feasibility determines valid plans before Considerations rank them; impossibility never becomes an opposing Influence.
+103. An open commitment-conflict Decision has a derived, revision-dependent hard deadline that Hold and offline catch-up cannot cross.
+104. Resolving a commitment-conflict Decision mutates Commitment intent only; ordinary planner reactions determine subsequent Activity and Travel.
+105. Relinquishing a Commitment under conflict is distinct authoritative history from generic cancellation.
+106. If an open Decision's candidate set stops describing a real choice, it becomes Dissolved without executing resolution consequences; held capacity releases and spent interventions are unconditionally refundable.
+107. Active conflict and dependency routing indexes are reconstructible projections; plan payloads, conflict episode identity, deadline state, interventions, and historical resolution evidence are authoritative save state.
+108. Non-stacking ReasonChannel consolidation may merge repeated readings of the same bound subject, but never merges distinct targets or Commitments within one Option.
 
 ---
 

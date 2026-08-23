@@ -34,9 +34,12 @@ namespace Vivarium.Application.Tests
         public static readonly AuthoredId ActivityWorking = new AuthoredId("activity.working");
         public static readonly AuthoredId DecisionJobOffer = new AuthoredId("decision.job_offer");
         public static readonly AuthoredId DecisionLeaveWork = new AuthoredId("decision.leave_work_early");
+        public static readonly AuthoredId DecisionCommitmentConflict = new AuthoredId("decision.commitment_conflict");
         public static readonly AuthoredId OptionAccept = new AuthoredId("option.accept");
         public static readonly AuthoredId OptionStay = new AuthoredId("option.stay");
         public static readonly AuthoredId OptionLeave = new AuthoredId("option.leave");
+        public static readonly AuthoredId OptionPreserveFirstCommitment = new AuthoredId("option.preserve_first_relinquish_second");
+        public static readonly AuthoredId OptionPreserveSecondCommitment = new AuthoredId("option.preserve_second_relinquish_first");
         public static readonly AuthoredId InterventionStepUp = new AuthoredId("intervention.encourage");
         public static readonly AuthoredId Walking = new AuthoredId("travel_mode.walking");
         public static readonly AuthoredId KindBuilding = new AuthoredId("location_kind.building");
@@ -76,6 +79,19 @@ namespace Vivarium.Application.Tests
                 SimDuration.FromHours(8),
                 new AuthoredId("conflict_scope.employment"),
                 importance: 10));
+
+            builder.Add(new DecisionDefinition(
+                DecisionCommitmentConflict,
+                new[]
+                {
+                    CommitmentOption(OptionPreserveFirstCommitment, "Preserve first / relinquish second", 0),
+                    CommitmentOption(OptionPreserveSecondCommitment, "Preserve second / relinquish first", 1),
+                },
+                SimDuration.FromMinutes(10),
+                new AuthoredId("conflict_scope.schedule"),
+                importance: 30,
+                reasoningProgram: CommitmentConflictReasoningProgram(),
+                commitmentConflictTrigger: new CommitmentConflictDecisionTrigger()));
 
             builder.Add(new DecisionDefinition(
                 DecisionLeaveWork,
@@ -164,6 +180,78 @@ namespace Vivarium.Application.Tests
             option.SetContext(marker, DecisionParameterValue.FromInteger(1));
             return option;
         }
+
+        private static DecisionOption CommitmentOption(AuthoredId id, AuthoredId label, int order)
+        {
+            var option = new DecisionOption(id, label, order);
+            option.SetContext(
+                DecisionReasoningParameters.Commitment,
+                DecisionParameterValue.FromEntity(new EntityRef(EntityKind.Commitment, 0)));
+            option.SetContext(DecisionReasoningParameters.PreservedCommitment,
+                DecisionParameterValue.FromEntity(new EntityRef(EntityKind.Commitment, 0)));
+            option.SetContext(DecisionReasoningParameters.RelinquishedCommitment,
+                DecisionParameterValue.FromEntity(new EntityRef(EntityKind.Commitment, 0)));
+            return option;
+        }
+
+        private static DecisionReasoningProgram CommitmentConflictReasoningProgram() =>
+            new DecisionReasoningProgram(new[]
+            {
+                CommitmentConflictBinding("preserved", DecisionReasoningParameters.PreservedCommitment, 1),
+                CommitmentConflictBinding("relinquished", DecisionReasoningParameters.RelinquishedCommitment, -1),
+            });
+
+        private static CompiledConsiderationBinding CommitmentConflictBinding(
+            string instance, AuthoredId optionParameter, int polarity) =>
+                new CompiledConsiderationBinding(
+                    new AuthoredId("binding.commitment_conflict.honorability." + instance),
+                    new AuthoredId("consideration.commitment_honorability"),
+                    1,
+                    new[]
+                    {
+                        new ConsiderationParameter(DecisionReasoningParameters.Actor, DecisionParameterKind.Entity),
+                        new ConsiderationParameter(DecisionReasoningParameters.Commitment, DecisionParameterKind.Entity),
+                        new ConsiderationParameter(DecisionReasoningParameters.Target, DecisionParameterKind.Entity),
+                    },
+                    new[]
+                    {
+                        new CompiledParameterBinding(DecisionReasoningParameters.Actor, ParameterBindingSource.DecisionActor),
+                        new CompiledParameterBinding(
+                            DecisionReasoningParameters.Commitment,
+                            ParameterBindingSource.OptionContext,
+                            optionParameter),
+                        new CompiledParameterBinding(DecisionReasoningParameters.Target,
+                            ParameterBindingSource.OptionContext, optionParameter),
+                    },
+                    new[]
+                    {
+                        new DecisionSignalRequest(CommitmentDecisionSignals.Priority, DecisionSignalProviderIds.Commitment),
+                        new DecisionSignalRequest(CommitmentDecisionSignals.Urgency, DecisionSignalProviderIds.Commitment),
+                        new DecisionSignalRequest(CommitmentDecisionSignals.TravelBurden, DecisionSignalProviderIds.Commitment),
+                    },
+                    new SignalFieldDefinition(
+                        new AuthoredId("field.commitment_conflict.honorability"),
+                        0,
+                        new[]
+                        {
+                            new SignalLinearTerm(CommitmentDecisionSignals.Priority, polarity * 6000, new AuthoredId("reason.commitment.priority")),
+                            new SignalLinearTerm(CommitmentDecisionSignals.Urgency, polarity * 4000, new AuthoredId("reason.commitment.urgency")),
+                            new SignalLinearTerm(CommitmentDecisionSignals.TravelBurden, polarity * -4000, new AuthoredId("reason.commitment.travel")),
+                        }, null, null, null),
+                    new ReasonChannelDefinition(new AuthoredId("reason_channel.commitment_honorability")),
+                    new ReasonScaleProfile(
+                        new AuthoredId("reason_scale.commitment_honorability"),
+                        new[]
+                        {
+                            new ReasonDieThreshold(0, Die.D4),
+                            new ReasonDieThreshold(2000, Die.D6),
+                            new ReasonDieThreshold(4000, Die.D8),
+                            new ReasonDieThreshold(6000, Die.D10),
+                        }),
+                    new AuthoredId("cat.commitment"),
+                    new AuthoredId("influence.commitment_worth_honoring"),
+                    new AuthoredId("influence.commitment_costly_to_honor"),
+                    InfluenceVisibility.Full);
 
         private static DecisionReasoningProgram LeaveWorkReasoningProgram() => new DecisionReasoningProgram(
             new[]
