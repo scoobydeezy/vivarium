@@ -73,6 +73,15 @@ namespace Vivarium.Domain.Common
         /// <summary>An observer's belief distribution about one target.</summary>
         public static readonly AuthoredId SocialBelief = new AuthoredId("revision.social.belief");
 
+        /// <summary>A character's authored Value intensity. Scope with the Value id.</summary>
+        public static readonly AuthoredId CharacterValue = new AuthoredId("revision.character.value");
+
+        /// <summary>A character entering or leaving active simulation.</summary>
+        public static readonly AuthoredId CharacterLifecycle = new AuthoredId("revision.character.lifecycle");
+
+        /// <summary>A typed runtime Decision context parameter. Scope with the parameter id.</summary>
+        public static readonly AuthoredId DecisionContext = new AuthoredId("revision.decision.context");
+
         /// <summary>A decision's influence set (§17.2).</summary>
         public static readonly AuthoredId DecisionInfluence = new AuthoredId("revision.decision.influence");
 

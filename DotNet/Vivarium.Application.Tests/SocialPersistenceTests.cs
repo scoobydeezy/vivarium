@@ -122,7 +122,7 @@ namespace Vivarium.Application.Tests
             var report = new SaveMigrator().Migrate(save, 1, 1, 1);
 
             Assert.True(report.CanLoad);
-            Assert.Equal(2, save.SchemaVersion);
+            Assert.Equal(SaveGameData.CurrentSchemaVersion, save.SchemaVersion);
             Assert.Equal(2, save.Relationships[0].LowToHigh.ObserverId);
             Assert.Equal(3, save.Relationships[0].HighToLow.ObserverId);
             Assert.Equal(-4000, save.Relationships[0].LowToHigh.Channels[0].Progression.ValueAtAnchor);

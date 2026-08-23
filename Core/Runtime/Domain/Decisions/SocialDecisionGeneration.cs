@@ -12,6 +12,32 @@ using Vivarium.Domain.Time;
 
 namespace Vivarium.Domain.Decisions
 {
+    public sealed class SocialDecisionInfluenceSpec
+    {
+        public SocialDecisionInfluenceSpec(
+            AuthoredId positiveOptionId,
+            AuthoredId negativeOptionId,
+            AuthoredId categoryId,
+            AuthoredId positiveLabelId,
+            AuthoredId negativeLabelId,
+            InfluenceVisibility visibility)
+        {
+            PositiveOptionId = positiveOptionId;
+            NegativeOptionId = negativeOptionId;
+            CategoryId = categoryId;
+            PositiveLabelId = positiveLabelId;
+            NegativeLabelId = negativeLabelId;
+            Visibility = visibility;
+        }
+
+        public AuthoredId PositiveOptionId { get; }
+        public AuthoredId NegativeOptionId { get; }
+        public AuthoredId CategoryId { get; }
+        public AuthoredId PositiveLabelId { get; }
+        public AuthoredId NegativeLabelId { get; }
+        public InfluenceVisibility Visibility { get; }
+    }
+
     public sealed class SocialInteractionDecisionTrigger
     {
         public SocialInteractionDecisionTrigger(
@@ -53,7 +79,9 @@ namespace Vivarium.Domain.Decisions
         public const string RelationshipOutcomeParameterPrefix = "decision.param.social_relationship_outcome/";
         private readonly DefinitionCatalog _catalog;
         private readonly SocialPressureEvaluator _social = new SocialPressureEvaluator();
-        private readonly SocialDecisionInfluenceFactory _influences = new SocialDecisionInfluenceFactory();
+        private readonly InterpersonalComfortConsideration _consideration = new InterpersonalComfortConsideration();
+        private readonly ReasonConsolidator _consolidator = new ReasonConsolidator();
+        private readonly DecisionReasoningInfluenceFactory _influences = new DecisionReasoningInfluenceFactory();
 
         public SocialInteractionDecisionGenerationHandler(DefinitionCatalog catalog)
             : base(InteractionOccurredEvent.Type)
@@ -133,7 +161,12 @@ namespace Vivarium.Domain.Decisions
                     new AuthoredId(RelationshipOutcomeParameterPrefix + outcome.OptionId.Value + "/" + outcome.ChannelId.Value),
                     outcome.Delta);
             }
-            _influences.Add(decision, targetId, trigger.LensId, evaluation, trigger.InfluenceSpec);
+            CandidateReason candidate = _consideration.Evaluate(decision, targetId, evaluation, trigger.InfluenceSpec);
+            IReadOnlyList<CandidateReason> reasons = _consolidator.Consolidate(new[] { candidate });
+            if (reasons.Count > 0)
+            {
+                _influences.Add(decision, reasons[0]);
+            }
 
             world.Decisions.Add(decision.Id, decision);
             world.DecisionDependencies.Register(decision);
@@ -198,7 +231,9 @@ namespace Vivarium.Domain.Decisions
         private readonly DecisionDefinition _definition;
         private readonly DefinitionCatalog _catalog;
         private readonly SocialPressureEvaluator _social = new SocialPressureEvaluator();
-        private readonly SocialDecisionInfluenceFactory _factory = new SocialDecisionInfluenceFactory();
+        private readonly InterpersonalComfortConsideration _consideration = new InterpersonalComfortConsideration();
+        private readonly ReasonConsolidator _consolidator = new ReasonConsolidator();
+        private readonly DecisionReasoningInfluenceFactory _factory = new DecisionReasoningInfluenceFactory();
 
         public SocialDecisionInfluenceReevaluator(DecisionDefinition definition, DefinitionCatalog catalog)
         {
@@ -229,19 +264,21 @@ namespace Vivarium.Domain.Decisions
                 new SocialEvaluationContext(),
                 pressure,
                 _catalog);
-            DecisionInfluence existing = FindActiveSocialInfluence(decision, targetId, trigger.InfluenceSpec.CategoryId);
-            if (evaluation.Strength == AppraisalStrength.Negligible)
+            CandidateReason candidate = _consideration.Evaluate(decision, targetId, evaluation, trigger.InfluenceSpec);
+            IReadOnlyList<CandidateReason> reasons = _consolidator.Consolidate(new[] { candidate });
+            DecisionInfluence existing = FindActiveSocialInfluence(
+                decision,
+                targetId,
+                ReasonChannelIds.InterpersonalComfort);
+            if (reasons.Count == 0)
             {
                 if (existing != null) decision.RetractInfluence(existing.Id);
                 return;
             }
 
-            bool positive = evaluation.NormalizedAppraisal >= 0;
-            AuthoredId desiredOption = positive
-                ? trigger.InfluenceSpec.PositiveOptionId
-                : trigger.InfluenceSpec.NegativeOptionId;
-            Die desiredDie = SocialDecisionInfluenceFactory.DieFor(evaluation.Strength);
-            if (existing != null && existing.OptionId == desiredOption)
+            CandidateReason reason = reasons[0];
+            Die desiredDie = reason.GameplayDie;
+            if (existing != null && existing.OptionId == reason.OptionId && existing.Polarity == reason.Polarity)
             {
                 if (existing.CurrentDie != desiredDie)
                 {
@@ -254,18 +291,20 @@ namespace Vivarium.Domain.Decisions
             {
                 decision.RetractInfluence(existing.Id);
             }
-            _factory.Add(decision, targetId, trigger.LensId, evaluation, trigger.InfluenceSpec);
+            _factory.Add(decision, reason);
         }
 
         private static DecisionInfluence FindActiveSocialInfluence(
             Decision decision,
             CharacterId target,
-            AuthoredId category)
+            AuthoredId reasonChannel)
         {
             for (int i = 0; i < decision.Influences.Count; i++)
             {
                 DecisionInfluence influence = decision.Influences[i];
-                if (!influence.IsRetracted && influence.Subject.Equals(target.ToRef()) && influence.Category == category)
+                if (!influence.IsRetracted &&
+                    influence.Subject.Equals(target.ToRef()) &&
+                    influence.ReasonChannelId == reasonChannel)
                 {
                     return influence;
                 }

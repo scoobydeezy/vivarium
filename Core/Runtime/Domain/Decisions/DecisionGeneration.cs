@@ -72,11 +72,16 @@ namespace Vivarium.Domain.Decisions
     {
         private static readonly AuthoredId ResolveDelayParameter = new AuthoredId("decision.param.time_to_resolve_minutes");
         private readonly DefinitionCatalog _catalog;
+        private readonly DecisionSignalProviderRegistry _signalProviders;
+        private readonly CompiledDecisionReasoningService _reasoning = new CompiledDecisionReasoningService();
 
-        public NeedThresholdDecisionGenerationHandler(DefinitionCatalog catalog)
+        public NeedThresholdDecisionGenerationHandler(
+            DefinitionCatalog catalog,
+            DecisionSignalProviderRegistry signalProviders = null)
             : base(NeedThresholdReachedEvent.Type)
         {
             _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
+            _signalProviders = signalProviders ?? DecisionSignalProviderRegistry.WithBuiltIns();
         }
 
         protected override void Handle(NeedThresholdReachedEvent domainEvent, WorldState world, SimulationContext context)
@@ -100,7 +105,7 @@ namespace Vivarium.Domain.Decisions
             }
         }
 
-        private static void TryGenerate(DecisionDefinition definition, CharacterId characterId, WorldState world)
+        private void TryGenerate(DecisionDefinition definition, CharacterId characterId, WorldState world)
         {
             var conflict = definition.ConflictScopeKind.IsSet
                 ? new DecisionConflictScope(definition.ConflictScopeKind, characterId.ToRef())
@@ -126,6 +131,7 @@ namespace Vivarium.Domain.Decisions
                 definition.Importance);
 
             decision.SnapshotParameter(ResolveDelayParameter, definition.TimeToResolve.TotalMinutes);
+            if (definition.ReasoningProgram != null) decision.SnapshotReasoningProgram(definition.ReasoningProgram);
             for (int i = 0; i < definition.InfluenceTemplates.Count; i++)
             {
                 DecisionInfluenceTemplate influence = definition.InfluenceTemplates[i];
@@ -140,6 +146,10 @@ namespace Vivarium.Domain.Decisions
             }
 
             world.Decisions.Add(decision.Id, decision);
+            if (decision.ReasoningProgram != null)
+            {
+                _reasoning.EvaluateAndReconcile(world, decision, _signalProviders);
+            }
             for (int i = 0; i < definition.DependencyTemplates.Count; i++)
             {
                 DecisionDependencyKey template = definition.DependencyTemplates[i];

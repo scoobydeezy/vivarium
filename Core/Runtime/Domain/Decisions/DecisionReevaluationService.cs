@@ -60,11 +60,13 @@ namespace Vivarium.Domain.Decisions
         {
             WorldState world = context.World;
             IReadOnlyCollection<DecisionId> dependents = world.DecisionDependencies.DecisionsDependingOn(changedKey);
+            var orderedDependents = new List<DecisionId>(dependents);
             int changed = 0;
 
             // Ascending DecisionId — reevaluation order is deterministic (§15).
-            foreach (DecisionId id in dependents)
+            for (int dependent = 0; dependent < orderedDependents.Count; dependent++)
             {
+                DecisionId id = orderedDependents[dependent];
                 if (!world.Decisions.TryGet(id, out Decision decision) || !decision.IsActive)
                 {
                     continue;

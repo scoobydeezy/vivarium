@@ -75,7 +75,8 @@ namespace Vivarium.Application.Queries
                     decision.Resolution.ChosenOptionId.Value,
                     decision.Resolution.Degree.ToString(),
                     decision.Resolution.ResolvedAt.ToString(),
-                    decision.Resolution.Source.ToString());
+                    decision.Resolution.Source.ToString(),
+                    ProjectResolvedReasons(decision.Resolution));
 
             return new DecisionView(
                 decision.Id.Value,
@@ -89,6 +90,42 @@ namespace Vivarium.Application.Queries
                 decision.IsActive,
                 options,
                 resolution);
+        }
+
+        private static IReadOnlyList<DecisionReasonExplanationView> ProjectResolvedReasons(DecisionResolution resolution)
+        {
+            var views = new List<DecisionReasonExplanationView>();
+            for (int i = 0; i < resolution.Rolls.Count; i++)
+            {
+                InfluenceRoll roll = resolution.Rolls[i];
+                FrozenDecisionReason reason = roll.Reason;
+                if (reason == null || (reason.Visibility & InfluenceVisibility.Existence) == 0) continue;
+                var inputs = new List<string>(reason.Evaluation.Signals.Count);
+                for (int s = 0; s < reason.Evaluation.Signals.Count; s++)
+                {
+                    DecisionSignalEvidence signal = reason.Evaluation.Signals[s];
+                    inputs.Add($"{signal.SignalId.Value}={signal.Mean}, variance={signal.Variance} ({signal.Applicability})");
+                }
+                var contributions = new List<string>(reason.Evaluation.Contributions.Count);
+                for (int c = 0; c < reason.Evaluation.Contributions.Count; c++)
+                {
+                    DecisionContributionEvidence contribution = reason.Evaluation.Contributions[c];
+                    contributions.Add($"{contribution.SourceId.Value}:{contribution.Amount}");
+                }
+                views.Add(new DecisionReasonExplanationView(
+                    roll.InfluenceId.Value,
+                    roll.OptionId.Value,
+                    (reason.Visibility & InfluenceVisibility.Label) != 0 ? reason.LabelId.Value : null,
+                    (reason.Visibility & InfluenceVisibility.Category) != 0 ? reason.CategoryId.Value : null,
+                    (reason.Visibility & InfluenceVisibility.Magnitude) != 0 ? roll.Die.Sides : 0,
+                    roll.Rolled,
+                    roll.Polarity.ToString(),
+                    reason.Evaluation.ExpectedScore,
+                    reason.Evaluation.OutputVariance,
+                    inputs,
+                    contributions));
+            }
+            return views;
         }
 
         /// <summary>

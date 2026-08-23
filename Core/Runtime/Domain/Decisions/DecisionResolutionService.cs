@@ -7,6 +7,20 @@ using Vivarium.Domain.Simulation;
 
 namespace Vivarium.Domain.Decisions
 {
+    /// <summary>Owns how one option-relative roll changes that option's score.</summary>
+    public interface IDecisionResolutionPolicy
+    {
+        int ApplyRoll(int currentTotal, DecisionInfluence influence, int rolled);
+    }
+
+    public sealed class SignedOptionRelativeResolutionPolicy : IDecisionResolutionPolicy
+    {
+        public int ApplyRoll(int currentTotal, DecisionInfluence influence, int rolled) =>
+            influence.Polarity == InfluencePolarity.Supporting
+                ? checked(currentTotal + rolled)
+                : checked(currentTotal - rolled);
+    }
+
     /// <summary>
     /// Resolves a Decision through deterministic dice (§18).
     /// <para>
@@ -24,6 +38,12 @@ namespace Vivarium.Domain.Decisions
         private const int DecisiveMargin = 8;
         private const int ClearMargin = 4;
         private const int MarginalMargin = 2;
+        private readonly IDecisionResolutionPolicy _policy;
+
+        public DecisionResolutionService(IDecisionResolutionPolicy policy = null)
+        {
+            _policy = policy ?? new SignedOptionRelativeResolutionPolicy();
+        }
 
         public DecisionResolution Resolve(Decision decision, SimulationContext context)
         {
@@ -62,11 +82,18 @@ namespace Vivarium.Domain.Decisions
                 AuthoredId purpose = PurposeFor(influence);
                 int rolled = context.Random.RollDie(scope, purpose, influence.RollIndex, influence.CurrentDie.Sides);
 
-                rolls.Add(new InfluenceRoll(influence.Id, influence.OptionId, influence.CurrentDie, rolled, influence.RollIndex));
+                rolls.Add(new InfluenceRoll(
+                    influence.Id,
+                    influence.OptionId,
+                    influence.CurrentDie,
+                    rolled,
+                    influence.RollIndex,
+                    influence.Polarity,
+                    FrozenDecisionReason.From(influence)));
 
                 if (totalsByOption.TryGetValue(influence.OptionId, out int running))
                 {
-                    totalsByOption[influence.OptionId] = running + rolled;
+                    totalsByOption[influence.OptionId] = _policy.ApplyRoll(running, influence, rolled);
                 }
                 else
                 {

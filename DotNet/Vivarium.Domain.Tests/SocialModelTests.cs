@@ -91,6 +91,8 @@ namespace Vivarium.Domain.Tests
             Assert.Equal(point.PointLatentScore, uncertain.PointLatentScore);
             Assert.NotEqual(point.ExpectedLatentScore, uncertain.ExpectedLatentScore);
             Assert.Equal(-1000, uncertain.UncertaintyEffect);
+            Assert.True(uncertain.LatentScoreVariance > 0);
+            Assert.True(uncertain.OutputVariance > 0);
         }
 
         [Fact]

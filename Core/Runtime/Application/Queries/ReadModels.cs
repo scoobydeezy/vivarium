@@ -232,12 +232,18 @@ namespace Vivarium.Application.Queries
     /// <summary>The outcome, once there is one (§18).</summary>
     public sealed class DecisionResolutionView
     {
-        public DecisionResolutionView(string chosenOptionId, string degreeLabel, string resolvedAtLabel, string outcomeSourceLabel)
+        public DecisionResolutionView(
+            string chosenOptionId,
+            string degreeLabel,
+            string resolvedAtLabel,
+            string outcomeSourceLabel,
+            IReadOnlyList<DecisionReasonExplanationView> reasons = null)
         {
             ChosenOptionId = chosenOptionId;
             DegreeLabel = degreeLabel;
             ResolvedAtLabel = resolvedAtLabel;
             OutcomeSourceLabel = outcomeSourceLabel;
+            Reasons = reasons ?? new DecisionReasonExplanationView[0];
         }
 
         public string ChosenOptionId { get; }
@@ -247,6 +253,39 @@ namespace Vivarium.Application.Queries
         public string ResolvedAtLabel { get; }
 
         public string OutcomeSourceLabel { get; }
+        public IReadOnlyList<DecisionReasonExplanationView> Reasons { get; }
+    }
+
+    public sealed class DecisionReasonExplanationView
+    {
+        public DecisionReasonExplanationView(
+            int influenceId,
+            string optionId,
+            string label,
+            string category,
+            int dieSides,
+            int rolled,
+            string polarity,
+            long expectedScore,
+            long outputVariance,
+            IReadOnlyList<string> inputs,
+            IReadOnlyList<string> contributions)
+        {
+            InfluenceId = influenceId; OptionId = optionId; Label = label; Category = category;
+            DieSides = dieSides; Rolled = rolled; Polarity = polarity; ExpectedScore = expectedScore;
+            OutputVariance = outputVariance; Inputs = inputs; Contributions = contributions;
+        }
+        public int InfluenceId { get; }
+        public string OptionId { get; }
+        public string Label { get; }
+        public string Category { get; }
+        public int DieSides { get; }
+        public int Rolled { get; }
+        public string Polarity { get; }
+        public long ExpectedScore { get; }
+        public long OutputVariance { get; }
+        public IReadOnlyList<string> Inputs { get; }
+        public IReadOnlyList<string> Contributions { get; }
     }
 
     /// <summary>A location and who the player can see in it (§30, §35).</summary>

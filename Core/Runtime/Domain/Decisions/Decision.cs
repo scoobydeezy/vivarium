@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Vivarium.Domain.Common;
+using Vivarium.Domain.History;
 using Vivarium.Domain.Scheduling;
 using Vivarium.Domain.Time;
 
@@ -41,6 +42,8 @@ namespace Vivarium.Domain.Decisions
         private readonly List<AppliedIntervention> _interventions = new List<AppliedIntervention>();
         private readonly SortedSet<DecisionDependencyKey> _dependencyKeys = new SortedSet<DecisionDependencyKey>();
         private readonly SortedDictionary<AuthoredId, long> _snapshottedParameters = new SortedDictionary<AuthoredId, long>();
+        private readonly SortedDictionary<AuthoredId, DecisionParameterValue> _contextParameters =
+            new SortedDictionary<AuthoredId, DecisionParameterValue>();
         private readonly DecisionOption[] _options;
 
         private int _nextInfluenceId;
@@ -79,7 +82,7 @@ namespace Vivarium.Domain.Decisions
             _options = new DecisionOption[options.Count];
             for (int i = 0; i < options.Count; i++)
             {
-                _options[i] = options[i];
+                _options[i] = options[i].Copy();
             }
 
             Array.Sort(_options, (a, b) => a.OrderIndex.CompareTo(b.OrderIndex));
@@ -139,7 +142,14 @@ namespace Vivarium.Domain.Decisions
         /// </summary>
         public IReadOnlyDictionary<AuthoredId, long> SnapshottedParameters => _snapshottedParameters;
 
+        /// <summary>Typed runtime Decision context used by compiled Consideration bindings.</summary>
+        public IReadOnlyDictionary<AuthoredId, DecisionParameterValue> ContextParameters => _contextParameters;
+
+        /// <summary>Definition-derived reasoning semantics captured for this in-flight Decision.</summary>
+        public DecisionReasoningProgram ReasoningProgram { get; private set; }
+
         public DecisionResolution Resolution { get; private set; }
+        public HistoryEntryId ResolutionHistoryEntryId { get; private set; }
 
         /// <summary>The scheduled resolution event, retained so it can be cancelled or moved (§11.1).</summary>
         public ScheduledEventId PendingResolveEventId { get; private set; }
@@ -150,6 +160,22 @@ namespace Vivarium.Domain.Decisions
         public RevisionKey InfluenceRevisionKey => new RevisionKey(Id.ToRef(), RevisionAspects.DecisionInfluence);
 
         public void SnapshotParameter(AuthoredId key, long value) => _snapshottedParameters[key] = value;
+
+        public void SetContextParameter(AuthoredId key, DecisionParameterValue value) => _contextParameters[key] = value;
+
+        public bool TryGetContextParameter(AuthoredId key, out DecisionParameterValue value) =>
+            _contextParameters.TryGetValue(key, out value);
+
+        public void SnapshotReasoningProgram(DecisionReasoningProgram program)
+        {
+            if (ReasoningProgram != null)
+            {
+                throw new InvalidOperationException($"Decision {Id} already has a snapshotted reasoning program.");
+            }
+            ReasoningProgram = program ?? throw new ArgumentNullException(nameof(program));
+        }
+
+        public void RestoreReasoningProgram(DecisionReasoningProgram program) => ReasoningProgram = program;
 
         public long SnapshottedParameterOr(AuthoredId key, long fallback) =>
             _snapshottedParameters.TryGetValue(key, out long value) ? value : fallback;
@@ -174,7 +200,11 @@ namespace Vivarium.Domain.Decisions
             Die die,
             InfluenceVisibility defaultVisibility,
             DecisionDependencyKey dependencyKey = default,
-            EntityRef subject = default)
+            EntityRef subject = default,
+            InfluencePolarity polarity = InfluencePolarity.Supporting,
+            AuthoredId reasonChannelId = default,
+            AuthoredId reasonBindingId = default,
+            DecisionReasonEvaluation evaluation = null)
         {
             RequireActive();
 
@@ -186,7 +216,11 @@ namespace Vivarium.Domain.Decisions
                 die,
                 defaultVisibility,
                 dependencyKey,
-                subject);
+                subject,
+                polarity,
+                reasonChannelId,
+                reasonBindingId,
+                evaluation);
 
             _influences.Add(influence);
             RegisterDependency(dependencyKey);
@@ -238,6 +272,107 @@ namespace Vivarium.Domain.Decisions
             return true;
         }
 
+        public DecisionInfluence FindReasonInfluence(
+            AuthoredId bindingId,
+            AuthoredId optionId,
+            AuthoredId reasonChannelId)
+        {
+            for (int i = 0; i < _influences.Count; i++)
+            {
+                DecisionInfluence influence = _influences[i];
+                if (influence.ReasonBindingId == bindingId && influence.OptionId == optionId &&
+                    influence.ReasonChannelId == reasonChannelId)
+                {
+                    return influence;
+                }
+            }
+            return null;
+        }
+
+        /// <summary>Refreshes a compiled reason while preserving its stable id and spent interventions.</summary>
+        public bool UpdateReasonInfluence(DecisionInfluenceId id, CandidateReason reason)
+        {
+            RequireActive();
+            if (!TryGetInfluence(id, out DecisionInfluence influence)) return false;
+
+            AuthoredId oldCategory = influence.Category;
+            AuthoredId oldLabel = influence.LabelId;
+            Die oldBase = influence.BaseDie;
+            Die oldCurrent = influence.CurrentDie;
+            InfluenceVisibility oldVisibility = influence.DefaultVisibility;
+            DecisionDependencyKey oldDependency = influence.DependencyKey;
+            EntityRef oldSubject = influence.Subject;
+            InfluencePolarity oldPolarity = influence.Polarity;
+            bool oldRetracted = influence.IsRetracted;
+            DecisionReasonEvaluation oldEvaluation = influence.Evaluation;
+
+            influence.UpdateDerivedReason(
+                reason.CategoryId, reason.LabelId, reason.GameplayDie, reason.Visibility,
+                reason.DependencyKey, reason.Subject, reason.Polarity, reason.Evaluation);
+            ReplayMagnitudeInterventions(influence);
+            RegisterDependency(reason.DependencyKey);
+            for (int i = 0; i < reason.AdditionalDependencies.Count; i++)
+            {
+                RegisterDependency(reason.AdditionalDependencies[i]);
+            }
+
+            bool changed = oldCategory != influence.Category || oldLabel != influence.LabelId ||
+                oldBase != influence.BaseDie || oldCurrent != influence.CurrentDie ||
+                oldVisibility != influence.DefaultVisibility || !oldDependency.Equals(influence.DependencyKey) ||
+                !oldSubject.Equals(influence.Subject) || oldPolarity != influence.Polarity ||
+                oldRetracted != influence.IsRetracted || !SameEvaluation(oldEvaluation, influence.Evaluation);
+            if (changed) InfluenceRevision++;
+            return changed;
+        }
+
+        private static bool SameEvaluation(DecisionReasonEvaluation left, DecisionReasonEvaluation right)
+        {
+            if (left.ExpectedScore != right.ExpectedScore || left.OutputVariance != right.OutputVariance ||
+                left.Signals.Count != right.Signals.Count || left.Contributions.Count != right.Contributions.Count) return false;
+            for (int i = 0; i < left.Signals.Count; i++)
+            {
+                DecisionSignalEvidence a = left.Signals[i];
+                DecisionSignalEvidence b = right.Signals[i];
+                if (a.SignalId != b.SignalId || a.Mean != b.Mean || a.Variance != b.Variance ||
+                    a.Applicability != b.Applicability || a.SourceRevision != b.SourceRevision) return false;
+            }
+            for (int i = 0; i < left.Contributions.Count; i++)
+            {
+                DecisionContributionEvidence a = left.Contributions[i];
+                DecisionContributionEvidence b = right.Contributions[i];
+                if (a.Kind != b.Kind || a.SourceId != b.SourceId || a.Amount != b.Amount) return false;
+            }
+            return true;
+        }
+
+        private void ReplayMagnitudeInterventions(DecisionInfluence influence)
+        {
+            var applied = new List<AppliedIntervention>();
+            for (int i = 0; i < _interventions.Count; i++)
+            {
+                if (_interventions[i].TargetInfluenceId == influence.Id) applied.Add(_interventions[i]);
+            }
+            applied.Sort((a, b) => a.CommandSequence.CompareTo(b.CommandSequence));
+            for (int i = 0; i < applied.Count; i++)
+            {
+                switch (applied[i].Kind)
+                {
+                    case InterventionKind.StepDieUp:
+                        influence.SetDie(influence.CurrentDie.StepUp());
+                        break;
+                    case InterventionKind.StepDieDown:
+                        influence.SetDie(influence.CurrentDie.StepDown());
+                        break;
+                    case InterventionKind.ReplaceDie:
+                        influence.SetDie(applied[i].ReplacementDie);
+                        break;
+                    case InterventionKind.RemoveDie:
+                        influence.Retract();
+                        break;
+                }
+            }
+        }
+
         /// <summary>
         /// Records a player intervention. Validation is <see cref="DecisionInterventionRules"/>'s job —
         /// the same evaluation the UI uses to decide whether the control is even enabled (§19).
@@ -283,9 +418,15 @@ namespace Vivarium.Domain.Decisions
             int rollIndex,
             bool isRetracted,
             DecisionDependencyKey dependencyKey = default,
-            EntityRef subject = default)
+            EntityRef subject = default,
+            InfluencePolarity polarity = InfluencePolarity.Supporting,
+            AuthoredId reasonChannelId = default,
+            AuthoredId reasonBindingId = default,
+            DecisionReasonEvaluation evaluation = null)
         {
-            var influence = new DecisionInfluence(id, optionId, category, labelId, baseDie, visibility, dependencyKey, subject);
+            var influence = new DecisionInfluence(
+                id, optionId, category, labelId, baseDie, visibility, dependencyKey, subject, polarity,
+                reasonChannelId, reasonBindingId, evaluation);
             influence.SetDie(currentDie);
 
             for (int i = 0; i < rollIndex; i++)
@@ -334,6 +475,9 @@ namespace Vivarium.Domain.Decisions
             Resolution = resolution ?? throw new ArgumentNullException(nameof(resolution));
             Status = DecisionStatus.Resolved;
         }
+
+        public void LinkResolutionHistory(HistoryEntryId historyEntryId) =>
+            ResolutionHistoryEntryId = historyEntryId;
 
         public void Expire() => Status = DecisionStatus.Expired;
 

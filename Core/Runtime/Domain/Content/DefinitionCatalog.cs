@@ -242,6 +242,17 @@ namespace Vivarium.Domain.Content
                     }
                 }
 
+                if (decision.SocialTrigger != null && decision.ReasoningProgram != null)
+                {
+                    errors.Add($"decision '{decision.Id}' cannot use both legacy SocialTrigger and compiled reasoning");
+                }
+                IReadOnlyList<string> reasoningErrors = DecisionReasoningProgramValidator.Validate(
+                    decision.ReasoningProgram, decision.Options, DecisionSignalProviderIds.BuiltIns);
+                for (int i = 0; i < reasoningErrors.Count; i++)
+                {
+                    errors.Add($"decision '{decision.Id}': {reasoningErrors[i]}");
+                }
+
                 for (int i = 0; i < decision.RelationshipOutcomes.Count; i++)
                 {
                     if (!seenOptions.Contains(decision.RelationshipOutcomes[i].OptionId.Value))

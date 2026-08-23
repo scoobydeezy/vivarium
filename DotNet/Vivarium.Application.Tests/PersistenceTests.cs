@@ -1,11 +1,13 @@
 using System.Collections.Generic;
 using Vivarium.Application.Commands;
 using Vivarium.Application.Persistence;
+using Vivarium.Application.Queries;
 using Vivarium.Application.Session;
 using Vivarium.Domain.Activities;
 using Vivarium.Domain.Characters;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Decisions;
+using Vivarium.Domain.Evaluation;
 using Vivarium.Domain.Simulation;
 using Vivarium.Domain.Time;
 using Vivarium.Infrastructure.Bootstrap;
@@ -155,9 +157,157 @@ namespace Vivarium.Application.Tests
 
             Assert.Single(reloaded.Interventions);
             Assert.Equal(ambition, reloaded.Interventions[0].TargetInfluenceId);
+            Assert.Equal(InterventionKind.StepDieUp, reloaded.Interventions[0].Kind);
             Assert.True(reloaded.TryGetInfluence(ambition, out DecisionInfluence influence));
             Assert.Equal(upgraded, influence.CurrentDie);
             Assert.Equal(Die.D10, influence.BaseDie);
+        }
+
+        [Fact]
+        public void InfluencePolarityAndSignedResolutionRollsRoundTrip()
+        {
+            TestWorld fixture = TestWorld.Create();
+            Decision decision = fixture.CreateDecision();
+            DecisionInfluence opposing = decision.AddInfluence(
+                TestWorld.OptionAccept,
+                new AuthoredId("cat.risk"),
+                new AuthoredId("influence.risk"),
+                Die.D6,
+                InfluenceVisibility.Full,
+                polarity: InfluencePolarity.Opposing,
+                reasonChannelId: new AuthoredId("channel.risk"),
+                reasonBindingId: new AuthoredId("binding.risk"));
+
+            SaveGameData activeSave = fixture.Host.Session.Save("signed-active");
+            WorldState activeRestored = fixture.Host.SaveMapper.Restore(activeSave);
+            Assert.Equal(
+                InfluencePolarity.Opposing,
+                activeRestored.Decisions.Get(decision.Id).Influences[opposing.Id.Value - 1].Polarity);
+            Assert.Equal(
+                new AuthoredId("binding.risk"),
+                activeRestored.Decisions.Get(decision.Id).Influences[opposing.Id.Value - 1].ReasonBindingId);
+
+            fixture.Host.Session.Advance(SimDuration.FromHours(9));
+            SaveGameData resolvedSave = fixture.Host.Session.Save("signed-resolved");
+            WorldState resolvedRestored = fixture.Host.SaveMapper.Restore(resolvedSave);
+            Decision reloaded = resolvedRestored.Decisions.Get(decision.Id);
+            Assert.Contains(reloaded.Resolution.Rolls, roll =>
+                roll.InfluenceId == opposing.Id && roll.Polarity == InfluencePolarity.Opposing);
+        }
+
+        [Fact]
+        public void SchemaTwoInfluencesMigrateAsSupporting()
+        {
+            var save = new SaveGameData { SchemaVersion = 2 };
+            var decision = new DecisionData();
+            decision.Influences.Add(new DecisionInfluenceData());
+            decision.Rolls.Add(new InfluenceRollData());
+            save.Decisions.Add(decision);
+
+            SaveCompatibilityReport report = new SaveMigrator().Migrate(save, 0, 0, 0);
+
+            Assert.True(report.CanLoad);
+            Assert.Equal(SaveGameData.CurrentSchemaVersion, save.SchemaVersion);
+            Assert.Equal((int)InfluencePolarity.Supporting, decision.Influences[0].Polarity);
+            Assert.Equal((int)InfluencePolarity.Supporting, decision.Rolls[0].Polarity);
+        }
+
+        [Fact]
+        public void TypedDecisionContextAndReasoningProgramSurviveRoundTrip()
+        {
+            TestWorld fixture = TestWorld.Create();
+            Decision decision = fixture.CreateDecision();
+            decision.SetContextParameter(
+                DecisionReasoningParameters.Urgency,
+                DecisionParameterValue.FromInteger(6200));
+            decision.Options[0].SetContext(
+                DecisionReasoningParameters.Target,
+                DecisionParameterValue.FromEntity(fixture.Mina.ToRef()));
+
+            AuthoredId signal = DecisionReasoningParameters.Urgency;
+            var sourceTerms = new[] { new SignalLinearTerm(signal, 7300, new AuthoredId("source.original")) };
+            decision.SnapshotReasoningProgram(new DecisionReasoningProgram(new[]
+            {
+                new CompiledConsiderationBinding(
+                    new AuthoredId("binding.round_trip"), new AuthoredId("consideration.round_trip"), 17,
+                    new[] { new ConsiderationParameter(DecisionReasoningParameters.Urgency, DecisionParameterKind.Integer) },
+                    new[]
+                    {
+                        new CompiledParameterBinding(
+                            DecisionReasoningParameters.Urgency, ParameterBindingSource.DecisionContext,
+                            DecisionReasoningParameters.Urgency),
+                    },
+                    new[] { new DecisionSignalRequest(signal, DecisionSignalProviderIds.DecisionContext) },
+                    new SignalFieldDefinition(
+                        new AuthoredId("field.round_trip"), 300, sourceTerms, null, null, null, 9),
+                    new ReasonChannelDefinition(new AuthoredId("channel.round_trip")),
+                    new ReasonScaleProfile(
+                        new AuthoredId("scale.round_trip"),
+                        new[] { new ReasonDieThreshold(1200, Die.D6) }),
+                    new AuthoredId("category.round_trip"), new AuthoredId("label.yes"),
+                    new AuthoredId("label.no"), InfluenceVisibility.Category | InfluenceVisibility.Label),
+            }));
+
+            // The in-flight snapshot must not share mutable definition arrays with hot-reloaded content.
+            sourceTerms[0] = new SignalLinearTerm(signal, -9999);
+
+            WorldState restored = fixture.Host.SaveMapper.Restore(fixture.Host.Session.Save("reasoning"));
+            Decision reloaded = restored.Decisions.Get(decision.Id);
+
+            Assert.True(reloaded.TryGetContextParameter(
+                DecisionReasoningParameters.Urgency, out DecisionParameterValue urgency));
+            Assert.Equal(6200, urgency.Integer);
+            Assert.True(reloaded.Options[0].TryGetContext(
+                DecisionReasoningParameters.Target, out DecisionParameterValue target));
+            Assert.Equal(fixture.Mina.ToRef(), target.Entity);
+            CompiledConsiderationBinding binding = Assert.Single(reloaded.ReasoningProgram.Bindings);
+            Assert.Equal(17, binding.DefinitionVersion);
+            Assert.Equal(7300, Assert.Single(binding.Field.LinearTerms).Coefficient);
+            Assert.Equal(9, binding.Field.Revision);
+            Assert.Equal(Die.D6, Assert.Single(binding.Scale.Thresholds).Die);
+            Assert.Equal(2, restored.DecisionDependencies.ReasoningRoutesDependingOn(
+                new DecisionDependencyKey(
+                    RevisionAspects.Scoped(RevisionAspects.DecisionContext, signal), reloaded.Id.ToRef())).Count);
+        }
+
+        [Fact]
+        public void ResolvedExplanationEvidenceSurvivesWorldDriftAndReload()
+        {
+            TestWorld fixture = TestWorld.Create();
+            Decision decision = fixture.CreateDecision();
+            var signalId = new AuthoredId("signal.frozen_reason");
+            DecisionInfluence influence = decision.AddInfluence(
+                TestWorld.OptionAccept,
+                new AuthoredId("category.frozen"),
+                new AuthoredId("label.frozen"),
+                Die.D8,
+                InfluenceVisibility.Full,
+                reasonChannelId: new AuthoredId("channel.frozen"),
+                reasonBindingId: new AuthoredId("binding.frozen"),
+                evaluation: new DecisionReasonEvaluation(
+                    4200,
+                    900,
+                    new[] { new DecisionSignalEvidence(signalId, 6100, 225, SignalApplicability.Uncertain, 7) },
+                    new[] { new DecisionContributionEvidence(1, signalId, 4200) }));
+            DecisionResolution resolution = fixture.Host.DecisionResolution.Resolve(decision, fixture.Host.Simulation);
+            decision.Resolve(resolution);
+
+            DecisionReasonExplanationView before = FindResolvedReason(
+                new DecisionProjector().Project(fixture.Host.World, decision), influence.Id.Value);
+            fixture.Host.World.Characters.Get(decision.CharacterId).Values.Set(signalId, -10000);
+            DecisionReasonExplanationView after = FindResolvedReason(
+                new DecisionProjector().Project(fixture.Host.World, decision), influence.Id.Value);
+
+            Assert.Equal(before.ExpectedScore, after.ExpectedScore);
+            Assert.Equal(before.Inputs, after.Inputs);
+
+            WorldState restored = fixture.Host.SaveMapper.Restore(fixture.Host.Session.Save("frozen-explanation"));
+            DecisionReasonExplanationView reloaded = FindResolvedReason(
+                new DecisionProjector().Project(restored, restored.Decisions.Get(decision.Id)), influence.Id.Value);
+            Assert.Equal(before.ExpectedScore, reloaded.ExpectedScore);
+            Assert.Equal(before.OutputVariance, reloaded.OutputVariance);
+            Assert.Equal(before.Inputs, reloaded.Inputs);
+            Assert.Equal(before.Contributions, reloaded.Contributions);
         }
 
         [Fact]
@@ -350,6 +500,15 @@ namespace Vivarium.Application.Tests
             Assert.NotNull(generated);
             Assert.Equal(DecisionStatus.Resolved, generated.Status);
             Assert.Equal(TestWorld.OptionLeave, generated.Resolution.ChosenOptionId);
+            Assert.True(generated.ResolutionHistoryEntryId.IsSet);
+            Assert.True(fixture.Host.World.HistoryLedger.TryGet(
+                generated.ResolutionHistoryEntryId, out Domain.History.HistoryEntry resolutionHistory));
+            Assert.Equal(Domain.History.RetentionTier.Significant, resolutionHistory.Tier);
+
+            WorldState historyRestored = fixture.Host.SaveMapper.Restore(fixture.Host.Session.Save("resolved-history"));
+            Assert.Equal(
+                generated.ResolutionHistoryEntryId,
+                historyRestored.Decisions.Get(generated.Id).ResolutionHistoryEntryId);
 
             ActivityInstance current = fixture.Host.World.Activities.Get(
                 fixture.Host.World.Characters.Get(fixture.Mina).CurrentActivityId);
@@ -402,6 +561,15 @@ namespace Vivarium.Application.Tests
                 new UnregisteredPayload());
 
             Assert.Throws<KeyNotFoundException>(() => fixture.Host.Session.Save("slot1"));
+        }
+
+        private static DecisionReasonExplanationView FindResolvedReason(DecisionView decision, int influenceId)
+        {
+            for (int i = 0; i < decision.Resolution.Reasons.Count; i++)
+            {
+                if (decision.Resolution.Reasons[i].InfluenceId == influenceId) return decision.Resolution.Reasons[i];
+            }
+            throw new KeyNotFoundException($"No resolved reason for Influence#{influenceId}.");
         }
 
         private sealed class UnregisteredPayload : Domain.Scheduling.IScheduledEventPayload

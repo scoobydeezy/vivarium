@@ -13,6 +13,7 @@ using Vivarium.Domain.Decisions;
 using Vivarium.Domain.Relationships;
 using Vivarium.Domain.Spatial;
 using Vivarium.Domain.Time;
+using Vivarium.Unity.Authoring;
 using Vivarium.Unity.Bootstrap;
 using Vivarium.Unity.Presentation;
 
@@ -50,6 +51,65 @@ namespace Vivarium.Unity.Tests
 
             _bootstrapper.Host.Session.Advance(SimDuration.FromMinutes(60));
             Assert.That(_bootstrapper.Host.World.Clock.Now.TotalMinutes, Is.EqualTo(before + 60));
+        }
+
+        [Test]
+        public void Authored_decision_reasoning_converts_and_passes_lint()
+        {
+            var authored = new DecisionReasoningProgramEntry
+            {
+                bindings = new[]
+                {
+                    new CompiledConsiderationBindingEntry
+                    {
+                        bindingId = "binding.urgency",
+                        considerationId = "consideration.urgency",
+                        definitionVersion = 1,
+                        signals = new[]
+                        {
+                            new DecisionSignalRequestEntry
+                            {
+                                signalId = "decision.parameter.urgency",
+                                providerId = "decision.signal_provider.context",
+                            },
+                        },
+                        field = new SignalFieldEntry
+                        {
+                            authoredId = "field.urgency",
+                            linearTerms = new[]
+                            {
+                                new SignalLinearTermEntry
+                                {
+                                    signalId = "decision.parameter.urgency",
+                                    coefficient = 10000,
+                                    provenanceId = "reason.urgency",
+                                },
+                            },
+                        },
+                        reasonChannelId = "channel.urgency",
+                        scaleId = "scale.urgency",
+                        scaleThresholds = new[]
+                        {
+                            new ReasonDieThresholdEntry { minimumMagnitude = 1000, dieSides = 4 },
+                        },
+                        categoryId = "category.urgency",
+                        positiveLabelId = "reason.urgent",
+                        negativeLabelId = "reason.not_urgent",
+                        visibility = InfluenceVisibility.Full,
+                    },
+                },
+            };
+            DecisionReasoningProgram program = authored.ToDefinition();
+            var options = new[]
+            {
+                new DecisionOption(new AuthoredId("option.wait"), new AuthoredId("label.wait"), 0),
+            };
+
+            IReadOnlyList<string> errors = DecisionReasoningProgramValidator.Validate(
+                program, options, DecisionSignalProviderIds.BuiltIns);
+
+            Assert.That(errors, Is.Empty);
+            Assert.That(program.Bindings[0].Field.LinearTerms[0].Coefficient, Is.EqualTo(10000));
         }
 
         [UnityTest]

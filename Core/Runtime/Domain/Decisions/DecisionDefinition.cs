@@ -30,7 +30,8 @@ namespace Vivarium.Domain.Decisions
             IReadOnlyList<DecisionInfluenceTemplate> influenceTemplates = null,
             IReadOnlyList<DecisionActivityOutcome> activityOutcomes = null,
             SocialInteractionDecisionTrigger socialTrigger = null,
-            IReadOnlyList<DecisionRelationshipOutcome> relationshipOutcomes = null)
+            IReadOnlyList<DecisionRelationshipOutcome> relationshipOutcomes = null,
+            DecisionReasoningProgram reasoningProgram = null)
         {
             if (!id.IsSet)
             {
@@ -55,6 +56,7 @@ namespace Vivarium.Domain.Decisions
             ActivityOutcomes = activityOutcomes ?? new DecisionActivityOutcome[0];
             SocialTrigger = socialTrigger;
             RelationshipOutcomes = relationshipOutcomes ?? new DecisionRelationshipOutcome[0];
+            ReasoningProgram = reasoningProgram;
         }
 
         public AuthoredId Id { get; }
@@ -95,6 +97,9 @@ namespace Vivarium.Domain.Decisions
         public SocialInteractionDecisionTrigger SocialTrigger { get; }
 
         public IReadOnlyList<DecisionRelationshipOutcome> RelationshipOutcomes { get; }
+
+        /// <summary>Optional compiled Consideration program snapshotted by generated instances.</summary>
+        public DecisionReasoningProgram ReasoningProgram { get; }
 
         public override string ToString() => Id.ToString();
     }

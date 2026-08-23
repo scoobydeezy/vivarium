@@ -79,6 +79,8 @@ namespace Vivarium.Domain.Social
         public SocialEvaluationResult PersonalityAppraisal { get; }
         public long CombinedLatentScore { get; }
         public long NormalizedAppraisal { get; }
+        public long LatentScoreVariance => PersonalityAppraisal.LatentScoreVariance;
+        public long OutputVariance => PersonalityAppraisal.OutputVariance;
         public AppraisalStrength Strength { get; }
         public IReadOnlyList<SocialContribution> AdditionalContributions { get; }
     }

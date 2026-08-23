@@ -3,6 +3,13 @@ using Vivarium.Domain.Common;
 
 namespace Vivarium.Domain.Decisions
 {
+    /// <summary>Whether an option-relative reason supports or opposes its option.</summary>
+    public enum InfluencePolarity
+    {
+        Supporting = 1,
+        Opposing = -1,
+    }
+
     /// <summary>
     /// Stable identity of an influence <i>within</i> its Decision (§17.2).
     /// <para>
@@ -86,7 +93,11 @@ namespace Vivarium.Domain.Decisions
             Die baseDie,
             InfluenceVisibility defaultVisibility,
             DecisionDependencyKey dependencyKey = default,
-            EntityRef subject = default)
+            EntityRef subject = default,
+            InfluencePolarity polarity = InfluencePolarity.Supporting,
+            AuthoredId reasonChannelId = default,
+            AuthoredId reasonBindingId = default,
+            DecisionReasonEvaluation evaluation = null)
         {
             if (!id.IsSet)
             {
@@ -102,6 +113,14 @@ namespace Vivarium.Domain.Decisions
             DefaultVisibility = defaultVisibility;
             DependencyKey = dependencyKey;
             Subject = subject;
+            if (polarity != InfluencePolarity.Supporting && polarity != InfluencePolarity.Opposing)
+            {
+                throw new ArgumentOutOfRangeException(nameof(polarity));
+            }
+            Polarity = polarity;
+            ReasonChannelId = reasonChannelId.IsSet ? reasonChannelId : category;
+            ReasonBindingId = reasonBindingId;
+            Evaluation = evaluation ?? new DecisionReasonEvaluation(0, 0);
         }
 
         public DecisionInfluenceId Id { get; }
@@ -110,13 +129,13 @@ namespace Vivarium.Domain.Decisions
         public AuthoredId OptionId { get; }
 
         /// <summary>Authored category, e.g. <c>influence_category.personal_concern</c>.</summary>
-        public AuthoredId Category { get; }
+        public AuthoredId Category { get; private set; }
 
         /// <summary>Authored label id, e.g. <c>influence.fear_of_disappointing</c>.</summary>
-        public AuthoredId LabelId { get; }
+        public AuthoredId LabelId { get; private set; }
 
         /// <summary>The die as first constructed, before any intervention.</summary>
-        public Die BaseDie { get; }
+        public Die BaseDie { get; private set; }
 
         /// <summary>The die that will actually be rolled, after interventions and world changes.</summary>
         public Die CurrentDie { get; private set; }
@@ -128,10 +147,20 @@ namespace Vivarium.Domain.Decisions
         /// What world state this influence derives from, so a relevant change can find this Decision
         /// through the dependency index instead of rescanning every open Decision (§17.2).
         /// </summary>
-        public DecisionDependencyKey DependencyKey { get; }
+        public DecisionDependencyKey DependencyKey { get; private set; }
 
         /// <summary>Who or what the influence is about — Glen, the apartment, the employer.</summary>
-        public EntityRef Subject { get; }
+        public EntityRef Subject { get; private set; }
+
+        /// <summary>Supporting rolls add to this option; opposing rolls subtract from it.</summary>
+        public InfluencePolarity Polarity { get; private set; }
+
+        /// <summary>Semantic consolidation identity; defaults to legacy category for migrated content.</summary>
+        public AuthoredId ReasonChannelId { get; }
+
+        /// <summary>Compiled binding identity used to reconcile this reason across reevaluation.</summary>
+        public AuthoredId ReasonBindingId { get; }
+        public DecisionReasonEvaluation Evaluation { get; private set; }
 
         /// <summary>Whether the influence has been removed by a world change but retained for audit.</summary>
         public bool IsRetracted { get; private set; }
@@ -158,6 +187,33 @@ namespace Vivarium.Domain.Decisions
 
         public void Reinstate() => IsRetracted = false;
 
-        public override string ToString() => $"{LabelId} {CurrentDie} → {OptionId}{(IsRetracted ? " (retracted)" : string.Empty)}";
+        internal bool UpdateDerivedReason(
+            AuthoredId category,
+            AuthoredId labelId,
+            Die baseDie,
+            InfluenceVisibility visibility,
+            DecisionDependencyKey dependencyKey,
+            EntityRef subject,
+            InfluencePolarity polarity,
+            DecisionReasonEvaluation evaluation)
+        {
+            bool changed = Category != category || LabelId != labelId || BaseDie != baseDie ||
+                DefaultVisibility != visibility || !DependencyKey.Equals(dependencyKey) ||
+                !Subject.Equals(subject) || Polarity != polarity || IsRetracted;
+            Category = category;
+            LabelId = labelId;
+            BaseDie = baseDie;
+            CurrentDie = baseDie;
+            DefaultVisibility = visibility;
+            DependencyKey = dependencyKey;
+            Subject = subject;
+            Polarity = polarity;
+            Evaluation = evaluation ?? new DecisionReasonEvaluation(0, 0);
+            IsRetracted = false;
+            return changed;
+        }
+
+        public override string ToString() =>
+            $"{LabelId} {(Polarity == InfluencePolarity.Supporting ? "+" : "-")}{CurrentDie} → {OptionId}{(IsRetracted ? " (retracted)" : string.Empty)}";
     }
 }

@@ -5,6 +5,7 @@ using Vivarium.Domain.Attention;
 using Vivarium.Domain.Characters;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Decisions;
+using Vivarium.Domain.Evaluation;
 using Vivarium.Domain.Groups;
 using Vivarium.Domain.History;
 using Vivarium.Domain.Knowledge;
@@ -33,10 +34,14 @@ namespace Vivarium.Application.Persistence
     public sealed class SaveGameMapper
     {
         private readonly ScheduledEventPayloadCodecRegistry _payloadCodecs;
+        private readonly DecisionSignalProviderRegistry _decisionSignals;
 
-        public SaveGameMapper(ScheduledEventPayloadCodecRegistry payloadCodecs)
+        public SaveGameMapper(
+            ScheduledEventPayloadCodecRegistry payloadCodecs,
+            DecisionSignalProviderRegistry decisionSignals = null)
         {
             _payloadCodecs = payloadCodecs ?? throw new ArgumentNullException(nameof(payloadCodecs));
+            _decisionSignals = decisionSignals;
         }
 
         /// <summary>Captures a quiescent world into save data.</summary>
@@ -137,6 +142,17 @@ namespace Vivarium.Application.Persistence
 
             // Canonical state is in; derived structures are rebuilt from it and never trusted from disk.
             world.RebuildDerivedIndexes();
+            if (_decisionSignals != null)
+            {
+                var reasoning = new CompiledDecisionReasoningService();
+                foreach (Decision decision in world.Decisions.All)
+                {
+                    if (decision.IsActive && decision.ReasoningProgram != null)
+                    {
+                        reasoning.RebuildRoutes(world, decision, _decisionSignals);
+                    }
+                }
+            }
 
             return world;
         }
@@ -694,6 +710,7 @@ namespace Vivarium.Application.Persistence
                     Importance = decision.Importance,
                     InfluenceRevision = decision.InfluenceRevision,
                     PendingResolveEventId = decision.PendingResolveEventId.Value,
+                    ResolutionHistoryEntryId = decision.ResolutionHistoryEntryId.Value,
                     ConflictScopeKind = decision.ConflictScope.ScopeKind.Value,
                     ConflictScopeEntityKind = (int)decision.ConflictScope.Subject.Kind,
                     ConflictScopeRuntimeId = decision.ConflictScope.Subject.RuntimeId,
@@ -702,12 +719,17 @@ namespace Vivarium.Application.Persistence
                 for (int i = 0; i < decision.Options.Count; i++)
                 {
                     DecisionOption option = decision.Options[i];
-                    dto.Options.Add(new DecisionOptionData
+                    var optionData = new DecisionOptionData
                     {
                         Id = option.Id.Value,
                         LabelId = option.LabelId.Value,
                         OrderIndex = option.OrderIndex,
-                    });
+                    };
+                    foreach (KeyValuePair<AuthoredId, DecisionParameterValue> parameter in option.Context)
+                    {
+                        optionData.Context.Add(WriteDecisionParameter(parameter.Key, parameter.Value));
+                    }
+                    dto.Options.Add(optionData);
                 }
 
                 for (int i = 0; i < decision.Influences.Count; i++)
@@ -729,6 +751,10 @@ namespace Vivarium.Application.Persistence
                         DependencyRuntimeId = influence.DependencyKey.Subject.RuntimeId,
                         SubjectEntityKind = (int)influence.Subject.Kind,
                         SubjectRuntimeId = influence.Subject.RuntimeId,
+                        Polarity = (int)influence.Polarity,
+                        ReasonChannelId = influence.ReasonChannelId.Value,
+                        ReasonBindingId = influence.ReasonBindingId.Value,
+                        Evaluation = WriteReasonEvaluation(influence.Evaluation),
                     });
                 }
 
@@ -740,6 +766,8 @@ namespace Vivarium.Application.Persistence
                         InterventionDefinitionId = intervention.InterventionDefinitionId.Value,
                         TargetInfluenceId = intervention.TargetInfluenceId.Value,
                         CommandSequence = intervention.CommandSequence,
+                        Kind = (int)intervention.Kind,
+                        ReplacementDieSides = intervention.ReplacementDie.Sides,
                     });
                 }
 
@@ -756,6 +784,15 @@ namespace Vivarium.Application.Persistence
                 foreach (KeyValuePair<AuthoredId, long> parameter in decision.SnapshottedParameters)
                 {
                     dto.SnapshottedParameters.Add(new AuthoredLongData { Key = parameter.Key.Value, Value = parameter.Value });
+                }
+
+                foreach (KeyValuePair<AuthoredId, DecisionParameterValue> parameter in decision.ContextParameters)
+                {
+                    dto.ContextParameters.Add(WriteDecisionParameter(parameter.Key, parameter.Value));
+                }
+                if (decision.ReasoningProgram != null)
+                {
+                    dto.ReasoningProgram = WriteReasoningProgram(decision.ReasoningProgram);
                 }
 
                 if (decision.Resolution != null)
@@ -788,6 +825,8 @@ namespace Vivarium.Application.Persistence
                             DieSides = roll.Die.Sides,
                             Rolled = roll.Rolled,
                             RollIndex = roll.RollIndex,
+                            Polarity = (int)roll.Polarity,
+                            Reason = WriteFrozenReason(roll.Reason),
                         });
                     }
                 }
@@ -806,7 +845,14 @@ namespace Vivarium.Application.Persistence
                 for (int o = 0; o < options.Length; o++)
                 {
                     DecisionOptionData option = dto.Options[o];
-                    options[o] = new DecisionOption(new AuthoredId(option.Id), new AuthoredId(option.LabelId), option.OrderIndex);
+                    var context = new SortedDictionary<AuthoredId, DecisionParameterValue>();
+                    for (int p = 0; p < option.Context.Count; p++)
+                    {
+                        DecisionParameterData parameter = option.Context[p];
+                        context[new AuthoredId(parameter.Key)] = ReadDecisionParameter(parameter);
+                    }
+                    options[o] = new DecisionOption(
+                        new AuthoredId(option.Id), new AuthoredId(option.LabelId), option.OrderIndex, context);
                 }
 
                 var decision = new Decision(
@@ -840,7 +886,11 @@ namespace Vivarium.Application.Persistence
                         new DecisionDependencyKey(
                             new AuthoredId(influence.DependencyContextKind),
                             new EntityRef((EntityKind)influence.DependencyEntityKind, influence.DependencyRuntimeId)),
-                        new EntityRef((EntityKind)influence.SubjectEntityKind, influence.SubjectRuntimeId));
+                        new EntityRef((EntityKind)influence.SubjectEntityKind, influence.SubjectRuntimeId),
+                        (InfluencePolarity)influence.Polarity,
+                        new AuthoredId(influence.ReasonChannelId),
+                        new AuthoredId(influence.ReasonBindingId),
+                        ReadReasonEvaluation(influence.Evaluation));
                 }
 
                 for (int v = 0; v < dto.Interventions.Count; v++)
@@ -849,7 +899,9 @@ namespace Vivarium.Application.Persistence
                     decision.RestoreIntervention(new AppliedIntervention(
                         new AuthoredId(intervention.InterventionDefinitionId),
                         new DecisionInfluenceId(intervention.TargetInfluenceId),
-                        intervention.CommandSequence));
+                        intervention.CommandSequence,
+                        (InterventionKind)intervention.Kind,
+                        new Die(intervention.ReplacementDieSides)));
                 }
 
                 for (int k = 0; k < dto.DependencyKeys.Count; k++)
@@ -863,6 +915,16 @@ namespace Vivarium.Application.Persistence
                 for (int p = 0; p < dto.SnapshottedParameters.Count; p++)
                 {
                     decision.SnapshotParameter(new AuthoredId(dto.SnapshottedParameters[p].Key), dto.SnapshottedParameters[p].Value);
+                }
+
+                for (int p = 0; p < dto.ContextParameters.Count; p++)
+                {
+                    DecisionParameterData parameter = dto.ContextParameters[p];
+                    decision.SetContextParameter(new AuthoredId(parameter.Key), ReadDecisionParameter(parameter));
+                }
+                if (dto.ReasoningProgram != null)
+                {
+                    decision.RestoreReasoningProgram(ReadReasoningProgram(dto.ReasoningProgram));
                 }
 
                 DecisionResolution resolution = null;
@@ -884,7 +946,9 @@ namespace Vivarium.Application.Persistence
                             new AuthoredId(roll.OptionId),
                             new Die(roll.DieSides),
                             roll.Rolled,
-                            roll.RollIndex);
+                            roll.RollIndex,
+                            (InfluencePolarity)roll.Polarity,
+                            ReadFrozenReason(roll.Reason));
                     }
 
                     resolution = new DecisionResolution(
@@ -897,11 +961,303 @@ namespace Vivarium.Application.Persistence
                 }
 
                 decision.SetPendingResolveEvent(new ScheduledEventId(dto.PendingResolveEventId));
+                if (dto.ResolutionHistoryEntryId > 0)
+                {
+                    decision.LinkResolutionHistory(new HistoryEntryId(dto.ResolutionHistoryEntryId));
+                }
                 decision.RestoreInfluenceRevision(dto.InfluenceRevision);
                 decision.RestoreStatus((DecisionStatus)dto.Status, resolution);
 
                 world.Decisions.Add(decision.Id, decision);
             }
+        }
+
+        private static DecisionParameterData WriteDecisionParameter(
+            AuthoredId key,
+            DecisionParameterValue value) => new DecisionParameterData
+        {
+            Key = key.Value,
+            Kind = (int)value.Kind,
+            Integer = value.Integer,
+            AuthoredId = value.AuthoredId.Value,
+            EntityKind = (int)value.Entity.Kind,
+            RuntimeId = value.Entity.RuntimeId,
+        };
+
+        private static DecisionParameterValue ReadDecisionParameter(DecisionParameterData value)
+        {
+            switch ((DecisionParameterKind)value.Kind)
+            {
+                case DecisionParameterKind.Integer:
+                    return DecisionParameterValue.FromInteger(value.Integer);
+                case DecisionParameterKind.AuthoredId:
+                    return DecisionParameterValue.FromAuthoredId(new AuthoredId(value.AuthoredId));
+                case DecisionParameterKind.Entity:
+                    return DecisionParameterValue.FromEntity(new EntityRef((EntityKind)value.EntityKind, value.RuntimeId));
+                default:
+                    throw new InvalidOperationException($"Unknown Decision parameter kind {value.Kind}.");
+            }
+        }
+
+        private static DecisionReasonEvaluationData WriteReasonEvaluation(DecisionReasonEvaluation evaluation)
+        {
+            var data = new DecisionReasonEvaluationData
+            {
+                ExpectedScore = evaluation?.ExpectedScore ?? 0,
+                OutputVariance = evaluation?.OutputVariance ?? 0,
+            };
+            if (evaluation == null) return data;
+            for (int i = 0; i < evaluation.Signals.Count; i++)
+            {
+                DecisionSignalEvidence signal = evaluation.Signals[i];
+                data.Signals.Add(new DecisionSignalEvidenceData
+                {
+                    SignalId = signal.SignalId.Value, Mean = signal.Mean, Variance = signal.Variance,
+                    Applicability = (int)signal.Applicability, SourceRevision = signal.SourceRevision,
+                });
+            }
+            for (int i = 0; i < evaluation.Contributions.Count; i++)
+            {
+                DecisionContributionEvidence contribution = evaluation.Contributions[i];
+                data.Contributions.Add(new DecisionContributionEvidenceData
+                {
+                    Kind = contribution.Kind, SourceId = contribution.SourceId.Value, Amount = contribution.Amount,
+                });
+            }
+            return data;
+        }
+
+        private static DecisionReasonEvaluation ReadReasonEvaluation(DecisionReasonEvaluationData data)
+        {
+            if (data == null) return new DecisionReasonEvaluation(0, 0);
+            var signals = new DecisionSignalEvidence[data.Signals.Count];
+            for (int i = 0; i < signals.Length; i++)
+            {
+                DecisionSignalEvidenceData signal = data.Signals[i];
+                signals[i] = new DecisionSignalEvidence(
+                    new AuthoredId(signal.SignalId), signal.Mean, signal.Variance,
+                    (SignalApplicability)signal.Applicability, signal.SourceRevision);
+            }
+            var contributions = new DecisionContributionEvidence[data.Contributions.Count];
+            for (int i = 0; i < contributions.Length; i++)
+            {
+                contributions[i] = new DecisionContributionEvidence(
+                    data.Contributions[i].Kind, new AuthoredId(data.Contributions[i].SourceId),
+                    data.Contributions[i].Amount);
+            }
+            return new DecisionReasonEvaluation(data.ExpectedScore, data.OutputVariance, signals, contributions);
+        }
+
+        private static FrozenDecisionReasonData WriteFrozenReason(FrozenDecisionReason reason) => reason == null
+            ? null
+            : new FrozenDecisionReasonData
+            {
+                CategoryId = reason.CategoryId.Value,
+                LabelId = reason.LabelId.Value,
+                ReasonChannelId = reason.ReasonChannelId.Value,
+                BindingId = reason.BindingId.Value,
+                SubjectEntityKind = (int)reason.Subject.Kind,
+                SubjectRuntimeId = reason.Subject.RuntimeId,
+                Visibility = (int)reason.Visibility,
+                Evaluation = WriteReasonEvaluation(reason.Evaluation),
+            };
+
+        private static FrozenDecisionReason ReadFrozenReason(FrozenDecisionReasonData reason) => reason == null
+            ? null
+            : new FrozenDecisionReason(
+                new AuthoredId(reason.CategoryId), new AuthoredId(reason.LabelId),
+                new AuthoredId(reason.ReasonChannelId), new AuthoredId(reason.BindingId),
+                new EntityRef((EntityKind)reason.SubjectEntityKind, reason.SubjectRuntimeId),
+                ReadReasonEvaluation(reason.Evaluation),
+                (InfluenceVisibility)reason.Visibility);
+
+        private static DecisionReasoningProgramData WriteReasoningProgram(DecisionReasoningProgram program)
+        {
+            var result = new DecisionReasoningProgramData();
+            for (int i = 0; i < program.Bindings.Count; i++)
+            {
+                CompiledConsiderationBinding binding = program.Bindings[i];
+                var data = new CompiledConsiderationBindingData
+                {
+                    BindingId = binding.BindingId.Value,
+                    ConsiderationId = binding.ConsiderationId.Value,
+                    DefinitionVersion = binding.DefinitionVersion,
+                    Field = WriteSignalField(binding.Field),
+                    ReasonChannelId = binding.ReasonChannel.Id.Value,
+                    ConsolidationPolicy = (int)binding.ReasonChannel.ConsolidationPolicy,
+                    ScaleId = binding.Scale.Id.Value,
+                    CategoryId = binding.CategoryId.Value,
+                    PositiveLabelId = binding.PositiveLabelId.Value,
+                    NegativeLabelId = binding.NegativeLabelId.Value,
+                    Visibility = (int)binding.Visibility,
+                };
+                for (int p = 0; p < binding.ParameterSchema.Count; p++)
+                {
+                    ConsiderationParameter parameter = binding.ParameterSchema[p];
+                    data.ParameterSchema.Add(new ConsiderationParameterData
+                    {
+                        Id = parameter.Id.Value, Kind = (int)parameter.Kind, Required = parameter.Required,
+                    });
+                }
+                for (int p = 0; p < binding.ParameterBindings.Count; p++)
+                {
+                    CompiledParameterBinding parameter = binding.ParameterBindings[p];
+                    data.ParameterBindings.Add(new CompiledParameterBindingData
+                    {
+                        ParameterId = parameter.ParameterId.Value,
+                        Source = (int)parameter.Source,
+                        SourceParameterId = parameter.SourceParameterId.Value,
+                        Literal = WriteDecisionParameter(default, parameter.Literal),
+                    });
+                }
+                for (int s = 0; s < binding.Signals.Count; s++)
+                {
+                    DecisionSignalRequest signal = binding.Signals[s];
+                    data.Signals.Add(new DecisionSignalRequestData
+                    {
+                        SignalId = signal.SignalId.Value, ProviderId = signal.ProviderId.Value,
+                    });
+                }
+                for (int t = 0; t < binding.Scale.Thresholds.Count; t++)
+                {
+                    ReasonDieThreshold threshold = binding.Scale.Thresholds[t];
+                    data.ScaleThresholds.Add(new ReasonDieThresholdData
+                    {
+                        MinimumMagnitude = threshold.MinimumMagnitude, DieSides = threshold.Die.Sides,
+                    });
+                }
+                result.Bindings.Add(data);
+            }
+            return result;
+        }
+
+        private static DecisionReasoningProgram ReadReasoningProgram(DecisionReasoningProgramData program)
+        {
+            var bindings = new CompiledConsiderationBinding[program.Bindings.Count];
+            for (int i = 0; i < bindings.Length; i++)
+            {
+                CompiledConsiderationBindingData data = program.Bindings[i];
+                var schema = new ConsiderationParameter[data.ParameterSchema.Count];
+                for (int p = 0; p < schema.Length; p++)
+                {
+                    ConsiderationParameterData parameter = data.ParameterSchema[p];
+                    schema[p] = new ConsiderationParameter(
+                        new AuthoredId(parameter.Id), (DecisionParameterKind)parameter.Kind, parameter.Required);
+                }
+                var parameterBindings = new CompiledParameterBinding[data.ParameterBindings.Count];
+                for (int p = 0; p < parameterBindings.Length; p++)
+                {
+                    CompiledParameterBindingData parameter = data.ParameterBindings[p];
+                    parameterBindings[p] = new CompiledParameterBinding(
+                        new AuthoredId(parameter.ParameterId), (ParameterBindingSource)parameter.Source,
+                        new AuthoredId(parameter.SourceParameterId), ReadDecisionParameter(parameter.Literal));
+                }
+                var signals = new DecisionSignalRequest[data.Signals.Count];
+                for (int s = 0; s < signals.Length; s++)
+                {
+                    signals[s] = new DecisionSignalRequest(
+                        new AuthoredId(data.Signals[s].SignalId), new AuthoredId(data.Signals[s].ProviderId));
+                }
+                var thresholds = new ReasonDieThreshold[data.ScaleThresholds.Count];
+                for (int t = 0; t < thresholds.Length; t++)
+                {
+                    thresholds[t] = new ReasonDieThreshold(
+                        data.ScaleThresholds[t].MinimumMagnitude, new Die(data.ScaleThresholds[t].DieSides));
+                }
+                bindings[i] = new CompiledConsiderationBinding(
+                    new AuthoredId(data.BindingId), new AuthoredId(data.ConsiderationId), data.DefinitionVersion,
+                    schema, parameterBindings, signals, ReadSignalField(data.Field),
+                    new ReasonChannelDefinition(
+                        new AuthoredId(data.ReasonChannelId),
+                        (ReasonChannelConsolidationPolicy)data.ConsolidationPolicy),
+                    new ReasonScaleProfile(new AuthoredId(data.ScaleId), thresholds),
+                    new AuthoredId(data.CategoryId), new AuthoredId(data.PositiveLabelId),
+                    new AuthoredId(data.NegativeLabelId), (InfluenceVisibility)data.Visibility);
+            }
+            return new DecisionReasoningProgram(bindings);
+        }
+
+        private static SignalFieldDefinitionData WriteSignalField(SignalFieldDefinition field)
+        {
+            var data = new SignalFieldDefinitionData
+            {
+                Id = field.Id.Value, Bias = field.Bias, Revision = field.Revision,
+            };
+            for (int i = 0; i < field.LinearTerms.Count; i++)
+            {
+                SignalLinearTerm term = field.LinearTerms[i];
+                data.LinearTerms.Add(new SignalLinearTermData
+                {
+                    Signal = term.Signal.Value, Coefficient = term.Coefficient, Provenance = term.Provenance.Value,
+                });
+            }
+            for (int i = 0; i < field.PairwiseTerms.Count; i++)
+            {
+                SignalPairwiseTerm term = field.PairwiseTerms[i];
+                data.PairwiseTerms.Add(new SignalPairwiseTermData
+                {
+                    First = term.Pair.First.Value, Second = term.Pair.Second.Value,
+                    Coefficient = term.Coefficient, Provenance = term.Provenance.Value,
+                });
+            }
+            foreach (KeyValuePair<AuthoredId, long> ideal in field.IdealPoint)
+            {
+                data.IdealPoint.Add(new AuthoredLongData { Key = ideal.Key.Value, Value = ideal.Value });
+            }
+            for (int i = 0; i < field.IdealFactors.Count; i++)
+            {
+                SignalIdealFactor factor = field.IdealFactors[i];
+                var factorData = new SignalIdealFactorData { Id = factor.Id.Value, Provenance = factor.Provenance.Value };
+                for (int c = 0; c < factor.Coefficients.Count; c++)
+                {
+                    SignalLinearTerm term = factor.Coefficients[c];
+                    factorData.Coefficients.Add(new SignalLinearTermData
+                    {
+                        Signal = term.Signal.Value, Coefficient = term.Coefficient, Provenance = term.Provenance.Value,
+                    });
+                }
+                data.IdealFactors.Add(factorData);
+            }
+            return data;
+        }
+
+        private static SignalFieldDefinition ReadSignalField(SignalFieldDefinitionData data)
+        {
+            var linear = new SignalLinearTerm[data.LinearTerms.Count];
+            for (int i = 0; i < linear.Length; i++)
+            {
+                linear[i] = new SignalLinearTerm(
+                    new AuthoredId(data.LinearTerms[i].Signal), data.LinearTerms[i].Coefficient,
+                    new AuthoredId(data.LinearTerms[i].Provenance));
+            }
+            var pairwise = new SignalPairwiseTerm[data.PairwiseTerms.Count];
+            for (int i = 0; i < pairwise.Length; i++)
+            {
+                pairwise[i] = new SignalPairwiseTerm(
+                    new AuthoredId(data.PairwiseTerms[i].First), new AuthoredId(data.PairwiseTerms[i].Second),
+                    data.PairwiseTerms[i].Coefficient, new AuthoredId(data.PairwiseTerms[i].Provenance));
+            }
+            var ideal = new SortedDictionary<AuthoredId, long>();
+            for (int i = 0; i < data.IdealPoint.Count; i++)
+            {
+                ideal[new AuthoredId(data.IdealPoint[i].Key)] = data.IdealPoint[i].Value;
+            }
+            var factors = new SignalIdealFactor[data.IdealFactors.Count];
+            for (int i = 0; i < factors.Length; i++)
+            {
+                SignalIdealFactorData factor = data.IdealFactors[i];
+                var coefficients = new SignalLinearTerm[factor.Coefficients.Count];
+                for (int c = 0; c < coefficients.Length; c++)
+                {
+                    coefficients[c] = new SignalLinearTerm(
+                        new AuthoredId(factor.Coefficients[c].Signal), factor.Coefficients[c].Coefficient,
+                        new AuthoredId(factor.Coefficients[c].Provenance));
+                }
+                factors[i] = new SignalIdealFactor(
+                    new AuthoredId(factor.Id), coefficients, new AuthoredId(factor.Provenance));
+            }
+            return new SignalFieldDefinition(
+                new AuthoredId(data.Id), data.Bias, linear, pairwise, ideal, factors, data.Revision);
         }
 
         // ---------- knowledge ----------

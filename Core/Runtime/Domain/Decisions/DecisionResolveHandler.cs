@@ -70,12 +70,13 @@ namespace Vivarium.Domain.Decisions
             world.Attention.Release(decision.Id);
             world.DecisionDependencies.Unregister(decision.Id);
 
-            world.HistoryLedger.Record(
+            HistoryEntry history = world.HistoryLedger.Record(
                 new AuthoredId("history.decision_resolved"),
                 world.Clock.Now,
-                RetentionTier.Recent,
+                RetentionTier.Significant,
                 $"{decision.DefinitionId} → {resolution.ChosenOptionId} ({resolution.Degree})",
                 new[] { decision.CharacterId.ToRef(), decision.Id.ToRef() });
+            decision.LinkResolutionHistory(history.Id);
 
             if (context.Trace.IsEnabled)
             {

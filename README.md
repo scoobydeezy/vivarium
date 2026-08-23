@@ -3288,6 +3288,17 @@ These are the rules future code must preserve.
 86. Social evaluation supplies calibrated pressures to Decisions, Activities, and interaction policy; it never directly chooses an outcome.
 87. Social belief, appraisal-field, directional-history, values/interests, affect, and context revisions invalidate only dependent cached/active evaluations.
 88. Persistent social truth, beliefs, fields, uncertainty, directional history, familiarity, affect, and relevant provenance round-trip through versioned save DTOs.
+89. Social AppraisalFields and Decision Considerations remain distinct Domain concepts over one shared deterministic fixed-point SignalField evaluator.
+90. SignalField evaluation preserves residual uncertainty through latent and bounded-output variance rather than collapsing uncertain inputs to point estimates.
+91. Decision reasons are option-relative and carry explicit polarity; supporting Influence rolls add to their Option and opposing Influence rolls subtract from it through a replaceable Decision-resolution policy.
+92. Player interventions change an Influence's die magnitude or roll state without changing its semantic polarity.
+93. Resolved authoritative outcomes retain sufficient evaluation-time evidence to explain the reasons that existed when they resolved; later World-state drift must not rewrite that explanation, and retained evidence follows the outcome's retention/compaction lifecycle.
+94. A Signal is explicitly known, uncertain, unknown, or not applicable; unknown and inapplicable inputs never enter numeric evaluation as neutral zeroes.
+95. An in-flight Decision owns a deep snapshot of its compiled typed reasoning program and semantic context; save/load preserves that authority, while Candidate Reasons and routing indexes remain rebuildable projections.
+96. Reevaluation reconciles a compiled reason by stable binding, option, and ReasonChannel identity; disappearance retracts rather than deletes it, reappearance reuses its Influence id, and authoritative interventions are replayed over the refreshed die magnitude without changing polarity.
+97. Compiled Decision dependency routing is derived at `(DecisionId, BindingId, OptionId)` granularity, is never persisted, and is deterministically rebuilt from the snapshotted program and current Signal providers after load.
+98. Each retained resolution roll freezes its semantic reason, signed evaluation result, uncertainty, Signal inputs, source revisions, and compact contribution evidence; explanation projections read only that snapshot, and it is pruned with the linked Decision history record.
+99. Unity-authored Decision reasoning is converted into the same typed compiled program used headlessly and is linted before play for provider capability, parameter and Option compatibility, requested Signals, ReasonChannel/scale validity, and legacy-path conflicts; catalog construction repeats authoritative validation.
 
 ---
 

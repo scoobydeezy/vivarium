@@ -151,6 +151,24 @@ namespace Vivarium.Unity.Authoring
                 }
             }
 
+            for (int i = 0; i < decisions.Length; i++)
+            {
+                try
+                {
+                    DecisionDefinition definition = decisions[i].ToDefinition();
+                    IReadOnlyList<string> reasoningProblems = DecisionReasoningProgramValidator.Validate(
+                        definition.ReasoningProgram, definition.Options, DecisionSignalProviderIds.BuiltIns);
+                    for (int p = 0; p < reasoningProblems.Count; p++)
+                    {
+                        problems.Add($"decision '{definition.Id}': {reasoningProblems[p]}");
+                    }
+                }
+                catch (System.Exception error)
+                {
+                    problems.Add($"decision slot {i}: {error.Message}");
+                }
+            }
+
             return problems;
         }
 
@@ -222,6 +240,7 @@ namespace Vivarium.Unity.Authoring
             public DecisionActivityOutcomeEntry[] activityOutcomes;
             public SocialDecisionTriggerEntry socialTrigger;
             public DecisionRelationshipOutcomeEntry[] relationshipOutcomes;
+            public DecisionReasoningProgramEntry reasoningProgram;
 
             public DecisionDefinition ToDefinition()
             {
@@ -261,7 +280,8 @@ namespace Vivarium.Unity.Authoring
                     influenceTemplates: domainInfluences,
                     activityOutcomes: domainOutcomes,
                     socialTrigger: socialTrigger.IsConfigured ? socialTrigger.ToDefinition() : null,
-                    relationshipOutcomes: domainRelationshipOutcomes);
+                    relationshipOutcomes: domainRelationshipOutcomes,
+                    reasoningProgram: reasoningProgram.IsConfigured ? reasoningProgram.ToDefinition() : null);
             }
 
             private DecisionDependencyKey[] ToDependencies()
@@ -291,11 +311,22 @@ namespace Vivarium.Unity.Authoring
             public string authoredId;
             public string labelId;
             public int orderIndex;
+            public DecisionParameterValueEntry[] context;
 
-            public DecisionOption ToDefinition(int fallbackOrder) => new DecisionOption(
-                new AuthoredId(authoredId),
-                new AuthoredId(labelId),
-                orderIndex < 0 ? fallbackOrder : orderIndex);
+            public DecisionOption ToDefinition(int fallbackOrder)
+            {
+                var values = new SortedDictionary<AuthoredId, DecisionParameterValue>();
+                for (int i = 0; i < (context?.Length ?? 0); i++)
+                {
+                    var key = new AuthoredId(context[i].key);
+                    if (values.ContainsKey(key))
+                        throw new System.InvalidOperationException($"option '{authoredId}' declares context '{key}' twice");
+                    values.Add(key, context[i].ToValue());
+                }
+                return new DecisionOption(
+                    new AuthoredId(authoredId), new AuthoredId(labelId),
+                    orderIndex < 0 ? fallbackOrder : orderIndex, values);
+            }
         }
 
         [System.Serializable]

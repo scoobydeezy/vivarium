@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Vivarium.Domain.Common;
+using Vivarium.Domain.Evaluation;
 
 namespace Vivarium.Domain.Social
 {
@@ -37,7 +38,9 @@ namespace Vivarium.Domain.Social
             AuthoredId lensId,
             long pointLatentScore,
             long expectedLatentScore,
+            long latentScoreVariance,
             long normalizedAppraisal,
+            long outputVariance,
             AppraisalStrength strength,
             IReadOnlyList<SocialContribution> contributions)
         {
@@ -46,7 +49,9 @@ namespace Vivarium.Domain.Social
             LensId = lensId;
             PointLatentScore = pointLatentScore;
             ExpectedLatentScore = expectedLatentScore;
+            LatentScoreVariance = latentScoreVariance;
             NormalizedAppraisal = normalizedAppraisal;
+            OutputVariance = outputVariance;
             Strength = strength;
             Contributions = contributions;
         }
@@ -57,7 +62,9 @@ namespace Vivarium.Domain.Social
         public long PointLatentScore { get; }
         public long ExpectedLatentScore { get; }
         public long UncertaintyEffect => ExpectedLatentScore - PointLatentScore;
+        public long LatentScoreVariance { get; }
         public long NormalizedAppraisal { get; }
+        public long OutputVariance { get; }
         public AppraisalStrength Strength { get; }
         public IReadOnlyList<SocialContribution> Contributions { get; }
     }
@@ -65,6 +72,8 @@ namespace Vivarium.Domain.Social
     /// <summary>Canonical deterministic evaluation of an uncertain target against a sparse appraisal field.</summary>
     public sealed class SocialAppraisalEvaluator
     {
+        private readonly SignalFieldEvaluator _signals = new SignalFieldEvaluator();
+
         public SocialEvaluationResult Evaluate(
             CharacterId targetId,
             BeliefDistribution belief,
@@ -82,36 +91,27 @@ namespace Vivarium.Domain.Social
             }
 
             MergedField merged = Merge(field, context ?? new SocialEvaluationContext());
+            SignalFieldEvaluation evaluated = _signals.Evaluate(ToSignals(belief), ToSignalField(field, merged));
             var contributions = new List<SocialContribution>();
-            long point = merged.Bias;
-            long expected = merged.Bias;
             contributions.Add(new SocialContribution(SocialContributionKind.Bias, field.LensId, field.Bias, "authored baseline"));
-            for (int i = 0; i < merged.ContextBiasContributions.Count; i++)
-            {
-                contributions.Add(merged.ContextBiasContributions[i]);
-            }
-
+            for (int i = 0; i < merged.ContextBiasContributions.Count; i++) contributions.Add(merged.ContextBiasContributions[i]);
             foreach (KeyValuePair<AuthoredId, long> term in merged.Linear)
             {
                 long amount = SocialNumeric.Multiply(term.Value, belief.Mean[term.Key]);
-                point = checked(point + amount);
-                expected = checked(expected + amount);
                 contributions.Add(new SocialContribution(
                     SocialContributionKind.Linear,
                     SourceId(merged.LinearProvenance[term.Key], term.Key),
                     amount,
                     "linear " + term.Key.Value + ProvenanceText(merged.LinearProvenance[term.Key])));
             }
-
             foreach (KeyValuePair<SocialDimensionPair, long> term in merged.Pairwise)
             {
-                long meanProduct = SocialNumeric.Multiply(belief.Mean[term.Key.First], belief.Mean[term.Key.Second]);
-                long pointAmount = SocialNumeric.Multiply(term.Value, meanProduct);
+                long pointAmount = SocialNumeric.Multiply(
+                    term.Value,
+                    SocialNumeric.Multiply(belief.Mean[term.Key.First], belief.Mean[term.Key.Second]));
                 long uncertaintyAmount = SocialNumeric.MultiplyCovariance(
                     term.Value,
                     belief.Covariance(term.Key.First, term.Key.Second));
-                point = checked(point + pointAmount);
-                expected = checked(expected + pointAmount + uncertaintyAmount);
                 contributions.Add(new SocialContribution(
                     SocialContributionKind.Pairwise,
                     SourceId(
@@ -120,7 +120,6 @@ namespace Vivarium.Domain.Social
                     pointAmount + uncertaintyAmount,
                     "pairwise " + term.Key + ProvenanceText(merged.PairwiseProvenance[term.Key])));
             }
-
             foreach (KeyValuePair<AuthoredId, SortedDictionary<AuthoredId, long>> factor in merged.IdealFactors)
             {
                 long projectedMean = 0;
@@ -129,23 +128,17 @@ namespace Vivarium.Domain.Social
                     long centered = belief.Mean[coefficient.Key] - merged.IdealPoint.Get(coefficient.Key);
                     projectedMean = checked(projectedMean + SocialNumeric.Multiply(coefficient.Value, centered));
                 }
-
-                long pointPenalty = -(SocialNumeric.Square(projectedMean) / 2);
                 long projectedVariance = 0;
                 foreach (KeyValuePair<AuthoredId, long> left in factor.Value)
                 {
                     foreach (KeyValuePair<AuthoredId, long> right in factor.Value)
                     {
-                        long coefficientProduct = SocialNumeric.Multiply(left.Value, right.Value);
                         projectedVariance = checked(projectedVariance + SocialNumeric.MultiplyCovariance(
-                            coefficientProduct,
+                            SocialNumeric.Multiply(left.Value, right.Value),
                             belief.Covariance(left.Key, right.Key)));
                     }
                 }
-
-                long expectedPenalty = pointPenalty - (projectedVariance / 2);
-                point = checked(point + pointPenalty);
-                expected = checked(expected + expectedPenalty);
+                long expectedPenalty = -(SocialNumeric.Square(projectedMean) / 2) - (projectedVariance / 2);
                 contributions.Add(new SocialContribution(
                     SocialContributionKind.IdealTolerance,
                     SourceId(merged.FactorProvenance[factor.Key], factor.Key),
@@ -153,16 +146,70 @@ namespace Vivarium.Domain.Social
                     "distance from preferred region" + ProvenanceText(merged.FactorProvenance[factor.Key])));
             }
 
-            long normalized = SocialNumeric.BoundedResponse(expected);
             return new SocialEvaluationResult(
                 field.ObserverId,
                 targetId,
                 field.LensId,
-                point,
-                expected,
-                normalized,
-                calibration.Calibrate(normalized),
+                evaluated.PointLatentScore,
+                evaluated.ExpectedLatentScore,
+                evaluated.LatentVariance,
+                evaluated.ExpectedBoundedScore,
+                evaluated.BoundedVariance,
+                calibration.Calibrate(evaluated.ExpectedBoundedScore),
                 contributions);
+        }
+
+        private static SignalVector ToSignals(BeliefDistribution belief)
+        {
+            var result = new SignalVector();
+            for (int i = 0; i < SocialDimensions.Provisional.Count; i++)
+            {
+                AuthoredId left = SocialDimensions.Provisional[i];
+                result.SetMean(left, belief.Mean[left]);
+                for (int j = i; j < SocialDimensions.Provisional.Count; j++)
+                {
+                    AuthoredId right = SocialDimensions.Provisional[j];
+                    result.SetCovariance(left, right, belief.Covariance(left, right));
+                }
+            }
+            return result;
+        }
+
+        private static SignalFieldDefinition ToSignalField(AppraisalField source, MergedField merged)
+        {
+            var linear = new List<SignalLinearTerm>();
+            foreach (KeyValuePair<AuthoredId, long> term in merged.Linear)
+            {
+                linear.Add(new SignalLinearTerm(term.Key, term.Value, SourceId(merged.LinearProvenance[term.Key], term.Key)));
+            }
+
+            var pairwise = new List<SignalPairwiseTerm>();
+            foreach (KeyValuePair<SocialDimensionPair, long> term in merged.Pairwise)
+            {
+                pairwise.Add(new SignalPairwiseTerm(
+                    term.Key.First,
+                    term.Key.Second,
+                    term.Value,
+                    SourceId(merged.PairwiseProvenance[term.Key], default)));
+            }
+
+            var ideal = new SortedDictionary<AuthoredId, long>();
+            foreach (KeyValuePair<AuthoredId, long> value in merged.IdealPoint.All) ideal[value.Key] = value.Value;
+            var factors = new List<SignalIdealFactor>();
+            foreach (KeyValuePair<AuthoredId, SortedDictionary<AuthoredId, long>> factor in merged.IdealFactors)
+            {
+                var coefficients = new List<SignalLinearTerm>();
+                foreach (KeyValuePair<AuthoredId, long> coefficient in factor.Value)
+                {
+                    coefficients.Add(new SignalLinearTerm(coefficient.Key, coefficient.Value));
+                }
+                factors.Add(new SignalIdealFactor(
+                    factor.Key,
+                    coefficients,
+                    SourceId(merged.FactorProvenance[factor.Key], factor.Key)));
+            }
+
+            return new SignalFieldDefinition(source.LensId, merged.Bias, linear, pairwise, ideal, factors, source.Revision);
         }
 
         private static MergedField Merge(AppraisalField field, SocialEvaluationContext context)

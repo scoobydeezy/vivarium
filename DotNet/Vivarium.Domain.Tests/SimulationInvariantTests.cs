@@ -246,6 +246,25 @@ namespace Vivarium.Domain.Tests
         }
 
         [Fact]
+        public void InterventionChangesOpposingDieMagnitudeWithoutChangingPolarity()
+        {
+            Decision decision = MakeDecision(1, SimTime.Epoch, 0);
+            DecisionInfluence concern = decision.AddInfluence(
+                new AuthoredId("option.accept"),
+                new AuthoredId("cat.risk"),
+                new AuthoredId("influence.risk"),
+                Die.D6,
+                InfluenceVisibility.Full,
+                polarity: InfluencePolarity.Opposing);
+            var stepUp = new InterventionDefinition(new AuthoredId("intervention.intensify"), InterventionKind.StepDieUp, 1);
+
+            DecisionInterventionRules.Apply(decision, stepUp, concern.Id, 10);
+
+            Assert.Equal(InfluencePolarity.Opposing, concern.Polarity);
+            Assert.Equal(Die.D8, concern.CurrentDie);
+        }
+
+        [Fact]
         public void TheSameInterventionCannotBeSpentTwiceOnOneInfluence()
         {
             Decision decision = MakeDecision(1, SimTime.Epoch, 0);
@@ -301,6 +320,33 @@ namespace Vivarium.Domain.Tests
                 Assert.Equal(a.Rolls[i].Rolled, b.Rolls[i].Rolled);
                 Assert.InRange(a.Rolls[i].Rolled, 1, a.Rolls[i].Die.Sides);
             }
+        }
+
+        [Fact]
+        public void SignedOptionRelativePolicySubtractsOpposingRolls()
+        {
+            var world = new WorldState(77, SimTime.Epoch);
+            var context = new SimulationContext(world, new DeterministicRandomOracle(77), SimulationMode.Live, 1, 1);
+            Decision decision = MakeDecision(9, SimTime.Epoch, 0);
+            DecisionInfluence support = decision.AddInfluence(
+                new AuthoredId("option.accept"), new AuthoredId("cat"), new AuthoredId("support"),
+                Die.D8, InfluenceVisibility.Full);
+            DecisionInfluence opposition = decision.AddInfluence(
+                new AuthoredId("option.accept"), new AuthoredId("cat"), new AuthoredId("opposition"),
+                Die.D6, InfluenceVisibility.Full, polarity: InfluencePolarity.Opposing);
+
+            DecisionResolution resolution = new DecisionResolutionService().Resolve(decision, context);
+
+            int supportRoll = 0;
+            int opposingRoll = 0;
+            for (int i = 0; i < resolution.Rolls.Count; i++)
+            {
+                if (resolution.Rolls[i].InfluenceId == support.Id) supportRoll = resolution.Rolls[i].Rolled;
+                if (resolution.Rolls[i].InfluenceId == opposition.Id) opposingRoll = resolution.Rolls[i].Rolled;
+            }
+            OptionTotal accept = resolution.OptionTotals[0];
+            Assert.Equal(supportRoll - opposingRoll, accept.Total);
+            Assert.Equal(InfluencePolarity.Opposing, resolution.Rolls[1].Polarity);
         }
 
         [Fact]

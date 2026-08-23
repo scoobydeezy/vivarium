@@ -120,7 +120,9 @@ Working implementations:
 - **Decisions** — living influence sets with stable influence identity, dependency-indexed
   reevaluation, deterministic dice resolution, bounded held decisions, one authority for intervention
   rules, one content-backed Need-threshold generation path with an Activity consequence, and targeted
-  Activity-context influence reevaluation (§17–§20).
+  Activity-context influence reevaluation (§17–§20). Influences now carry persisted option-relative
+  polarity: the current replaceable resolution policy adds supporting rolls and subtracts opposing
+  rolls, while interventions modify die magnitude without changing polarity.
 - **Knowledge** — player- and character-scoped fact providers, sparse social belief distributions,
   lifecycle/retention metadata, and discovery driven by observation through one canonical `WatchState`
   (§20.1, §22–§25).
@@ -133,11 +135,47 @@ Working implementations:
   salient memories, values/interests, affect, bounded reputation, deterministic generation/drift, and
   full contribution traces (§32.1). Shared-context interactions create bounded character-held evidence;
   one concrete social interaction Decision consumes the appraisal and applies an asymmetric relationship
-  consequence through the normal living-Decision pipeline.
+  consequence through the normal living-Decision pipeline. Its appraisal math now runs through the
+  generic `Evaluation/SignalField` primitive and exposes deterministic latent/output variance in addition
+  to its existing expectation, calibration, and contribution trace.
+- **Decision reasoning checkpoint A** — the social interaction Decision now follows
+  `SignalField → InterpersonalComfort Consideration → non-stacking ReasonChannel → DecisionInfluence`.
+  The former direct `SocialDecisionInfluenceFactory` path was retained as a parity oracle while the new
+  route was proven, then removed.
+- **Decision reasoning checkpoint B** — Decisions and Options now carry small
+  typed semantic contexts, and an in-flight Decision deep-snapshots a compiled reasoning program made
+  of validated parameter schemas/bindings, Signal requests, fixed-point fields, ReasonChannels, and die
+  scales. Minimal capability providers cover Decision context, character Values, target availability,
+  directional relationship channels, and travel burden. One evaluator handles any number of target,
+  self, and wait Options, distinguishes unknown/not-applicable Signals from neutral values, and produces
+  consolidated signed reasons through the existing Influence policy. Save schema v4 round-trips the
+  authoritative typed contexts and complete compiled program; Candidate Reasons and dependency indexes
+  remain absent from the save and are deterministically rebuilt. Compiled reasons reconcile by stable
+  binding/Option/ReasonChannel identity: reevaluation updates or retracts the same Influence id, and
+  snapshotted intervention mechanics are replayed over its refreshed base magnitude. Derived dependency
+  routes now address `(DecisionId, BindingId, OptionId)`, support partial evaluation/reconciliation, and
+  rebuild after load by evaluating the persisted program through the composed provider capabilities.
+  `CompiledDecisionGenerationService` takes runtime-bound target/self Options through creation, initial
+  reasoning, route registration, scheduling, creation events, and the normal signed resolution service.
+  Unity authoring serializes the complete typed program, including Option context, parameter schemas and
+  sources, provider requests, linear/pairwise/ideal Signal fields, ReasonChannels, scales, labels, and
+  visibility. Pre-play lint rejects unknown providers, invalid or unbound parameters, impossible Option
+  bindings, unrequested Signals, unsupported dice, and incompatible legacy/social reasoning paths; the
+  Domain catalog repeats the authoritative validation at construction.
+- **Frozen Decision explanations** — live compiled Influences retain their latest compact evaluation
+  snapshot (signed expectation, output variance, Signal means/variance/applicability/source revisions,
+  and contribution amounts). Resolution deep-copies that evidence plus semantic label/category/channel,
+  subject, polarity, die, and roll into each retained `InfluenceRoll`. `DecisionProjector` constructs the
+  explanation lazily from this historical evidence and never re-queries current World state. Resolution
+  history is Significant, linked back to its Decision, persisted, and pruned together with the resolved
+  Decision/evidence by `DecisionHistoryRetentionService`.
 - **Commands and queries** — deterministic ingress queue, dispatcher, projections published only at
   quiescent boundaries, knowledge-filtered decision views (§2.2.1, §26, §35).
 - **Persistence** — versioned DTOs, explicit payload codecs, revision persistence, index rebuilding on
-  load, migration chain with version-drift reporting (§38–§40).
+  load, migration chain with version-drift reporting (§38–§40). Schema v4 additionally persists typed
+  Decision/Option context and snapshotted compiled reasoning programs. Schema-v3 direct-influence
+  Decisions migrate without inventing a program; schema-v2 Influences still migrate as supporting
+  legacy reasons.
 - **Scale regression gate** — the normal suite repeats a 250-character/six-hour workload and requires
   identical authoritative hashes and deterministic work counts under structural per-character ceilings.
   An opt-in 1,000-character/one-day tier enforces initial wall-clock and heap budgets while the CLI
@@ -155,8 +193,8 @@ Intentionally thin, pending game-design decisions:
 - **Needs → behaviour breadth.** Threshold crossings can generate one Decision type; direct routine,
   Activity-priority, and other behavioral reactions remain unimplemented.
 - **Unity authoring/presentation.** `ContentPackAsset` converts authored Needs, Activities, Decisions
-  (including social triggers and directional outcomes), appraisal calibration, social evidence/pressure,
-  and interventions into the validated Domain catalog. Demo characters receive deterministic social
+  (including typed compiled reasoning, social triggers, and directional outcomes), appraisal calibration,
+  social evidence/pressure, and interventions into the validated Domain catalog. Demo characters receive deterministic social
   profiles. The smoke scene schedules two shared work Commitments: Mina and Glen
   interact while travelling, Mina arrives beside a disliked working colleague and gains Work pressure,
   then a real hunger crossing generates the leave-work Decision. `WorldPresenter` surfaces the
@@ -181,6 +219,18 @@ The test suite is organised around the §58 invariants rather than around classe
 | Travel excluded from direct occupancy | `SimulationInvariantTests`, `PersistenceTests` |
 | Time-varying context counts only for its interval | `SimulationInvariantTests` |
 | Interventions bound to stable influence identity | `SimulationInvariantTests`, `PersistenceTests` |
+| Signed option-relative resolution and intervention-preserved polarity | `SimulationInvariantTests`, `PersistenceTests` |
+| Generic fixed-point SignalField expectation and variance | `SignalFieldTests`, `SocialModelTests` |
+| Social Consideration path preserves former observable influence behavior | `DecisionReasoningTests`, `SocialDecisionTests` |
+| ReasonChannels are non-stacking by default | `DecisionReasoningTests` |
+| Typed target/self/wait binding and explicit Signal applicability | `DecisionReasoningTests`, `SignalFieldTests` |
+| In-flight reasoning snapshots resist source mutation and round-trip | `PersistenceTests` |
+| Reevaluation preserves semantic Influence and intervention identity | `DecisionReasoningTests`, `PersistenceTests` |
+| Binding/Option routes target reevaluation and rebuild after load | `DecisionReasoningTests`, `PersistenceTests` |
+| Implemented-state multi-option Decision generates, schedules, and resolves | `DecisionReasoningTests` |
+| Resolved explanations freeze evaluation evidence across drift and reload | `DecisionReasoningTests`, `PersistenceTests` |
+| Resolution evidence prunes with linked Decision history | `DecisionReasoningTests`, `PersistenceTests` |
+| Authored reasoning programs reject invalid providers, bindings, Signals, and scales | `DecisionReasoningTests`, `VivariumPlayModeTests` |
 | Held decisions bounded, overflow deterministic | `SimulationInvariantTests`, `CommandAndProjectionTests` |
 | Commands execute in ingress order at quiescent boundaries | `CommandAndProjectionTests` |
 | UI availability and command validation share one authority | `CommandAndProjectionTests` |

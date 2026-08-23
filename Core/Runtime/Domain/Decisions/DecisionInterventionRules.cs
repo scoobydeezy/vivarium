@@ -6,6 +6,7 @@ namespace Vivarium.Domain.Decisions
     /// <summary>What an intervention does to a decision (§19). These are content, not architecture.</summary>
     public enum InterventionKind
     {
+        Unknown = -1,
         AddDie = 0,
         RemoveDie = 1,
         StepDieUp = 2,
@@ -175,7 +176,8 @@ namespace Vivarium.Domain.Decisions
                 }
             }
 
-            decision.RecordIntervention(new AppliedIntervention(intervention.Id, targetInfluenceId, commandSequence));
+            decision.RecordIntervention(new AppliedIntervention(
+                intervention.Id, targetInfluenceId, commandSequence, intervention.Kind, intervention.ReplacementDie));
         }
     }
 }

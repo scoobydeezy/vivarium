@@ -5,6 +5,7 @@
         "Vivarium.Domain",
         "Vivarium.Application",
         "Vivarium.Infrastructure",
+        "Vivarium.Unity.Authoring",
         "Vivarium.Unity.Bootstrap",
         "Vivarium.Unity.Presentation"
     ],

@@ -5,6 +5,44 @@ using Vivarium.Domain.Time;
 
 namespace Vivarium.Domain.Decisions
 {
+    public sealed class FrozenDecisionReason
+    {
+        public FrozenDecisionReason(
+            AuthoredId categoryId,
+            AuthoredId labelId,
+            AuthoredId reasonChannelId,
+            AuthoredId bindingId,
+            EntityRef subject,
+            DecisionReasonEvaluation evaluation,
+            InfluenceVisibility visibility = InfluenceVisibility.Full)
+        {
+            CategoryId = categoryId;
+            LabelId = labelId;
+            ReasonChannelId = reasonChannelId;
+            BindingId = bindingId;
+            Subject = subject;
+            Visibility = visibility;
+            var signals = new DecisionSignalEvidence[evaluation?.Signals.Count ?? 0];
+            for (int i = 0; i < signals.Length; i++) signals[i] = evaluation.Signals[i];
+            var contributions = new DecisionContributionEvidence[evaluation?.Contributions.Count ?? 0];
+            for (int i = 0; i < contributions.Length; i++) contributions[i] = evaluation.Contributions[i];
+            Evaluation = new DecisionReasonEvaluation(
+                evaluation?.ExpectedScore ?? 0, evaluation?.OutputVariance ?? 0, signals, contributions);
+        }
+
+        public AuthoredId CategoryId { get; }
+        public AuthoredId LabelId { get; }
+        public AuthoredId ReasonChannelId { get; }
+        public AuthoredId BindingId { get; }
+        public EntityRef Subject { get; }
+        public InfluenceVisibility Visibility { get; }
+        public DecisionReasonEvaluation Evaluation { get; }
+
+        public static FrozenDecisionReason From(DecisionInfluence influence) => new FrozenDecisionReason(
+            influence.Category, influence.LabelId, influence.ReasonChannelId, influence.ReasonBindingId,
+            influence.Subject, influence.Evaluation, influence.DefaultVisibility);
+    }
+
     /// <summary>
     /// How decisively the chosen option won (§18). The exact system is deferred content (§57); the
     /// architectural requirement is that a degree exists and is derived deterministically.
@@ -24,13 +62,22 @@ namespace Vivarium.Domain.Decisions
     /// <summary>One influence's roll, retained so a resolution can be explained and reproduced (§53).</summary>
     public readonly struct InfluenceRoll
     {
-        public InfluenceRoll(DecisionInfluenceId influenceId, AuthoredId optionId, Die die, int rolled, int rollIndex)
+        public InfluenceRoll(
+            DecisionInfluenceId influenceId,
+            AuthoredId optionId,
+            Die die,
+            int rolled,
+            int rollIndex,
+            InfluencePolarity polarity = InfluencePolarity.Supporting,
+            FrozenDecisionReason reason = null)
         {
             InfluenceId = influenceId;
             OptionId = optionId;
             Die = die;
             Rolled = rolled;
             RollIndex = rollIndex;
+            Polarity = polarity;
+            Reason = reason;
         }
 
         public DecisionInfluenceId InfluenceId { get; }
@@ -44,7 +91,11 @@ namespace Vivarium.Domain.Decisions
         /// <summary>Which roll index produced this — 0 normally, higher after a reroll intervention (§14).</summary>
         public int RollIndex { get; }
 
-        public override string ToString() => $"{InfluenceId} {Die} → {Rolled}";
+        public InfluencePolarity Polarity { get; }
+        public FrozenDecisionReason Reason { get; }
+
+        public override string ToString() =>
+            $"{InfluenceId} {(Polarity == InfluencePolarity.Supporting ? "+" : "-")}{Die} → {Rolled}";
     }
 
     /// <summary>Total rolled for one option.</summary>

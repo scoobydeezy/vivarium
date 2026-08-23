@@ -27,7 +27,7 @@ namespace Vivarium.Domain.Decisions
                 context,
                 new DecisionDependencyKey(
                     RevisionAspects.Scoped(
-                        SocialDecisionInfluenceFactory.BeliefContext,
+                        SocialDecisionDependencies.BeliefContext,
                         new AuthoredId("target." + domainEvent.TargetId.Value)),
                     domainEvent.Observer.CharacterId.ToRef()));
         }

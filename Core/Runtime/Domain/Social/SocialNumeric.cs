@@ -1,5 +1,6 @@
 using System;
 using Vivarium.Domain.Common;
+using Vivarium.Domain.Evaluation;
 
 namespace Vivarium.Domain.Social
 {
@@ -9,36 +10,24 @@ namespace Vivarium.Domain.Social
     /// </summary>
     public static class SocialNumeric
     {
-        public const long Scale = 10000;
+        public const long Scale = SignalNumeric.Scale;
         public const long MinCoordinate = -Scale;
         public const long MaxCoordinate = Scale;
-        public const long MaxVariance = Scale * Scale;
+        public const long MaxVariance = SignalNumeric.MaxVariance;
 
-        public static long Multiply(long left, long right) =>
-            DivideRounded(left * right, Scale);
+        public static long Multiply(long left, long right) => SignalNumeric.Multiply(left, right);
 
         /// <summary>Multiplies a fixed-point coefficient by a covariance value (whose scale is Scale²).</summary>
         public static long MultiplyCovariance(long coefficient, long covariance) =>
-            DivideRounded(coefficient * covariance, Scale * Scale);
+            SignalNumeric.MultiplyCovariance(coefficient, covariance);
 
-        public static long Square(long value) => Multiply(value, value);
+        public static long Square(long value) => SignalNumeric.Square(value);
 
         /// <summary>
         /// A deterministic bounded response in [-1, 1]: x / (1 + |x|). It avoids platform-sensitive
         /// floating point while retaining a smooth monotonic saturation curve.
         /// </summary>
-        public static long BoundedResponse(long score)
-        {
-            if (score == 0)
-            {
-                return 0;
-            }
-
-            long magnitude = score == long.MinValue ? long.MaxValue : Math.Abs(score);
-            long denominator = checked(Scale + magnitude);
-            long bounded = DivideRounded(checked(score * Scale), denominator);
-            return IntegerMath.Clamp(bounded, -Scale, Scale);
-        }
+        public static long BoundedResponse(long score) => SignalNumeric.BoundedResponse(score);
 
         public static long DivideRounded(long dividend, long divisor)
         {

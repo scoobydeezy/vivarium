@@ -68,7 +68,7 @@ generic abstraction.
 
 ## Current roadmap checkpoint
 
-Last reconciled against the repository on **2026-08-22**. Reverify this section against code and tests
+Last reconciled against the repository on **2026-08-23**. Reverify this section against code and tests
 before acting on it.
 
 ### Foundation already present
@@ -207,7 +207,7 @@ The architecture gate has passed for beginning one deliberately narrow managemen
 Select that slice from concrete product intent; do not infer a broad economy, construction, or job
 model merely because performance coverage now exists.
 
-### Active checkpoint — production relationship model
+### Completed checkpoint — production relationship model
 
 Product direction on **2026-08-22** selected `SocialModelBrief.md` as the production relationship
 model and explicitly un-deferred NPC-held beliefs and relationship formulas. The former undirected
@@ -223,6 +223,61 @@ persists personality, fields, beliefs/covariance, values/interests, affect, dire
 familiarity, and memories; v1 affinity migrates into two initially equal directions. Runtime no longer
 stores a universal relationship score. Reputation remains bounded observer Knowledge, and culture remains
 the explicitly named future dependency from the brief.
+
+### Completed checkpoint — Decision reasoning and Considerations
+
+Product direction on **2026-08-23** selected `DecisionReasoningBrief.md` as the bridge from simulation
+state and actor Knowledge to deterministic true Influences and player-facing reasons. Delivery is split
+into two runnable checkpoints rather than independent infrastructure projects.
+
+Checkpoint A is complete. Social Appraisal now consumes a generic deterministic fixed-point
+`SignalField` evaluator that preserves its former expected scores and contribution trace while adding
+latent and bounded-output variance. The existing social interaction Decision now runs through an
+`InterpersonalComfort` Consideration and a non-stacking semantic ReasonChannel before producing its
+stable Influence. Parity was established against the former direct social influence factory, which has
+been removed. Influences and retained rolls carry persisted polarity; the current replaceable resolution
+policy adds supporting rolls and subtracts opposing rolls, and interventions preserve polarity. Save
+schema v3 migrates schema-v2 Influences as supporting legacy reasons.
+
+Checkpoint B is complete and remains runnable. It adds typed Decision/Option
+parameters, compiled Consideration bindings, explicit known/uncertain/unknown/not-applicable Signal
+semantics, minimal providers for Decision context, Values, target availability, directional relationship
+channels, and travel burden, plus deterministic evaluation across target and targetless/self Options.
+Compiled programs are deep-snapshotted onto in-flight Decisions and save schema v4 persists that program
+and authoritative typed context; schema-v3 direct-influence Decisions migrate without fabricated reasons.
+Candidate Reasons and routing indexes remain derived and are not persisted.
+
+Stable semantic reconciliation is also implemented. A compiled reason is keyed by binding, Option, and
+ReasonChannel; changing inputs update its existing Influence, absence retracts it, and later
+reappearance reinstates the same id. Applied interventions now snapshot their mechanical kind and
+replacement die where applicable, then replay deterministically over a reevaluated base magnitude.
+This protects both player expenditure and signed polarity across live world changes and save/load.
+
+The derived dependency index now routes to `(DecisionId, BindingId, OptionId)`. A change reevaluates and
+reconciles only the addressed bindings/Options, while unrelated routes remain registered. Routes are not
+saved: load-time composition reruns the persisted reasoning program through the minimal provider registry
+to rebuild them. The implemented-state five-Option scenario also passes through a runtime-bound generation
+service that creates the Decision, evaluates reasons, registers routes, schedules resolution, publishes
+creation, and resolves through the ordinary signed policy.
+
+Resolution now freezes compact historical evidence into each retained roll: semantic reason identity,
+subject, polarity, die/roll, expected score, output variance, Signal inputs with applicability and source
+revision, and compact field contributions. Lazy query projection reads this evidence rather than current
+World state, so later drift cannot rewrite why an outcome happened. Resolution history is linked to its
+Decision, promoted to persisted Significant history, and the retention service prunes the linked history,
+resolved Decision, and evidence together.
+
+Unity authoring now covers typed Option context, parameter schemas and binding sources, provider requests,
+linear/pairwise/ideal Signal fields, ReasonChannels, scales, labels, and visibility. Its pre-play lint and
+the Domain catalog reject unknown providers, unbound or mistyped parameters, impossible Option bindings,
+unrequested Signals, invalid literals, unsupported dice, and simultaneous legacy-social/compiled paths.
+The acceptance matrix passes 138 headless tests, identical repeated SimRunner hashes
+`64668ADACCDF9099`, save/load hash equivalence, and a warning-free build of the Unity PlayMode assembly.
+The PlayMode suite now contains 11 tests, including authored-program conversion/lint coverage.
+
+The next vertical slice requires concrete product intent. Continue using implemented social, value,
+relationship, Activity, location/travel, availability, urgency, and self-option state; do not introduce a
+general Skill model merely to broaden Decision content.
 
 ## Implementation checklist
 

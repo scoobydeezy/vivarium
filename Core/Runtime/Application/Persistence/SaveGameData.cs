@@ -21,7 +21,7 @@ namespace Vivarium.Application.Persistence
         /// <summary>
         /// The current persisted shape. Bump on any structural change and add a migration (§39).
         /// </summary>
-        public const int CurrentSchemaVersion = 2;
+        public const int CurrentSchemaVersion = 4;
 
         /// <summary>Determines whether the persisted shape can be understood or migrated (§39.1).</summary>
         public int SchemaVersion = CurrentSchemaVersion;
@@ -283,6 +283,7 @@ namespace Vivarium.Application.Persistence
         public int Importance;
         public int InfluenceRevision;
         public int PendingResolveEventId;
+        public int ResolutionHistoryEntryId;
         public string ConflictScopeKind;
         public int ConflictScopeEntityKind;
         public int ConflictScopeRuntimeId;
@@ -292,6 +293,8 @@ namespace Vivarium.Application.Persistence
         public List<AppliedInterventionData> Interventions = new List<AppliedInterventionData>();
         public List<DependencyKeyData> DependencyKeys = new List<DependencyKeyData>();
         public List<AuthoredLongData> SnapshottedParameters = new List<AuthoredLongData>();
+        public List<DecisionParameterData> ContextParameters = new List<DecisionParameterData>();
+        public DecisionReasoningProgramData ReasoningProgram;
 
         public bool HasResolution;
         public string ResolvedOptionId;
@@ -307,6 +310,101 @@ namespace Vivarium.Application.Persistence
         public string Id;
         public string LabelId;
         public int OrderIndex;
+        public List<DecisionParameterData> Context = new List<DecisionParameterData>();
+    }
+
+    public sealed class DecisionParameterData
+    {
+        public string Key;
+        public int Kind;
+        public long Integer;
+        public string AuthoredId;
+        public int EntityKind;
+        public int RuntimeId;
+    }
+
+    public sealed class DecisionReasoningProgramData
+    {
+        public List<CompiledConsiderationBindingData> Bindings = new List<CompiledConsiderationBindingData>();
+    }
+
+    public sealed class CompiledConsiderationBindingData
+    {
+        public string BindingId;
+        public string ConsiderationId;
+        public int DefinitionVersion;
+        public List<ConsiderationParameterData> ParameterSchema = new List<ConsiderationParameterData>();
+        public List<CompiledParameterBindingData> ParameterBindings = new List<CompiledParameterBindingData>();
+        public List<DecisionSignalRequestData> Signals = new List<DecisionSignalRequestData>();
+        public SignalFieldDefinitionData Field = new SignalFieldDefinitionData();
+        public string ReasonChannelId;
+        public int ConsolidationPolicy;
+        public string ScaleId;
+        public List<ReasonDieThresholdData> ScaleThresholds = new List<ReasonDieThresholdData>();
+        public string CategoryId;
+        public string PositiveLabelId;
+        public string NegativeLabelId;
+        public int Visibility;
+    }
+
+    public sealed class ConsiderationParameterData
+    {
+        public string Id;
+        public int Kind;
+        public bool Required;
+    }
+
+    public sealed class CompiledParameterBindingData
+    {
+        public string ParameterId;
+        public int Source;
+        public string SourceParameterId;
+        public DecisionParameterData Literal = new DecisionParameterData();
+    }
+
+    public sealed class DecisionSignalRequestData
+    {
+        public string SignalId;
+        public string ProviderId;
+    }
+
+    public sealed class SignalFieldDefinitionData
+    {
+        public string Id;
+        public long Bias;
+        public int Revision;
+        public List<SignalLinearTermData> LinearTerms = new List<SignalLinearTermData>();
+        public List<SignalPairwiseTermData> PairwiseTerms = new List<SignalPairwiseTermData>();
+        public List<AuthoredLongData> IdealPoint = new List<AuthoredLongData>();
+        public List<SignalIdealFactorData> IdealFactors = new List<SignalIdealFactorData>();
+    }
+
+    public sealed class SignalLinearTermData
+    {
+        public string Signal;
+        public long Coefficient;
+        public string Provenance;
+    }
+
+    public sealed class SignalPairwiseTermData
+    {
+        public string First;
+        public string Second;
+        public long Coefficient;
+        public string Provenance;
+    }
+
+    public sealed class SignalIdealFactorData
+    {
+        public string Id;
+        public string Provenance;
+        public List<SignalLinearTermData> Coefficients = new List<SignalLinearTermData>();
+    }
+
+    public sealed class ReasonDieThresholdData
+    {
+        public long MinimumMagnitude;
+        public int DieSides;
     }
 
     public sealed class DecisionInfluenceData
@@ -325,6 +423,10 @@ namespace Vivarium.Application.Persistence
         public int DependencyRuntimeId;
         public int SubjectEntityKind;
         public int SubjectRuntimeId;
+        public int Polarity;
+        public string ReasonChannelId;
+        public string ReasonBindingId;
+        public DecisionReasonEvaluationData Evaluation = new DecisionReasonEvaluationData();
     }
 
     public sealed class AppliedInterventionData
@@ -332,6 +434,8 @@ namespace Vivarium.Application.Persistence
         public string InterventionDefinitionId;
         public int TargetInfluenceId;
         public long CommandSequence;
+        public int Kind = -1;
+        public int ReplacementDieSides;
     }
 
     public sealed class DependencyKeyData
@@ -355,6 +459,44 @@ namespace Vivarium.Application.Persistence
         public int DieSides;
         public int Rolled;
         public int RollIndex;
+        public int Polarity;
+        public FrozenDecisionReasonData Reason;
+    }
+
+    public sealed class DecisionReasonEvaluationData
+    {
+        public long ExpectedScore;
+        public long OutputVariance;
+        public List<DecisionSignalEvidenceData> Signals = new List<DecisionSignalEvidenceData>();
+        public List<DecisionContributionEvidenceData> Contributions = new List<DecisionContributionEvidenceData>();
+    }
+
+    public sealed class DecisionSignalEvidenceData
+    {
+        public string SignalId;
+        public long Mean;
+        public long Variance;
+        public int Applicability;
+        public int SourceRevision;
+    }
+
+    public sealed class DecisionContributionEvidenceData
+    {
+        public int Kind;
+        public string SourceId;
+        public long Amount;
+    }
+
+    public sealed class FrozenDecisionReasonData
+    {
+        public string CategoryId;
+        public string LabelId;
+        public string ReasonChannelId;
+        public string BindingId;
+        public int SubjectEntityKind;
+        public int SubjectRuntimeId;
+        public int Visibility;
+        public DecisionReasonEvaluationData Evaluation = new DecisionReasonEvaluationData();
     }
 
     /// <summary>

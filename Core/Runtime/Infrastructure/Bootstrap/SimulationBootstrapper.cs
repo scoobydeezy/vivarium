@@ -199,6 +199,7 @@ namespace Vivarium.Infrastructure.Bootstrap
             var activityResolution = new ActivityResolutionRegistry();
             var decisionResolution = new DecisionResolutionService();
             var decisionReevaluation = new DecisionReevaluationService();
+            DecisionSignalProviderRegistry decisionSignals = DecisionSignalProviderRegistry.WithBuiltIns();
             var holdPolicy = new DecisionHoldPolicy(maxGlobalHeld: 12, maxHeldPerCharacter: 3);
             var interactionCandidates = new InteractionCandidateSelector(random);
             var socialBeliefs = new SocialBeliefUpdateService();
@@ -215,7 +216,11 @@ namespace Vivarium.Infrastructure.Bootstrap
 
             foreach (KeyValuePair<AuthoredId, DecisionDefinition> pair in catalog.Decisions)
             {
-                if (pair.Value.SocialTrigger != null)
+                if (pair.Value.ReasoningProgram != null)
+                {
+                    decisionReevaluation.Register(new CompiledDecisionInfluenceReevaluator(pair.Key, decisionSignals));
+                }
+                else if (pair.Value.SocialTrigger != null)
                 {
                     decisionReevaluation.Register(new SocialDecisionInfluenceReevaluator(pair.Value, catalog));
                 }
@@ -231,7 +236,7 @@ namespace Vivarium.Infrastructure.Bootstrap
 
             // Content-backed reactions use explicit stable order (§12.1).
             var domainHandlers = new OrderedDomainEventHandlerRegistry();
-            domainHandlers.Register(new NeedThresholdDecisionGenerationHandler(catalog), 100);
+            domainHandlers.Register(new NeedThresholdDecisionGenerationHandler(catalog, decisionSignals), 100);
             domainHandlers.Register(new DecisionActivityOutcomeHandler(catalog, transitions), 100);
             domainHandlers.Register(new CharacterArrivedInteractionHandler(interactions), 100);
             domainHandlers.Register(new TravelStartedInteractionHandler(interactions), 100);
@@ -252,7 +257,9 @@ namespace Vivarium.Infrastructure.Bootstrap
 
             // Application services.
             var watchSignals = new WatchSignalService(knowledgeDiscovery);
-            var saveMapper = new SaveGameMapper(ScheduledEventPayloadCodecRegistry.WithBuiltIns());
+            var saveMapper = new SaveGameMapper(
+                ScheduledEventPayloadCodecRegistry.WithBuiltIns(),
+                decisionSignals);
 
             var dispatcher = new CommandDispatcher();
             dispatcher.Register(new AdvanceSimulationHandler(runner));
