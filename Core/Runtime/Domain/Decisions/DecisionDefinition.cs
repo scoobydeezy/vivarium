@@ -28,7 +28,9 @@ namespace Vivarium.Domain.Decisions
             bool hotReloadSafe = true,
             NeedThresholdDecisionTrigger trigger = null,
             IReadOnlyList<DecisionInfluenceTemplate> influenceTemplates = null,
-            IReadOnlyList<DecisionActivityOutcome> activityOutcomes = null)
+            IReadOnlyList<DecisionActivityOutcome> activityOutcomes = null,
+            SocialInteractionDecisionTrigger socialTrigger = null,
+            IReadOnlyList<DecisionRelationshipOutcome> relationshipOutcomes = null)
         {
             if (!id.IsSet)
             {
@@ -51,6 +53,8 @@ namespace Vivarium.Domain.Decisions
             Trigger = trigger;
             InfluenceTemplates = influenceTemplates ?? new DecisionInfluenceTemplate[0];
             ActivityOutcomes = activityOutcomes ?? new DecisionActivityOutcome[0];
+            SocialTrigger = socialTrigger;
+            RelationshipOutcomes = relationshipOutcomes ?? new DecisionRelationshipOutcome[0];
         }
 
         public AuthoredId Id { get; }
@@ -87,6 +91,10 @@ namespace Vivarium.Domain.Decisions
 
         /// <summary>Optional Activity changes applied after particular options resolve.</summary>
         public IReadOnlyList<DecisionActivityOutcome> ActivityOutcomes { get; }
+
+        public SocialInteractionDecisionTrigger SocialTrigger { get; }
+
+        public IReadOnlyList<DecisionRelationshipOutcome> RelationshipOutcomes { get; }
 
         public override string ToString() => Id.ToString();
     }

@@ -2104,6 +2104,33 @@ Relationship processing therefore scales with the number of interaction opportun
 
 ---
 
+## 32.1 Production Social and Relationship Model
+
+Relationships use the matrix-first model specified by [`SocialModelBrief.md`](SocialModelBrief.md).
+This product decision resolves the previously deferred NPC-belief and relationship-formula questions.
+
+```text
+true latent personality
+→ observer-scoped uncertain belief
+→ directional sparse appraisal field
+→ calibrated appraisal lens
+→ values/interests + directional history + familiarity + affect/context
+→ explainable Decision/Activity/interaction pressure
+```
+
+Authoritative social math is deterministic fixed point. Named traits are projections of the latent
+space and never a second scoring channel. Beliefs are sparse observer→target edges in the generalized
+Knowledge model; unknown and neutral remain distinct. Relationship pairs retain stable runtime identity
+and indexing, but durable channels and familiarity are directional. Affiliation, Respect, Comfort,
+Attraction, and Reliance may disagree without being collapsed into one compatibility score.
+
+Social evidence comes from bounded shared-context witnesses and updates beliefs jointly. It does not
+directly rewrite personality truth. Reputation and perceived group norms are bounded Knowledge facts,
+not omniscient truth or recursive unlimited theory of mind. Social evaluations may feed Decisions,
+Activity modifiers, and interaction relevance, but never directly choose behavior.
+
+---
+
 # 33. Application Layer
 
 The Application layer represents game use cases.
@@ -3143,13 +3170,12 @@ final setting
 tower vs town vs spaceship vs another hierarchy
 2D vs 2.5D vs 3D
 exact population target
-specific character stats
+character stats outside the provisional social latent space
 exact needs
 exact dice-resolution formula
 exact degree-of-success system
 intervention resource economy
 knowledge confidence rules
-relationship formulas
 pathfinding solution
 economy model
 save serialization format
@@ -3162,7 +3188,6 @@ whether travel connections can themselves be occupiable spaces (e.g. elevator ca
 exact Activity/Commitment planning horizon
 secondary/multitasking Activity representation
 actual mini-game framework, scoring, UI, and resume/discard policy
-NPC-specific belief/knowledge ledgers, misinformation, and characters holding false beliefs about World Truth
 whether FactKey subjects need their own durability treatment when the entities they reference are compacted into Legacy history
 
 ```
@@ -3248,6 +3273,21 @@ These are the rules future code must preserve.
 71. Domain boundaries are mechanically enforced through project/assembly dependencies.
 72. Core game definitions can be rebuilt/reloaded independently from runtime state where safe.
 73. In-flight runtime entities snapshot definition-derived values required for future authoritative outcomes; hot reload affects newly created runtime state only.
+74. Ground-truth personality is a compact latent vector; named social traits are projections and never duplicate authoritative scoring state.
+75. Character social evaluation uses observer-scoped Knowledge/belief, never omniscient target truth.
+76. Unknown personality and neutral personality are distinct because belief uncertainty is authoritative state.
+77. Social beliefs and dyadic state are sparse observer→target edges; universal population pair tables are prohibited.
+78. Appraisal fields are directional, sparse, fixed-point, deterministically ordered, and evaluated through one canonical pipeline.
+79. Distinct appraisal lenses share calibration but may disagree; no universal compatibility scalar replaces them.
+80. Values, interests, dyadic history, familiarity, current affect, and independent context remain distinct from latent personality appraisal.
+81. Durable relationship channels and familiarity are directional even when the pair retains one stable relationship identity/index entry.
+82. Social evidence updates an observer's joint belief distribution and does not directly rewrite personality truth.
+83. Social witnesses come from bounded shared-context/index queries and never from global pair scans.
+84. Social evaluation retains matrix-level and authored human-readable provenance sufficient to explain gameplay pressure.
+85. Reputation and perceived group norms are bounded Knowledge facts, not omniscient truth or recursively unbounded theory of mind.
+86. Social evaluation supplies calibrated pressures to Decisions, Activities, and interaction policy; it never directly chooses an outcome.
+87. Social belief, appraisal-field, directional-history, values/interests, affect, and context revisions invalidate only dependent cached/active evaluations.
+88. Persistent social truth, beliefs, fields, uncertainty, directional history, familiarity, affect, and relevant provenance round-trip through versioned save DTOs.
 
 ---
 

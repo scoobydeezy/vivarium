@@ -5,6 +5,11 @@ using Vivarium.Domain.Randomness;
 
 namespace Vivarium.Domain.Relationships
 {
+    public interface IInteractionRelevance
+    {
+        long Score(CharacterId actor, CharacterId candidate);
+    }
+
     /// <summary>
     /// Turns a shared context into a <b>bounded</b> set of interaction candidates (§32).
     /// <para>
@@ -44,7 +49,8 @@ namespace Vivarium.Domain.Relationships
             int maxCandidates,
             AuthoredId scopeType,
             int scopeId,
-            int rollIndex)
+            int rollIndex,
+            IInteractionRelevance relevance = null)
         {
             if (maxCandidates <= 0 || sharedContextPool == null || sharedContextPool.Count == 0)
             {
@@ -74,7 +80,15 @@ namespace Vivarium.Domain.Relationships
             var selected = new List<CharacterId>(maxCandidates);
 
             // Acquaintances first, in deterministic id order.
-            acquaintances.Sort();
+            acquaintances.Sort((left, right) =>
+            {
+                if (relevance != null)
+                {
+                    int score = relevance.Score(actor, right).CompareTo(relevance.Score(actor, left));
+                    if (score != 0) return score;
+                }
+                return left.CompareTo(right);
+            });
             for (int i = 0; i < acquaintances.Count && selected.Count < maxCandidates; i++)
             {
                 selected.Add(acquaintances[i]);

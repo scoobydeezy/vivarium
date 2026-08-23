@@ -20,7 +20,7 @@ namespace Vivarium.SimRunner.Tests
                 maximumBuildMilliseconds: long.MaxValue,
                 maximumRunMilliseconds: long.MaxValue,
                 maximumManagedMegabytes: long.MaxValue,
-                maximumWorkPerCharacter: 60,
+                maximumWorkPerCharacter: 100,
                 maximumActivitiesPerCharacter: 8,
                 maximumPendingEventsPerCharacter: 3);
 

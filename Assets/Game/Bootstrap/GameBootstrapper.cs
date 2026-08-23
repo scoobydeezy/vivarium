@@ -9,6 +9,7 @@ using Vivarium.Domain.Common;
 using Vivarium.Domain.Content;
 using Vivarium.Domain.Decisions;
 using Vivarium.Domain.Relationships;
+using Vivarium.Domain.Social;
 using Vivarium.Domain.Simulation;
 using Vivarium.Domain.Spatial;
 using Vivarium.Domain.Time;
@@ -40,6 +41,7 @@ namespace Vivarium.Unity.Bootstrap
         private static readonly AuthoredId ContextWorkPressure = new AuthoredId("decision_context.work_pressure");
         private static readonly AuthoredId ModifierDislikedColleague = new AuthoredId("activity_modifier.disliked_colleague_present");
         private static readonly AuthoredId InfluenceBadWorkContext = new AuthoredId("Difficult work context");
+        private static readonly AuthoredId SocialCalibrationStandard = new AuthoredId("social.calibration.standard");
         [Header("Content")]
         [SerializeField] private ContentPackAsset contentPack;
 
@@ -182,6 +184,10 @@ namespace Vivarium.Unity.Bootstrap
 
             _host.World.Characters.Add(character.Id, character);
             _demoCharacters.Add(character.Id);
+            if (_host.Catalog.AppraisalCalibrations.ContainsKey(SocialCalibrationStandard))
+            {
+                new SocialProfileGenerator(_host.Simulation.Random).Generate(character, SocialCalibrationStandard);
+            }
 
             NeedDefinition hunger = _host.Catalog.Needs[new AuthoredId("need.hunger")];
             var hungerState = new NeedState(

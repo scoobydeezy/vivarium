@@ -81,6 +81,10 @@ namespace Vivarium.Domain.Randomness
         public static readonly AuthoredId ActivityPerformance = new AuthoredId("rng.activity.performance");
         public static readonly AuthoredId InteractionCandidateSample = new AuthoredId("rng.interaction.candidate_sample");
         public static readonly AuthoredId KnowledgeDiscovery = new AuthoredId("rng.knowledge.discovery");
+        public static readonly AuthoredId SocialPersonalityGeneration = new AuthoredId("rng.social.personality_generation");
+        public static readonly AuthoredId SocialPreferenceGeneration = new AuthoredId("rng.social.preference_generation");
+        public static readonly AuthoredId SocialEvidenceInterpretation = new AuthoredId("rng.social.evidence_interpretation");
+        public static readonly AuthoredId SocialRumorDistortion = new AuthoredId("rng.social.rumor_distortion");
 
         /// <summary>
         /// Composes a sub-purpose such as <c>rng.decision.influence_roll/option.accept</c> so distinct

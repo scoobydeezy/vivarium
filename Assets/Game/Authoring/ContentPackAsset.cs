@@ -6,6 +6,7 @@ using Vivarium.Domain.Content;
 using Vivarium.Domain.Decisions;
 using Vivarium.Domain.Spatial;
 using Vivarium.Domain.Time;
+using Vivarium.Domain.Social;
 
 namespace Vivarium.Unity.Authoring
 {
@@ -40,6 +41,11 @@ namespace Vivarium.Unity.Authoring
         [SerializeField] private DecisionEntry[] decisions = new DecisionEntry[0];
 
         [SerializeField] private InterventionEntry[] interventions = new InterventionEntry[0];
+
+        [Header("Social model")]
+        [SerializeField] private AppraisalCalibrationEntry[] appraisalCalibrations = new AppraisalCalibrationEntry[0];
+        [SerializeField] private SocialEvidenceEntry[] socialEvidence = new SocialEvidenceEntry[0];
+        [SerializeField] private SocialPressureEntry[] socialPressures = new SocialPressureEntry[0];
 
         public int ContentVersion => contentVersion;
 
@@ -82,6 +88,19 @@ namespace Vivarium.Unity.Authoring
             for (int i = 0; i < interventions.Length; i++)
             {
                 builder.Add(interventions[i].ToDefinition());
+            }
+
+            for (int i = 0; i < appraisalCalibrations.Length; i++)
+            {
+                builder.Add(appraisalCalibrations[i].ToDefinition());
+            }
+            for (int i = 0; i < socialEvidence.Length; i++)
+            {
+                builder.Add(socialEvidence[i].ToDefinition());
+            }
+            for (int i = 0; i < socialPressures.Length; i++)
+            {
+                builder.Add(socialPressures[i].ToDefinition());
             }
 
             // The system-provided activities the architecture assumes exist (§29.2, invariant 39).
@@ -201,6 +220,8 @@ namespace Vivarium.Unity.Authoring
             public NeedThresholdTriggerEntry trigger;
             public DecisionInfluenceEntry[] influences;
             public DecisionActivityOutcomeEntry[] activityOutcomes;
+            public SocialDecisionTriggerEntry socialTrigger;
+            public DecisionRelationshipOutcomeEntry[] relationshipOutcomes;
 
             public DecisionDefinition ToDefinition()
             {
@@ -222,6 +243,12 @@ namespace Vivarium.Unity.Authoring
                     domainOutcomes[i] = activityOutcomes[i].ToDefinition();
                 }
 
+                var domainRelationshipOutcomes = new DecisionRelationshipOutcome[relationshipOutcomes?.Length ?? 0];
+                for (int i = 0; i < domainRelationshipOutcomes.Length; i++)
+                {
+                    domainRelationshipOutcomes[i] = relationshipOutcomes[i].ToDefinition();
+                }
+
                 return new DecisionDefinition(
                     new AuthoredId(authoredId),
                     domainOptions,
@@ -232,7 +259,9 @@ namespace Vivarium.Unity.Authoring
                     dependencyTemplates: ToDependencies(),
                     trigger: trigger.IsConfigured ? trigger.ToDefinition() : null,
                     influenceTemplates: domainInfluences,
-                    activityOutcomes: domainOutcomes);
+                    activityOutcomes: domainOutcomes,
+                    socialTrigger: socialTrigger.IsConfigured ? socialTrigger.ToDefinition() : null,
+                    relationshipOutcomes: domainRelationshipOutcomes);
             }
 
             private DecisionDependencyKey[] ToDependencies()
@@ -314,6 +343,47 @@ namespace Vivarium.Unity.Authoring
         }
 
         [System.Serializable]
+        public struct SocialDecisionTriggerEntry
+        {
+            public string pressureDefinitionId;
+            public string lensId;
+            public string positiveOptionId;
+            public string negativeOptionId;
+            public string categoryId;
+            public string positiveLabelId;
+            public string negativeLabelId;
+            public InfluenceVisibility visibility;
+            public AppraisalStrength minimumStrength;
+
+            public bool IsConfigured => !string.IsNullOrWhiteSpace(pressureDefinitionId);
+
+            public SocialInteractionDecisionTrigger ToDefinition() => new SocialInteractionDecisionTrigger(
+                new AuthoredId(pressureDefinitionId),
+                new AuthoredId(lensId),
+                new SocialDecisionInfluenceSpec(
+                    new AuthoredId(positiveOptionId),
+                    new AuthoredId(negativeOptionId),
+                    new AuthoredId(categoryId),
+                    new AuthoredId(positiveLabelId),
+                    new AuthoredId(negativeLabelId),
+                    visibility),
+                minimumStrength);
+        }
+
+        [System.Serializable]
+        public struct DecisionRelationshipOutcomeEntry
+        {
+            public string optionId;
+            public string channelId;
+            public long delta;
+
+            public DecisionRelationshipOutcome ToDefinition() => new DecisionRelationshipOutcome(
+                new AuthoredId(optionId),
+                new AuthoredId(channelId),
+                delta);
+        }
+
+        [System.Serializable]
         public struct InterventionEntry
         {
             public string authoredId;
@@ -324,6 +394,93 @@ namespace Vivarium.Unity.Authoring
                 new AuthoredId(authoredId),
                 kind,
                 cost);
+        }
+
+        [System.Serializable]
+        public struct AppraisalCalibrationEntry
+        {
+            public string authoredId;
+            public int version;
+            public AppraisalStrengthThresholdEntry[] thresholds;
+
+            public AppraisalCalibrationProfile ToDefinition()
+            {
+                var result = new AppraisalStrengthThreshold[thresholds?.Length ?? 0];
+                for (int i = 0; i < result.Length; i++) result[i] = thresholds[i].ToDefinition();
+                return new AppraisalCalibrationProfile(new AuthoredId(authoredId), result, version);
+            }
+        }
+
+        [System.Serializable]
+        public struct AppraisalStrengthThresholdEntry
+        {
+            public long minimumMagnitude;
+            public AppraisalStrength strength;
+            public AppraisalStrengthThreshold ToDefinition() => new AppraisalStrengthThreshold(minimumMagnitude, strength);
+        }
+
+        [System.Serializable]
+        public struct SocialEvidenceEntry
+        {
+            public string actionDefinitionId;
+            public string explanationId;
+            public SocialEvidenceMeasurementEntry[] measurements;
+
+            public SocialEvidenceDefinition ToDefinition()
+            {
+                var result = new SocialEvidenceMeasurement[measurements?.Length ?? 0];
+                for (int i = 0; i < result.Length; i++) result[i] = measurements[i].ToDefinition();
+                return new SocialEvidenceDefinition(new AuthoredId(actionDefinitionId), result, new AuthoredId(explanationId));
+            }
+        }
+
+        [System.Serializable]
+        public struct SocialEvidenceMeasurementEntry
+        {
+            public string authoredId;
+            public SocialLinearEntry[] projection;
+            public long observedValue;
+            public long noiseVariance;
+
+            public SocialEvidenceMeasurement ToDefinition()
+            {
+                var result = new SocialLinearTerm[projection?.Length ?? 0];
+                for (int i = 0; i < result.Length; i++) result[i] = projection[i].ToDefinition();
+                return new SocialEvidenceMeasurement(new AuthoredId(authoredId), result, observedValue, noiseVariance);
+            }
+        }
+
+        [System.Serializable]
+        public struct SocialPressureEntry
+        {
+            public string authoredId;
+            public SocialFactorRuleEntry[] rules;
+
+            public SocialPressureDefinition ToDefinition()
+            {
+                var result = new SocialFactorRule[rules?.Length ?? 0];
+                for (int i = 0; i < result.Length; i++) result[i] = rules[i].ToDefinition();
+                return new SocialPressureDefinition(new AuthoredId(authoredId), result);
+            }
+        }
+
+        [System.Serializable]
+        public struct SocialFactorRuleEntry
+        {
+            public string lensId;
+            public SocialFactorSourceKind sourceKind;
+            public string sourceId;
+            public long coefficient;
+            public string explanationId;
+            public string requiredContextId;
+
+            public SocialFactorRule ToDefinition() => new SocialFactorRule(
+                new AuthoredId(lensId),
+                sourceKind,
+                new AuthoredId(sourceId),
+                coefficient,
+                new AuthoredId(explanationId),
+                new AuthoredId(requiredContextId));
         }
     }
 }

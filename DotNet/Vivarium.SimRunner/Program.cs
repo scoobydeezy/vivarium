@@ -318,8 +318,10 @@ namespace Vivarium.SimRunner
                 hash = StableHash.Combine(hash, relationship.Id.Value);
                 hash = StableHash.Combine(hash, relationship.LowCharacterId.Value);
                 hash = StableHash.Combine(hash, relationship.HighCharacterId.Value);
-                hash = StableHash.Combine(hash, relationship.AffinityAt(world.Clock.Now));
-                hash = StableHash.Combine(hash, relationship.Familiarity);
+                hash = StableHash.Combine(hash, relationship.LowToHigh.ChannelAt(RelationshipChannels.Affection, world.Clock.Now));
+                hash = StableHash.Combine(hash, relationship.LowToHigh.FamiliarityAt(world.Clock.Now));
+                hash = StableHash.Combine(hash, relationship.HighToLow.ChannelAt(RelationshipChannels.Affection, world.Clock.Now));
+                hash = StableHash.Combine(hash, relationship.HighToLow.FamiliarityAt(world.Clock.Now));
                 hash = StableHash.Combine(hash, relationship.LastInteractionAt?.TotalMinutes ?? -1);
             }
 
@@ -367,7 +369,7 @@ namespace Vivarium.SimRunner
             }
             foreach (Relationship relationship in world.Relationships.All)
             {
-                Console.WriteLine($"relationship {relationship.Id.Value} {relationship.LowCharacterId.Value}-{relationship.HighCharacterId.Value} affinity={relationship.AffinityAt(world.Clock.Now)} familiarity={relationship.Familiarity} last={relationship.LastInteractionAt?.TotalMinutes.ToString() ?? "-"}");
+                Console.WriteLine($"relationship {relationship.Id.Value} {relationship.LowCharacterId.Value}->{relationship.HighCharacterId.Value} affection={relationship.LowToHigh.ChannelAt(RelationshipChannels.Affection, world.Clock.Now)} familiarity={relationship.LowToHigh.FamiliarityAt(world.Clock.Now)}; {relationship.HighCharacterId.Value}->{relationship.LowCharacterId.Value} affection={relationship.HighToLow.ChannelAt(RelationshipChannels.Affection, world.Clock.Now)} familiarity={relationship.HighToLow.FamiliarityAt(world.Clock.Now)} last={relationship.LastInteractionAt?.TotalMinutes.ToString() ?? "-"}");
             }
         }
 

@@ -64,6 +64,15 @@ namespace Vivarium.Domain.Common
         /// <summary>Relationship standing.</summary>
         public static readonly AuthoredId Relationship = new AuthoredId("revision.relationship");
 
+        /// <summary>A character's ground-truth latent personality.</summary>
+        public static readonly AuthoredId Personality = new AuthoredId("revision.social.personality");
+
+        /// <summary>An observer's appraisal field for one lens. Scope with the lens id.</summary>
+        public static readonly AuthoredId AppraisalField = new AuthoredId("revision.social.appraisal_field");
+
+        /// <summary>An observer's belief distribution about one target.</summary>
+        public static readonly AuthoredId SocialBelief = new AuthoredId("revision.social.belief");
+
         /// <summary>A decision's influence set (§17.2).</summary>
         public static readonly AuthoredId DecisionInfluence = new AuthoredId("revision.decision.influence");
 

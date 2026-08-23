@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Vivarium.Domain.Common;
+using Vivarium.Domain.Social;
 using Vivarium.Domain.Time;
 
 namespace Vivarium.Domain.Characters
@@ -21,6 +22,8 @@ namespace Vivarium.Domain.Characters
     {
         private readonly SortedSet<AuthoredId> _traits = new SortedSet<AuthoredId>();
         private readonly SortedDictionary<AuthoredId, NeedState> _needs = new SortedDictionary<AuthoredId, NeedState>();
+        private readonly SortedDictionary<AuthoredId, AppraisalField> _appraisalFields =
+            new SortedDictionary<AuthoredId, AppraisalField>();
 
         public Character(CharacterId id, string displayName, SimTime createdAt)
         {
@@ -32,6 +35,10 @@ namespace Vivarium.Domain.Characters
             Id = id;
             DisplayName = displayName;
             CreatedAt = createdAt;
+            Personality = new SocialVector();
+            Values = new WeightedTagSet();
+            Interests = new WeightedTagSet();
+            Affect = new AffectState();
             IsActive = true;
         }
 
@@ -40,6 +47,23 @@ namespace Vivarium.Domain.Characters
         public string DisplayName { get; }
 
         public SimTime CreatedAt { get; }
+
+        /// <summary>
+        /// Ground-truth latent personality. Named traits are projections of this vector; the legacy
+        /// authored trait set remains temporarily for save migration and existing non-social content.
+        /// </summary>
+        public SocialVector Personality { get; private set; }
+
+        /// <summary>Directional appraisal fields owned by this observer, keyed by lens id.</summary>
+        public IReadOnlyDictionary<AuthoredId, AppraisalField> AppraisalFields => _appraisalFields;
+
+        public int PersonalityRevision { get; private set; }
+
+        public WeightedTagSet Values { get; }
+
+        public WeightedTagSet Interests { get; }
+
+        public AffectState Affect { get; }
 
         /// <summary>
         /// False once the character leaves active simulation (death, departure). Their runtime id stays
@@ -75,6 +99,35 @@ namespace Vivarium.Domain.Characters
         }
 
         public bool RemoveTrait(AuthoredId traitId) => _traits.Remove(traitId);
+
+        public void SetPersonality(SocialVector personality)
+        {
+            Personality = personality?.Copy() ?? throw new ArgumentNullException(nameof(personality));
+            PersonalityRevision++;
+        }
+
+        public void RestorePersonality(SocialVector personality, int revision)
+        {
+            Personality = personality?.Copy() ?? throw new ArgumentNullException(nameof(personality));
+            PersonalityRevision = revision;
+        }
+
+        public void SetAppraisalField(AppraisalField field)
+        {
+            if (field == null)
+            {
+                throw new ArgumentNullException(nameof(field));
+            }
+            if (field.ObserverId != Id)
+            {
+                throw new InvalidOperationException($"{field.LensId} belongs to {field.ObserverId}, not {Id}.");
+            }
+
+            _appraisalFields[field.LensId] = field;
+        }
+
+        public bool TryGetAppraisalField(AuthoredId lensId, out AppraisalField field) =>
+            _appraisalFields.TryGetValue(lensId, out field);
 
         public void SetNeed(NeedState need) => _needs[need.NeedId] = need;
 

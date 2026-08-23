@@ -155,8 +155,8 @@ the leave-work Decision's Need trigger, options, initial influence visibility, A
 intervention. The smoke bootstrap no longer constructs a Decision directly: it settles Mina's authored
 hunger crossing and presents the generated Decision through the existing knowledge-filtered read model
 and Hold, Release, and intervention Commands. Unity assemblies and the PlayMode test assembly compile;
-the batch PlayMode run must be repeated after closing the interactive Unity instance that currently has
-the project locked.
+the batch PlayMode suite passes all 10 tests after its assertions were made explicit about selecting the
+Need Decision in a world that can also contain social Decisions.
 
 The causal event-feed slice was completed on **2026-08-22**. Decision appearance and successful player
 intervention are promoted from ordered Domain Events into bounded recent History; resolution already
@@ -186,20 +186,43 @@ libraries wait until the Golden Scenario works and the scale gate passes.
 
 Completed on **2026-08-22**. The always-on regression tier runs 250 characters for six simulated hours
 twice, requires the same authoritative hash and exact work/Activity/event counts, and enforces ceilings
-of 60 work items, 8 Activities, and 3 pending events per character. This tier deliberately does not
+of 100 work items, 8 Activities, and 3 pending events per character. This tier deliberately does not
 assert wall time or heap usage.
 
 The measured tier runs 1,000 characters for one simulated day and is enforced when
 `VIVARIUM_ENFORCE_PERFORMANCE_BUDGETS=1`. Its initial budgets are 2 seconds to build, 15 seconds to run,
-128 MB managed heap, 200 work items, 30 Activities, and 2 pending events per character. The 2026-08-22
+128 MB managed heap, 320 work items, 30 Activities, and 2 pending events per character. The pre-social
 baseline on the development machine was 97 ms build, 6,938 ms run, 28 MB, 141,894 work items, 24,994
 Activities, 1,002 pending events, and authoritative hash `A332FAE357E085CD`. The CLI reports these
 metrics for arbitrary population/day inputs and only enforces measured limits for the standard tier
 when the environment flag is enabled.
 
+The production social pass adds participant evidence plus at most two indexed witnesses per interaction.
+Its 1,000-character/one-day Release measurement on the same development machine is 189 ms build,
+10,669 ms run, 82 MB, 286,595 work items, 24,994 Activities, 1,014 pending events, and hash
+`DA36FBBC20D6042E`. The structural work ceiling was revised to describe this deliberately bounded new
+pipeline; the original wall-clock and heap gates still pass.
+
 The architecture gate has passed for beginning one deliberately narrow management vertical slice.
 Select that slice from concrete product intent; do not infer a broad economy, construction, or job
 model merely because performance coverage now exists.
+
+### Active checkpoint — production relationship model
+
+Product direction on **2026-08-22** selected `SocialModelBrief.md` as the production relationship
+model and explicitly un-deferred NPC-held beliefs and relationship formulas. The former undirected
+affinity testbed is being replaced by observer-scoped uncertain belief, sparse directional appraisal
+fields, multiple calibrated lenses, directional history/familiarity, and explainable social pressure.
+
+The brief's production foundation is implemented end to end. Indexed interactions create bounded
+character-held evidence; covariance-aware sparse appraisal combines distinct lenses, directional history,
+familiarity, values/interests, affect, and independent context with a causal trace. Calibrated results feed
+interaction relevance, Decisions, and Activity pressure. Belief changes target living influence
+reevaluation, and resolution changes only the deciding character's directional channel. Save schema v2
+persists personality, fields, beliefs/covariance, values/interests, affect, directional channels,
+familiarity, and memories; v1 affinity migrates into two initially equal directions. Runtime no longer
+stores a universal relationship score. Reputation remains bounded observer Knowledge, and culture remains
+the explicitly named future dependency from the brief.
 
 ## Implementation checklist
 

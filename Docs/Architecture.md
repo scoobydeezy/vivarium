@@ -121,11 +121,19 @@ Working implementations:
   reevaluation, deterministic dice resolution, bounded held decisions, one authority for intervention
   rules, one content-backed Need-threshold generation path with an Activity consequence, and targeted
   Activity-context influence reevaluation (§17–§20).
-- **Knowledge** — fact providers, a knowledge ledger that goes stale by design, discovery driven by
-  observation through one canonical `WatchState` (§20.1, §22–§25).
+- **Knowledge** — player- and character-scoped fact providers, sparse social belief distributions,
+  lifecycle/retention metadata, and discovery driven by observation through one canonical `WatchState`
+  (§20.1, §22–§25).
 - **Interactions** — location-arrival and indexed shared-travel-segment opportunities use bounded
   deterministic candidate selection, leave primary Activities intact, update Relationships, and create
   observation-driven Knowledge only through canonical `WatchState` (§25, §32).
+- **Matrix-first social model** — seven-dimensional fixed-point latent personality, named-trait
+  projections, sparse directional appraisal fields with pairwise/context/PSD ideal terms, covariance-aware
+  observer beliefs, shared lens calibration, directional dyadic channels, analytical familiarity,
+  salient memories, values/interests, affect, bounded reputation, deterministic generation/drift, and
+  full contribution traces (§32.1). Shared-context interactions create bounded character-held evidence;
+  one concrete social interaction Decision consumes the appraisal and applies an asymmetric relationship
+  consequence through the normal living-Decision pipeline.
 - **Commands and queries** — deterministic ingress queue, dispatcher, projections published only at
   quiescent boundaries, knowledge-filtered decision views (§2.2.1, §26, §35).
 - **Persistence** — versioned DTOs, explicit payload codecs, revision persistence, index rebuilding on
@@ -140,15 +148,16 @@ Intentionally thin, pending game-design decisions:
 - **Decision generation breadth.** One Need-threshold trigger now generates a content-backed Decision;
   other circumstances and targeted live influence construction remain to be added as concrete content
   requires them. All headless runner execution paths now use the generated leave-work choice.
-- **Consequences breadth.** A resolved option can now change the primary Activity through the common
-  transition service. Employment, relationship, and Commitment consequences remain unimplemented.
+- **Consequences breadth.** Resolved options can change the primary Activity and one social Decision can
+  change a directional relationship channel. Employment and Commitment consequences remain unimplemented.
 - **Save serialization format.** Explicitly deferred (§57). `ISaveGameSerializer` is defined;
   `InMemorySaveGameStore` exercises mapping without committing to an encoding.
 - **Needs → behaviour breadth.** Threshold crossings can generate one Decision type; direct routine,
   Activity-priority, and other behavioral reactions remain unimplemented.
 - **Unity authoring/presentation.** `ContentPackAsset` converts authored Needs, Activities, Decisions
-  (including threshold triggers, initial influences, and Activity outcomes), and interventions into the
-  validated Domain catalog. The smoke scene schedules two shared work Commitments: Mina and Glen
+  (including social triggers and directional outcomes), appraisal calibration, social evidence/pressure,
+  and interventions into the validated Domain catalog. Demo characters receive deterministic social
+  profiles. The smoke scene schedules two shared work Commitments: Mina and Glen
   interact while travelling, Mina arrives beside a disliked working colleague and gains Work pressure,
   then a real hunger crossing generates the leave-work Decision. `WorldPresenter` surfaces the
   resulting knowledge-filtered projection and sends
@@ -187,6 +196,13 @@ The test suite is organised around the §58 invariants rather than around classe
 | Shared travel segment interaction survives index rebuild/load | `InteractionTests` |
 | Watched interaction creates Knowledge; unwatched does not | `InteractionTests` |
 | Large shared context produces a bounded interaction outcome | `SimulationInvariantTests` |
+| Latent appraisal math, uncertainty, context, provenance, and contradictory lenses | `SocialModelTests` |
+| Observer beliefs update jointly and remain sparse | `SocialModelTests`, `InteractionTests`, `SocialScaleTests` |
+| Social truth, fields, beliefs, directional history, and uncertainty round-trip | `SocialPersistenceTests` |
+| Schema-v1 affinity migrates into two directional states | `SocialPersistenceTests` |
+| Social interaction creates a living Decision and asymmetric consequence | `SocialDecisionTests` |
+| Calibrated social pressure changes Activity performance only while context exists | `SocialActivityPressureTests` |
+| Torture corpus has an executable layer/mechanism routing audit | `SocialTortureCorpusTests` |
 | Full Golden Scenario causal chain | `GoldenScenarioTests` |
 | Held generated Decision resolves identically offline after reload | `GoldenScenarioTests` |
 | Mixed travel/Decision/Need/Commitment offline checkpoint is equivalent | `GoldenScenarioTests` |

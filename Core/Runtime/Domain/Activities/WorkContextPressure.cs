@@ -15,7 +15,7 @@ namespace Vivarium.Domain.Activities
         private readonly AuthoredId _workActivityId;
         private readonly AuthoredId _modifierId;
         private readonly AuthoredId _decisionContextKind;
-        private readonly long _affinityThreshold;
+        private readonly long _relationshipThreshold;
         private readonly long _pressuredRate;
 
         public WorkContextPressureService(
@@ -32,7 +32,7 @@ namespace Vivarium.Domain.Activities
             _workActivityId = workActivityId;
             _modifierId = modifierId;
             _decisionContextKind = decisionContextKind;
-            _affinityThreshold = affinityThreshold;
+            _relationshipThreshold = affinityThreshold;
             _pressuredRate = pressuredRate;
         }
 
@@ -91,7 +91,7 @@ namespace Vivarium.Domain.Activities
         private bool IsNegativeRelationship(WorldState world, CharacterId a, CharacterId b) =>
             world.RelationshipIndex.TryGetBetween(a, b, out RelationshipId id) &&
             world.Relationships.Get(id).IsActive &&
-            world.Relationships.Get(id).AffinityAt(world.Clock.Now) <= _affinityThreshold;
+            world.Relationships.Get(id).From(a).ChannelAt(RelationshipChannels.Affection, world.Clock.Now) <= _relationshipThreshold;
 
         private void Reevaluate(SimulationContext context, CharacterId worker) =>
             _reevaluation.ReevaluateDependents(

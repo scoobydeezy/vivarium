@@ -20,7 +20,7 @@ namespace Vivarium.SimRunner
             maximumBuildMilliseconds: 2000,
             maximumRunMilliseconds: 15000,
             maximumManagedMegabytes: 128,
-            maximumWorkPerCharacter: 200,
+            maximumWorkPerCharacter: 320,
             maximumActivitiesPerCharacter: 30,
             maximumPendingEventsPerCharacter: 2);
 
@@ -186,8 +186,10 @@ namespace Vivarium.SimRunner
             foreach (Relationship relationship in world.Relationships.All)
             {
                 hash = StableHash.Combine(hash, relationship.Id.Value);
-                hash = StableHash.Combine(hash, relationship.AffinityAt(world.Clock.Now));
-                hash = StableHash.Combine(hash, relationship.Familiarity);
+                hash = StableHash.Combine(hash, relationship.LowToHigh.ChannelAt(RelationshipChannels.Affection, world.Clock.Now));
+                hash = StableHash.Combine(hash, relationship.LowToHigh.FamiliarityAt(world.Clock.Now));
+                hash = StableHash.Combine(hash, relationship.HighToLow.ChannelAt(RelationshipChannels.Affection, world.Clock.Now));
+                hash = StableHash.Combine(hash, relationship.HighToLow.FamiliarityAt(world.Clock.Now));
                 hash = StableHash.Combine(hash, relationship.LastInteractionAt?.TotalMinutes ?? -1);
             }
 

@@ -21,7 +21,7 @@ namespace Vivarium.Application.Persistence
         /// <summary>
         /// The current persisted shape. Bump on any structural change and add a migration (§39).
         /// </summary>
-        public const int CurrentSchemaVersion = 1;
+        public const int CurrentSchemaVersion = 2;
 
         /// <summary>Determines whether the persisted shape can be understood or migrated (§39.1).</summary>
         public int SchemaVersion = CurrentSchemaVersion;
@@ -85,6 +85,8 @@ namespace Vivarium.Application.Persistence
 
         public List<KnowledgeEntryData> Knowledge = new List<KnowledgeEntryData>();
 
+        public List<SocialBeliefData> SocialBeliefs = new List<SocialBeliefData>();
+
         public AttentionData Attention = new AttentionData();
 
         /// <summary>Only Significant and Legacy tiers are persisted (§37).</summary>
@@ -129,6 +131,14 @@ namespace Vivarium.Application.Persistence
         public int CurrentActivityId;
         public List<string> Traits = new List<string>();
         public List<NeedData> Needs = new List<NeedData>();
+        public List<AuthoredLongData> Personality = new List<AuthoredLongData>();
+        public int PersonalityRevision;
+        public List<AuthoredLongData> Values = new List<AuthoredLongData>();
+        public int ValuesRevision;
+        public List<AuthoredLongData> Interests = new List<AuthoredLongData>();
+        public int InterestsRevision;
+        public List<AffectData> Affect = new List<AffectData>();
+        public List<AppraisalFieldData> AppraisalFields = new List<AppraisalFieldData>();
     }
 
     public sealed class NeedData
@@ -248,11 +258,14 @@ namespace Vivarium.Application.Persistence
         public int LowCharacterId;
         public int HighCharacterId;
         public string Kind;
+        // Schema-v1 migration inputs only. Schema-v2 writers leave these at their defaults.
         public ProgressionData Affinity = new ProgressionData();
         public int Familiarity;
         public long EstablishedAtMinutes;
         public long LastInteractionAtMinutes = -1;
         public bool IsActive;
+        public DirectionalRelationshipData LowToHigh = new DirectionalRelationshipData();
+        public DirectionalRelationshipData HighToLow = new DirectionalRelationshipData();
     }
 
     /// <summary>
@@ -350,6 +363,8 @@ namespace Vivarium.Application.Persistence
     /// </summary>
     public sealed class KnowledgeEntryData
     {
+        public int ObserverKind;
+        public int ObserverCharacterId;
         public string FactKind;
         public int SubjectEntityKind;
         public int SubjectRuntimeId;

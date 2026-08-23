@@ -34,6 +34,11 @@ namespace Vivarium.Infrastructure.Persistence
     {
         private readonly Dictionary<int, ISaveMigration> _migrations = new Dictionary<int, ISaveMigration>();
 
+        public SaveMigrator()
+        {
+            Register(new SaveV1ToV2SocialMigration());
+        }
+
         public void Register(ISaveMigration migration)
         {
             if (migration == null)

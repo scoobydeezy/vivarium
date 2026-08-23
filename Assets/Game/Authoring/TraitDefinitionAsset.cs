@@ -3,6 +3,7 @@ using UnityEngine;
 using Vivarium.Domain.Characters;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Knowledge;
+using Vivarium.Domain.Social;
 
 namespace Vivarium.Unity.Authoring
 {
@@ -32,6 +33,12 @@ namespace Vivarium.Unity.Authoring
         [Tooltip("Whether changing this asset mid-session is a balance-only change (§42).")]
         [SerializeField] private bool hotReloadSafe = true;
 
+        [Header("Latent personality projection")]
+        [SerializeField] private long projectionBias;
+        [SerializeField] private SocialLinearEntry[] projectionLinearTerms = new SocialLinearEntry[0];
+        [SerializeField] private SocialPairwiseEntry[] projectionPairwiseTerms = new SocialPairwiseEntry[0];
+        [SerializeField] private long projectionThreshold = 5000;
+
         public string AuthoredId => authoredId;
 
         /// <summary>Converts authoring data into the immutable Domain definition.</summary>
@@ -43,7 +50,26 @@ namespace Vivarium.Unity.Authoring
                 channels.Add(discoverableThrough[i].ToChannel());
             }
 
-            return new TraitDefinition(new AuthoredId(authoredId), displayName, channels, hotReloadSafe);
+            var linear = new SocialLinearTerm[projectionLinearTerms.Length];
+            for (int i = 0; i < linear.Length; i++)
+            {
+                linear[i] = projectionLinearTerms[i].ToDefinition();
+            }
+            var pairwise = new SocialPairwiseTerm[projectionPairwiseTerms.Length];
+            for (int i = 0; i < pairwise.Length; i++)
+            {
+                pairwise[i] = projectionPairwiseTerms[i].ToDefinition();
+            }
+
+            return new TraitDefinition(
+                new AuthoredId(authoredId),
+                displayName,
+                channels,
+                hotReloadSafe,
+                projectionBias,
+                linear,
+                pairwise,
+                projectionThreshold);
         }
 
         /// <summary>Authoring-time validation, surfaced before gameplay rather than at runtime (§42).</summary>

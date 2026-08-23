@@ -315,7 +315,10 @@ namespace Vivarium.SimRunner.Tests
             foreach (Relationship relationship in world.Relationships.All)
             {
                 text.Append("|relationship:").Append(relationship.Id.Value).Append(',')
-                    .Append(relationship.AffinityAt(world.Clock.Now)).Append(',').Append(relationship.Familiarity)
+                    .Append(relationship.LowToHigh.ChannelAt(RelationshipChannels.Affection, world.Clock.Now)).Append(',')
+                    .Append(relationship.LowToHigh.FamiliarityAt(world.Clock.Now)).Append(',')
+                    .Append(relationship.HighToLow.ChannelAt(RelationshipChannels.Affection, world.Clock.Now)).Append(',')
+                    .Append(relationship.HighToLow.FamiliarityAt(world.Clock.Now))
                     .Append(',').Append(relationship.LastInteractionAt?.TotalMinutes ?? -1);
             }
 

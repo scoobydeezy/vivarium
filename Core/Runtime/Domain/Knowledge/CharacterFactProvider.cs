@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Vivarium.Domain.Characters;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Simulation;
+using Vivarium.Domain.Social;
 
 namespace Vivarium.Domain.Knowledge
 {
@@ -17,6 +18,7 @@ namespace Vivarium.Domain.Knowledge
         private static readonly AuthoredId[] Kinds = { FactKinds.CharacterTrait, FactKinds.CharacterNeed };
 
         private readonly IReadOnlyDictionary<AuthoredId, TraitDefinition> _traits;
+        private readonly TraitProjectionEvaluator _traitEvaluator = new TraitProjectionEvaluator();
 
         /// <param name="traitDefinitions">
         /// Trait catalog, used to honour each trait's authored discovery channels (§24).
@@ -50,6 +52,27 @@ namespace Vivarium.Domain.Knowledge
                 yield return new DiscoverableClaim(
                     new FactKey(FactKinds.CharacterTrait, subject, traitId),
                     ObservedValue.Of(traitId),
+                    channel);
+            }
+
+            // Production social traits are views of latent personality, not a parallel state list.
+            foreach (KeyValuePair<AuthoredId, TraitDefinition> pair in _traits)
+            {
+                TraitDefinition definition = pair.Value;
+                if (!definition.IsProjection || character.HasTrait(definition.Id))
+                {
+                    continue;
+                }
+
+                long projection = _traitEvaluator.Evaluate(definition, character.Personality);
+                if (projection < definition.ProjectionThreshold || !IsDiscoverableThrough(definition.Id, channel))
+                {
+                    continue;
+                }
+
+                yield return new DiscoverableClaim(
+                    new FactKey(FactKinds.CharacterTrait, subject, definition.Id),
+                    ObservedValue.Of(projection),
                     channel);
             }
 

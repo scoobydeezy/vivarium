@@ -5,6 +5,7 @@ using Vivarium.Domain.Characters;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Decisions;
 using Vivarium.Domain.Spatial;
+using Vivarium.Domain.Social;
 
 namespace Vivarium.Domain.Content
 {
@@ -31,7 +32,10 @@ namespace Vivarium.Domain.Content
             IReadOnlyDictionary<AuthoredId, DecisionDefinition> decisions,
             IReadOnlyDictionary<AuthoredId, InterventionDefinition> interventions,
             IReadOnlyDictionary<AuthoredId, LocationKindDefinition> locationKinds,
-            IReadOnlyDictionary<AuthoredId, CommitmentTemplate> commitmentTemplates)
+            IReadOnlyDictionary<AuthoredId, CommitmentTemplate> commitmentTemplates,
+            IReadOnlyDictionary<AuthoredId, AppraisalCalibrationProfile> appraisalCalibrations,
+            IReadOnlyDictionary<AuthoredId, SocialEvidenceDefinition> socialEvidence,
+            IReadOnlyDictionary<AuthoredId, SocialPressureDefinition> socialPressures)
         {
             ContentVersion = contentVersion;
             Traits = traits;
@@ -41,6 +45,9 @@ namespace Vivarium.Domain.Content
             Interventions = interventions;
             LocationKinds = locationKinds;
             CommitmentTemplates = commitmentTemplates;
+            AppraisalCalibrations = appraisalCalibrations;
+            SocialEvidence = socialEvidence;
+            SocialPressures = socialPressures;
         }
 
         /// <summary>Recorded in saves and traces so version-scoped reproduction is diagnosable (§39.1, §53).</summary>
@@ -60,6 +67,12 @@ namespace Vivarium.Domain.Content
 
         public IReadOnlyDictionary<AuthoredId, CommitmentTemplate> CommitmentTemplates { get; }
 
+        public IReadOnlyDictionary<AuthoredId, AppraisalCalibrationProfile> AppraisalCalibrations { get; }
+
+        public IReadOnlyDictionary<AuthoredId, SocialEvidenceDefinition> SocialEvidence { get; }
+
+        public IReadOnlyDictionary<AuthoredId, SocialPressureDefinition> SocialPressures { get; }
+
         /// <summary>Mutable builder. Validate before building — see <see cref="ContentValidator"/>.</summary>
         public sealed class Builder
         {
@@ -70,6 +83,9 @@ namespace Vivarium.Domain.Content
             private readonly Dictionary<AuthoredId, InterventionDefinition> _interventions = new Dictionary<AuthoredId, InterventionDefinition>();
             private readonly Dictionary<AuthoredId, LocationKindDefinition> _locationKinds = new Dictionary<AuthoredId, LocationKindDefinition>();
             private readonly Dictionary<AuthoredId, CommitmentTemplate> _commitmentTemplates = new Dictionary<AuthoredId, CommitmentTemplate>();
+            private readonly Dictionary<AuthoredId, AppraisalCalibrationProfile> _appraisalCalibrations = new Dictionary<AuthoredId, AppraisalCalibrationProfile>();
+            private readonly Dictionary<AuthoredId, SocialEvidenceDefinition> _socialEvidence = new Dictionary<AuthoredId, SocialEvidenceDefinition>();
+            private readonly Dictionary<AuthoredId, SocialPressureDefinition> _socialPressures = new Dictionary<AuthoredId, SocialPressureDefinition>();
             private readonly List<string> _errors = new List<string>();
 
             public int ContentVersion { get; set; } = 1;
@@ -91,6 +107,12 @@ namespace Vivarium.Domain.Content
 
             public Builder Add(CommitmentTemplate definition) => AddTo(_commitmentTemplates, definition.Id, definition, "commitment template");
 
+            public Builder Add(AppraisalCalibrationProfile definition) => AddTo(_appraisalCalibrations, definition.Id, definition, "appraisal calibration");
+
+            public Builder Add(SocialEvidenceDefinition definition) => AddTo(_socialEvidence, definition.ActionDefinitionId, definition, "social evidence");
+
+            public Builder Add(SocialPressureDefinition definition) => AddTo(_socialPressures, definition.Id, definition, "social pressure");
+
             public DefinitionCatalog Build()
             {
                 if (_errors.Count > 0)
@@ -107,7 +129,10 @@ namespace Vivarium.Domain.Content
                     _decisions,
                     _interventions,
                     _locationKinds,
-                    _commitmentTemplates);
+                    _commitmentTemplates,
+                    _appraisalCalibrations,
+                    _socialEvidence,
+                    _socialPressures);
             }
 
             private Builder AddTo<TDefinition>(Dictionary<AuthoredId, TDefinition> target, AuthoredId id, TDefinition definition, string kind)
@@ -203,6 +228,27 @@ namespace Vivarium.Domain.Content
                         errors.Add($"decision '{decision.Id}' outcome references unknown activity '{outcome.ActivityDefinitionId}'");
                     }
                 }
+
+                if (decision.SocialTrigger != null)
+                {
+                    if (!catalog.SocialPressures.ContainsKey(decision.SocialTrigger.PressureDefinitionId))
+                    {
+                        errors.Add($"decision '{decision.Id}' social trigger references unknown pressure '{decision.SocialTrigger.PressureDefinitionId}'");
+                    }
+                    if (!seenOptions.Contains(decision.SocialTrigger.InfluenceSpec.PositiveOptionId.Value) ||
+                        !seenOptions.Contains(decision.SocialTrigger.InfluenceSpec.NegativeOptionId.Value))
+                    {
+                        errors.Add($"decision '{decision.Id}' social influence references an unknown positive/negative option");
+                    }
+                }
+
+                for (int i = 0; i < decision.RelationshipOutcomes.Count; i++)
+                {
+                    if (!seenOptions.Contains(decision.RelationshipOutcomes[i].OptionId.Value))
+                    {
+                        errors.Add($"decision '{decision.Id}' relationship outcome references unknown option '{decision.RelationshipOutcomes[i].OptionId}'");
+                    }
+                }
             }
 
             foreach (KeyValuePair<AuthoredId, CommitmentTemplate> pair in catalog.CommitmentTemplates)
@@ -216,6 +262,30 @@ namespace Vivarium.Domain.Content
                 if (template.ActivityDefinitionId.IsSet && !catalog.Activities.ContainsKey(template.ActivityDefinitionId))
                 {
                     errors.Add($"commitment template '{template.Id}' references unknown activity '{template.ActivityDefinitionId}'");
+                }
+            }
+
+            foreach (KeyValuePair<AuthoredId, AppraisalCalibrationProfile> pair in catalog.AppraisalCalibrations)
+            {
+                AppraisalCalibrationProfile profile = pair.Value;
+                long previous = -1;
+                for (int i = 0; i < profile.Thresholds.Count; i++)
+                {
+                    if (profile.Thresholds[i].MinimumMagnitude <= previous)
+                    {
+                        errors.Add($"appraisal calibration '{profile.Id}' thresholds must be strictly increasing");
+                        break;
+                    }
+                    previous = profile.Thresholds[i].MinimumMagnitude;
+                }
+            }
+
+            foreach (KeyValuePair<AuthoredId, SocialEvidenceDefinition> pair in catalog.SocialEvidence)
+            {
+                SocialEvidenceDefinition evidence = pair.Value;
+                if (evidence.Measurements.Count == 0)
+                {
+                    errors.Add($"social evidence '{evidence.ActionDefinitionId}' has no measurements");
                 }
             }
 

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Time;
 
@@ -8,9 +9,8 @@ namespace Vivarium.Domain.Relationships
     /// A standing relationship between two characters.
     /// <para>
     /// Endpoints are stored in canonical (low, high) id order so a pair maps to exactly one
-    /// relationship regardless of which side asks. Relationship formulas themselves are deferred
-    /// content (§57); what is fixed here is integral state (§16), analytical drift instead of ticking
-    /// (§10), and aspect-scoped revisions (§11.2.1).
+    /// relationship regardless of which side asks. All durable social state is held by the two
+    /// directional halves; the pair itself is identity, kind, lifecycle, and indexing only.
     /// </para>
     /// </summary>
     public sealed class Relationship
@@ -20,7 +20,7 @@ namespace Vivarium.Domain.Relationships
             CharacterId a,
             CharacterId b,
             AuthoredId kind,
-            AnalyticalProgression affinity,
+            AnalyticalProgression initialAffection,
             SimTime establishedAt)
         {
             if (!id.IsSet)
@@ -37,8 +37,11 @@ namespace Vivarium.Domain.Relationships
             LowCharacterId = a.Value < b.Value ? a : b;
             HighCharacterId = a.Value < b.Value ? b : a;
             Kind = kind;
-            Affinity = affinity;
             EstablishedAt = establishedAt;
+            LowToHigh = new DirectionalRelationshipState(LowCharacterId, HighCharacterId, establishedAt);
+            HighToLow = new DirectionalRelationshipState(HighCharacterId, LowCharacterId, establishedAt);
+            LowToHigh.SetChannel(RelationshipChannels.Affection, initialAffection);
+            HighToLow.SetChannel(RelationshipChannels.Affection, initialAffection);
             IsActive = true;
         }
 
@@ -51,16 +54,11 @@ namespace Vivarium.Domain.Relationships
         /// <summary>Authored kind, e.g. <c>relationship.friend</c> or <c>relationship.spouse</c>.</summary>
         public AuthoredId Kind { get; private set; }
 
-        /// <summary>
-        /// Affinity in the range −10,000..10,000 (§16), progressing analytically so gradual opinion
-        /// drift costs no events (§10.1).
-        /// </summary>
-        public AnalyticalProgression Affinity { get; private set; }
-
-        /// <summary>How well they know each other, 0–10,000.</summary>
-        public int Familiarity { get; private set; }
-
         public SimTime EstablishedAt { get; }
+
+        public DirectionalRelationshipState LowToHigh { get; }
+
+        public DirectionalRelationshipState HighToLow { get; }
 
         public SimTime? LastInteractionAt { get; private set; }
 
@@ -90,29 +88,67 @@ namespace Vivarium.Domain.Relationships
             throw new ArgumentException($"{character} is not part of relationship {Id}.", nameof(character));
         }
 
-        public long AffinityAt(SimTime at) => Affinity.ValueAt(at);
+        public DirectionalRelationshipState From(CharacterId observer)
+        {
+            if (observer == LowCharacterId)
+            {
+                return LowToHigh;
+            }
+            if (observer == HighCharacterId)
+            {
+                return HighToLow;
+            }
+
+            throw new ArgumentException($"{observer} is not part of relationship {Id}.", nameof(observer));
+        }
 
         /// <summary>
-        /// Applies an interaction outcome. Materializes affinity at <paramref name="at"/> before
-        /// changing it, per the analytical-progression update sequence (§10.1).
+        /// Applies a symmetric interaction outcome to both directional halves. Symmetric cause does
+        /// not create an undirected score: later evidence and consequences may change either side.
         /// </summary>
-        public void RecordInteraction(SimTime at, long affinityDelta, int familiarityDelta)
+        public void RecordInteraction(SimTime at, long affectionDelta, int familiarityDelta)
         {
-            Affinity = Affinity.WithOffset(at, affinityDelta);
-            Familiarity = IntegerMath.Clamp(Familiarity + familiarityDelta, 0, 10000);
+            LastInteractionAt = at;
+            LowToHigh.ApplyChannelDelta(RelationshipChannels.Affection, at, affectionDelta);
+            HighToLow.ApplyChannelDelta(RelationshipChannels.Affection, at, affectionDelta);
+            LowToHigh.RecordExposure(at, 1, familiarityDelta);
+            HighToLow.RecordExposure(at, 1, familiarityDelta);
+        }
+
+        public void RecordDirectionalInteraction(
+            CharacterId observer,
+            SimTime at,
+            IReadOnlyDictionary<AuthoredId, long> channelDeltas,
+            long exposureMinutes,
+            int familiarityDelta,
+            RelationshipMemory memory = null)
+        {
+            DirectionalRelationshipState direction = From(observer);
+            if (channelDeltas != null)
+            {
+                foreach (KeyValuePair<AuthoredId, long> delta in channelDeltas)
+                {
+                    direction.ApplyChannelDelta(delta.Key, at, delta.Value);
+                }
+            }
+            direction.RecordExposure(at, exposureMinutes, familiarityDelta);
+            if (memory != null)
+            {
+                direction.AddMemory(memory);
+            }
             LastInteractionAt = at;
         }
 
-        /// <summary>Changes the ongoing drift rate — for example after moving in together or falling out.</summary>
-        public void SetAffinityDrift(SimTime at, long ratePerMinuteNumerator, long ratePerMinuteDenominator = 1)
+        /// <summary>Changes affection drift in both directions for a genuinely symmetric cause.</summary>
+        public void SetAffectionDrift(SimTime at, long ratePerMinuteNumerator, long ratePerMinuteDenominator = 1)
         {
-            Affinity = Affinity.WithRate(at, ratePerMinuteNumerator, ratePerMinuteDenominator);
+            LowToHigh.SetChannelDrift(RelationshipChannels.Affection, at, ratePerMinuteNumerator, ratePerMinuteDenominator);
+            HighToLow.SetChannelDrift(RelationshipChannels.Affection, at, ratePerMinuteNumerator, ratePerMinuteDenominator);
         }
 
         /// <summary>Restores saved state (§38).</summary>
-        public void RestoreState(int familiarity, SimTime? lastInteractionAt, bool isActive)
+        public void RestoreState(SimTime? lastInteractionAt, bool isActive)
         {
-            Familiarity = familiarity;
             LastInteractionAt = lastInteractionAt;
             IsActive = isActive;
         }

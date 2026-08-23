@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Knowledge;
+using Vivarium.Domain.Social;
 
 namespace Vivarium.Domain.Characters
 {
@@ -19,7 +20,11 @@ namespace Vivarium.Domain.Characters
             AuthoredId id,
             string displayName,
             IReadOnlyList<DiscoveryChannel> discoverableThrough = null,
-            bool hotReloadSafe = true)
+            bool hotReloadSafe = true,
+            long projectionBias = 0,
+            IReadOnlyList<SocialLinearTerm> projectionLinearTerms = null,
+            IReadOnlyList<SocialPairwiseTerm> projectionPairwiseTerms = null,
+            long projectionThreshold = 5000)
         {
             if (!id.IsSet)
             {
@@ -30,6 +35,10 @@ namespace Vivarium.Domain.Characters
             DisplayName = displayName;
             DiscoverableThrough = discoverableThrough ?? new DiscoveryChannel[0];
             HotReloadSafe = hotReloadSafe;
+            ProjectionBias = projectionBias;
+            ProjectionLinearTerms = projectionLinearTerms ?? new SocialLinearTerm[0];
+            ProjectionPairwiseTerms = projectionPairwiseTerms ?? new SocialPairwiseTerm[0];
+            ProjectionThreshold = projectionThreshold;
         }
 
         public AuthoredId Id { get; }
@@ -47,6 +56,16 @@ namespace Vivarium.Domain.Characters
         /// or save-affecting changes require a restart or migration.
         /// </summary>
         public bool HotReloadSafe { get; }
+
+        public long ProjectionBias { get; }
+
+        public IReadOnlyList<SocialLinearTerm> ProjectionLinearTerms { get; }
+
+        public IReadOnlyList<SocialPairwiseTerm> ProjectionPairwiseTerms { get; }
+
+        public long ProjectionThreshold { get; }
+
+        public bool IsProjection => ProjectionLinearTerms.Count > 0 || ProjectionPairwiseTerms.Count > 0;
 
         public override string ToString() => Id.ToString();
     }

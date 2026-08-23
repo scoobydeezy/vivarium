@@ -8,6 +8,8 @@ using Vivarium.Domain.Scheduling;
 using Vivarium.Domain.Simulation;
 using Vivarium.Domain.Spatial;
 using Vivarium.Domain.Time;
+using Vivarium.Domain.Social;
+using Vivarium.Domain.Relationships;
 using Vivarium.Infrastructure.Bootstrap;
 using Vivarium.Infrastructure.Clock;
 using Vivarium.Infrastructure.Persistence;
@@ -41,7 +43,7 @@ namespace Vivarium.Application.Tests
         public static readonly AuthoredId ModifierDislikedColleague = new AuthoredId("activity_modifier.disliked_colleague_present");
         public static readonly AuthoredId InfluenceBadWorkContext = new AuthoredId("influence.bad_work_context");
 
-        public static DefinitionCatalog BuildCatalog(int contentVersion = 1)
+        public static DefinitionCatalog BuildCatalog(int contentVersion = 1, bool includeSocialDecision = false)
         {
             var builder = new DefinitionCatalog.Builder { ContentVersion = contentVersion };
 
@@ -108,16 +110,75 @@ namespace Vivarium.Application.Tests
 
             builder.Add(new InterventionDefinition(InterventionStepUp, InterventionKind.StepDieUp, 1));
 
+            builder.Add(new AppraisalCalibrationProfile(
+                new AuthoredId("social.calibration.standard"),
+                new[]
+                {
+                    new AppraisalStrengthThreshold(1000, AppraisalStrength.Minor),
+                    new AppraisalStrengthThreshold(2500, AppraisalStrength.Moderate),
+                    new AppraisalStrengthThreshold(5000, AppraisalStrength.Strong),
+                    new AppraisalStrengthThreshold(7500, AppraisalStrength.Extreme),
+                },
+                1));
+            builder.Add(new SocialEvidenceDefinition(
+                new AuthoredId("social.action.interaction"),
+                new[]
+                {
+                    new SocialEvidenceMeasurement(
+                        new AuthoredId("social.measurement.friendly_interaction"),
+                        new[]
+                        {
+                            new SocialLinearTerm(SocialDimensions.Warmth, 7000),
+                            new SocialLinearTerm(SocialDimensions.Sociability, 3000),
+                        },
+                        4000,
+                        30000000),
+                },
+                new AuthoredId("social.explanation.friendly_interaction")));
+
+            if (includeSocialDecision)
+            {
+                var socialPressureId = new AuthoredId("social.pressure.seek_company");
+                var optionSeek = new AuthoredId("option.seek_company");
+                var optionAvoid = new AuthoredId("option.avoid_company");
+                builder.Add(new SocialPressureDefinition(socialPressureId, new SocialFactorRule[0]));
+                builder.Add(new DecisionDefinition(
+                    new AuthoredId("decision.seek_company"),
+                    new[]
+                    {
+                        new DecisionOption(optionSeek, "Seek their company", 0),
+                        new DecisionOption(optionAvoid, "Keep distance", 1),
+                    },
+                    SimDuration.FromMinutes(10),
+                    new AuthoredId("conflict_scope.social_target"),
+                    importance: 12,
+                    socialTrigger: new SocialInteractionDecisionTrigger(
+                        socialPressureId,
+                        AppraisalLenses.Affiliation,
+                        new SocialDecisionInfluenceSpec(
+                            optionSeek,
+                            optionAvoid,
+                            new AuthoredId("cat.social"),
+                            new AuthoredId("influence.enjoys_company"),
+                            new AuthoredId("influence.avoids_company"),
+                            InfluenceVisibility.Full)),
+                    relationshipOutcomes: new[]
+                    {
+                        new DecisionRelationshipOutcome(optionSeek, RelationshipChannels.Affection, 1000),
+                        new DecisionRelationshipOutcome(optionAvoid, RelationshipChannels.Resentment, 500),
+                    }));
+            }
+
             return builder.Build();
         }
 
-        public static TestWorld Create(long seed = 827119, int contentVersion = 1)
+        public static TestWorld Create(long seed = 827119, int contentVersion = 1, bool includeSocialDecision = false)
         {
             var fixture = new TestWorld
             {
                 Store = new InMemorySaveGameStore(),
                 Clock = new FixedRealWorldClock(1000000000000L),
-                Catalog = BuildCatalog(contentVersion),
+                Catalog = BuildCatalog(contentVersion, includeSocialDecision),
             };
 
             fixture.Host = SimulationBootstrapper.CreateNewWorld(

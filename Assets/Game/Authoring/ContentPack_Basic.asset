@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: efa2c788149cc734eaa878ceb97ac2b0, type: 3}
   m_Name: ContentPack_Basic
   m_EditorClassIdentifier: Vivarium.Unity.Authoring::Vivarium.Unity.Authoring.ContentPackAsset
-  contentVersion: 1
+  contentVersion: 2
   traits:
   - {fileID: 11400000, guid: afe9983f40078e045a269c0c1854d889, type: 2}
   - {fileID: 11400000, guid: cf50c39fa4f24f64ca6fccdf406a2d68, type: 2}
@@ -75,7 +75,65 @@ MonoBehaviour:
     - optionId: option.leave
       activityDefinitionId: activity.waiting
       durationMinutes: 60
+  - authoredId: decision.seek_company
+    options:
+    - authoredId: option.seek_company
+      labelId: Seek their company
+      orderIndex: 0
+    - authoredId: option.avoid_company
+      labelId: Keep distance
+      orderIndex: 1
+    timeToResolveMinutes: 10
+    conflictScopeKindId: conflict_scope.social_target
+    importance: 12
+    holdEligible: 0
+    socialTrigger:
+      pressureDefinitionId: social.pressure.seek_company
+      lensId: social.lens.affiliation
+      positiveOptionId: option.seek_company
+      negativeOptionId: option.avoid_company
+      categoryId: influence_category.social
+      positiveLabelId: influence.enjoys_company
+      negativeLabelId: influence.avoids_company
+      visibility: 31
+      minimumStrength: 1
+    relationshipOutcomes:
+    - optionId: option.seek_company
+      channelId: relationship.channel.affection
+      delta: 1000
+    - optionId: option.avoid_company
+      channelId: relationship.channel.resentment
+      delta: 500
   interventions:
   - authoredId: intervention.encourage
     kind: 2
     cost: 1
+  appraisalCalibrations:
+  - authoredId: social.calibration.standard
+    version: 1
+    thresholds:
+    - minimumMagnitude: 1000
+      strength: 1
+    - minimumMagnitude: 2500
+      strength: 2
+    - minimumMagnitude: 5000
+      strength: 3
+    - minimumMagnitude: 7500
+      strength: 4
+  socialEvidence:
+  - actionDefinitionId: social.action.interaction
+    explanationId: social.explanation.friendly_interaction
+    measurements:
+    - authoredId: social.measurement.friendly_interaction
+      projection:
+      - dimensionId: social.dimension.warmth
+        coefficient: 7000
+      - dimensionId: social.dimension.sociability
+        coefficient: 3000
+      observedValue: 4000
+      noiseVariance: 30000000
+  socialPressures:
+  - authoredId: social.pressure.seek_company
+    rules: []
+  - authoredId: social.pressure.interaction_relevance
+    rules: []

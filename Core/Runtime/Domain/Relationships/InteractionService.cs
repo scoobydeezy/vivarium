@@ -53,11 +53,16 @@ namespace Vivarium.Domain.Relationships
 
         private readonly InteractionCandidateSelector _candidates;
         private readonly KnowledgeDiscoveryService _discovery;
+        private readonly IInteractionRelevance _relevance;
 
-        public InteractionService(InteractionCandidateSelector candidates, KnowledgeDiscoveryService discovery)
+        public InteractionService(
+            InteractionCandidateSelector candidates,
+            KnowledgeDiscoveryService discovery,
+            IInteractionRelevance relevance = null)
         {
             _candidates = candidates ?? throw new ArgumentNullException(nameof(candidates));
             _discovery = discovery ?? throw new ArgumentNullException(nameof(discovery));
+            _relevance = relevance;
         }
 
         public bool TryInteractOnArrival(
@@ -117,7 +122,8 @@ namespace Vivarium.Domain.Relationships
                 maxCandidates,
                 scopeType,
                 scopeId,
-                rollIndex);
+                rollIndex,
+                _relevance);
 
             for (int i = 0; i < selected.Count; i++)
             {

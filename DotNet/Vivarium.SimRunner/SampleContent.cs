@@ -4,7 +4,9 @@ using Vivarium.Domain.Characters;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Decisions;
 using Vivarium.Domain.Knowledge;
+using Vivarium.Domain.Relationships;
 using Vivarium.Domain.Spatial;
+using Vivarium.Domain.Social;
 using Vivarium.Domain.Time;
 
 namespace Vivarium.SimRunner
@@ -61,6 +63,11 @@ namespace Vivarium.SimRunner
         public static readonly AuthoredId ContextWorkPressure = new AuthoredId("decision_context.work_pressure");
         public static readonly AuthoredId ModifierDislikedColleague = new AuthoredId("activity_modifier.disliked_colleague_present");
         public static readonly AuthoredId InfluenceBadWorkContext = new AuthoredId("influence.bad_work_context");
+        public static readonly AuthoredId SocialCalibrationStandard = new AuthoredId("social.calibration.standard");
+        public static readonly AuthoredId SocialPressureSeekCompany = new AuthoredId("social.pressure.seek_company");
+        public static readonly AuthoredId DecisionSeekCompany = new AuthoredId("decision.seek_company");
+        public static readonly AuthoredId OptionSeekCompany = new AuthoredId("option.seek_company");
+        public static readonly AuthoredId OptionAvoidCompany = new AuthoredId("option.avoid_company");
 
         /// <summary>Home and the bakery are wired into the travel network by <see cref="SampleWorld"/>.</summary>
         public static DefinitionCatalog Build(int contentVersion = 1)
@@ -155,6 +162,61 @@ namespace Vivarium.SimRunner
 
             builder.Add(new InterventionDefinition(InterventionStepUp, InterventionKind.StepDieUp, 1));
             builder.Add(new InterventionDefinition(InterventionReroll, InterventionKind.Reroll, 1));
+
+            builder.Add(new AppraisalCalibrationProfile(
+                SocialCalibrationStandard,
+                new[]
+                {
+                    new AppraisalStrengthThreshold(1000, AppraisalStrength.Minor),
+                    new AppraisalStrengthThreshold(2500, AppraisalStrength.Moderate),
+                    new AppraisalStrengthThreshold(5000, AppraisalStrength.Strong),
+                    new AppraisalStrengthThreshold(7500, AppraisalStrength.Extreme),
+                },
+                1));
+            builder.Add(new SocialEvidenceDefinition(
+                new AuthoredId("social.action.interaction"),
+                new[]
+                {
+                    new SocialEvidenceMeasurement(
+                        new AuthoredId("social.measurement.friendly_interaction"),
+                        new[]
+                        {
+                            new SocialLinearTerm(SocialDimensions.Warmth, 7000),
+                            new SocialLinearTerm(SocialDimensions.Sociability, 3000),
+                        },
+                        4000,
+                        30000000),
+                },
+                new AuthoredId("social.explanation.friendly_interaction")));
+            builder.Add(new SocialPressureDefinition(SocialPressureSeekCompany, new SocialFactorRule[0]));
+            builder.Add(new SocialPressureDefinition(
+                new AuthoredId("social.pressure.interaction_relevance"),
+                new SocialFactorRule[0]));
+            builder.Add(new DecisionDefinition(
+                DecisionSeekCompany,
+                new[]
+                {
+                    new DecisionOption(OptionSeekCompany, "Seek their company", 0),
+                    new DecisionOption(OptionAvoidCompany, "Keep distance", 1),
+                },
+                SimDuration.FromMinutes(10),
+                new AuthoredId("conflict_scope.social_target"),
+                importance: 12,
+                socialTrigger: new SocialInteractionDecisionTrigger(
+                    SocialPressureSeekCompany,
+                    AppraisalLenses.Affiliation,
+                    new SocialDecisionInfluenceSpec(
+                        OptionSeekCompany,
+                        OptionAvoidCompany,
+                        CategorySocial,
+                        new AuthoredId("influence.enjoys_company"),
+                        new AuthoredId("influence.avoids_company"),
+                        InfluenceVisibility.Full)),
+                relationshipOutcomes: new[]
+                {
+                    new DecisionRelationshipOutcome(OptionSeekCompany, RelationshipChannels.Affection, 1000),
+                    new DecisionRelationshipOutcome(OptionAvoidCompany, RelationshipChannels.Resentment, 500),
+                }));
 
             return builder.Build();
         }

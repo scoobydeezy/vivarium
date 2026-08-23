@@ -13,6 +13,7 @@ using Vivarium.Domain.Relationships;
 using Vivarium.Domain.Scheduling;
 using Vivarium.Domain.Simulation;
 using Vivarium.Domain.Spatial;
+using Vivarium.Domain.Social;
 using Vivarium.Domain.Time;
 
 namespace Vivarium.Application.Persistence
@@ -321,6 +322,26 @@ namespace Vivarium.Application.Persistence
                     dto.Traits.Add(trait.Value);
                 }
 
+                WriteVector(character.Personality, dto.Personality);
+                dto.PersonalityRevision = character.PersonalityRevision;
+                WriteTags(character.Values, dto.Values);
+                dto.ValuesRevision = character.Values.Revision;
+                WriteTags(character.Interests, dto.Interests);
+                dto.InterestsRevision = character.Interests.Revision;
+                foreach (KeyValuePair<AuthoredId, AnalyticalProgression> affect in character.Affect.All)
+                {
+                    dto.Affect.Add(new AffectData
+                    {
+                        Kind = affect.Key.Value,
+                        Progression = ToDto(affect.Value),
+                        Revision = character.Affect.Revision(affect.Key),
+                    });
+                }
+                foreach (KeyValuePair<AuthoredId, AppraisalField> field in character.AppraisalFields)
+                {
+                    dto.AppraisalFields.Add(ToDto(field.Value));
+                }
+
                 foreach (KeyValuePair<AuthoredId, NeedState> need in character.Needs)
                 {
                     dto.Needs.Add(new NeedData
@@ -346,6 +367,19 @@ namespace Vivarium.Application.Persistence
                 for (int t = 0; t < dto.Traits.Count; t++)
                 {
                     character.AddTrait(new AuthoredId(dto.Traits[t]));
+                }
+
+                character.RestorePersonality(ReadVector(dto.Personality), dto.PersonalityRevision);
+                ReadTags(character.Values, dto.Values, dto.ValuesRevision);
+                ReadTags(character.Interests, dto.Interests, dto.InterestsRevision);
+                for (int a = 0; a < dto.Affect.Count; a++)
+                {
+                    AffectData affect = dto.Affect[a];
+                    character.Affect.Restore(new AuthoredId(affect.Kind), FromDto(affect.Progression), affect.Revision);
+                }
+                for (int f = 0; f < dto.AppraisalFields.Count; f++)
+                {
+                    character.SetAppraisalField(FromDto(dto.AppraisalFields[f], character.Id));
                 }
 
                 for (int n = 0; n < dto.Needs.Count; n++)
@@ -610,11 +644,11 @@ namespace Vivarium.Application.Persistence
                     LowCharacterId = relationship.LowCharacterId.Value,
                     HighCharacterId = relationship.HighCharacterId.Value,
                     Kind = relationship.Kind.Value,
-                    Affinity = ToDto(relationship.Affinity),
-                    Familiarity = relationship.Familiarity,
                     EstablishedAtMinutes = relationship.EstablishedAt.TotalMinutes,
                     LastInteractionAtMinutes = relationship.LastInteractionAt?.TotalMinutes ?? -1,
                     IsActive = relationship.IsActive,
+                    LowToHigh = ToDto(relationship.LowToHigh),
+                    HighToLow = ToDto(relationship.HighToLow),
                 });
             }
         }
@@ -633,9 +667,11 @@ namespace Vivarium.Application.Persistence
                     new SimTime(dto.EstablishedAtMinutes));
 
                 relationship.RestoreState(
-                    dto.Familiarity,
                     dto.LastInteractionAtMinutes >= 0 ? new SimTime(dto.LastInteractionAtMinutes) : (SimTime?)null,
                     dto.IsActive);
+
+                RestoreDirection(relationship.LowToHigh, dto.LowToHigh);
+                RestoreDirection(relationship.HighToLow, dto.HighToLow);
 
                 world.Relationships.Add(relationship.Id, relationship);
             }
@@ -872,10 +908,12 @@ namespace Vivarium.Application.Persistence
 
         private static void WriteKnowledge(WorldState world, SaveGameData data)
         {
-            foreach (KnowledgeEntry entry in world.Knowledge.All)
+            foreach (KnowledgeEntry entry in world.Knowledge.AllObservers)
             {
                 data.Knowledge.Add(new KnowledgeEntryData
                 {
+                    ObserverKind = (int)entry.Observer.Kind,
+                    ObserverCharacterId = entry.Observer.CharacterId.Value,
                     FactKind = entry.Key.Kind.Value,
                     SubjectEntityKind = (int)entry.Key.Subject.Kind,
                     SubjectRuntimeId = entry.Key.Subject.RuntimeId,
@@ -890,6 +928,31 @@ namespace Vivarium.Application.Persistence
                     InformantRuntimeId = entry.Source.Informant.RuntimeId,
                     SourceHistoryEntryId = entry.Source.SourceHistoryEntryId.Value,
                 });
+            }
+
+            foreach (KeyValuePair<SocialBeliefKey, BeliefDistribution> pair in world.Knowledge.SocialBeliefs)
+            {
+                var belief = new SocialBeliefData
+                {
+                    ObserverKind = (int)pair.Key.Observer.Kind,
+                    ObserverCharacterId = pair.Key.Observer.CharacterId.Value,
+                    TargetCharacterId = pair.Key.Target.Value,
+                    EvidenceRevision = pair.Value.EvidenceRevision,
+                };
+                SocialBeliefMetadata metadata = world.Knowledge.SocialBeliefMetadataOf(pair.Key);
+                belief.Retention = (int)metadata.Retention;
+                belief.LastUpdatedAtMinutes = metadata.LastUpdatedAt.TotalMinutes;
+                WriteVector(pair.Value.Mean, belief.Mean);
+                foreach (KeyValuePair<SocialDimensionPair, long> covariance in pair.Value.CovarianceTerms)
+                {
+                    belief.Covariance.Add(new CovarianceData
+                    {
+                        FirstDimension = covariance.Key.First.Value,
+                        SecondDimension = covariance.Key.Second.Value,
+                        Value = covariance.Value,
+                    });
+                }
+                data.SocialBeliefs.Add(belief);
             }
         }
 
@@ -911,7 +974,28 @@ namespace Vivarium.Application.Persistence
                     new DiscoverySource(
                         new AuthoredId(dto.SourceChannelId),
                         new EntityRef((EntityKind)dto.InformantEntityKind, dto.InformantRuntimeId),
-                        new HistoryEntryId(dto.SourceHistoryEntryId))));
+                        new HistoryEntryId(dto.SourceHistoryEntryId)),
+                    new ObserverRef((ObserverKind)dto.ObserverKind, new CharacterId(dto.ObserverCharacterId))));
+            }
+
+            for (int i = 0; i < data.SocialBeliefs.Count; i++)
+            {
+                SocialBeliefData dto = data.SocialBeliefs[i];
+                var belief = new BeliefDistribution(ReadVector(dto.Mean), dto.EvidenceRevision);
+                for (int c = 0; c < dto.Covariance.Count; c++)
+                {
+                    CovarianceData covariance = dto.Covariance[c];
+                    belief.SetCovariance(
+                        new AuthoredId(covariance.FirstDimension),
+                        new AuthoredId(covariance.SecondDimension),
+                        covariance.Value);
+                }
+                world.Knowledge.SetSocialBelief(
+                    new ObserverRef((ObserverKind)dto.ObserverKind, new CharacterId(dto.ObserverCharacterId)),
+                    new CharacterId(dto.TargetCharacterId),
+                    belief,
+                    new SimTime(dto.LastUpdatedAtMinutes),
+                    (SocialBeliefRetention)dto.Retention);
             }
         }
 
@@ -1050,6 +1134,252 @@ namespace Vivarium.Application.Persistence
         }
 
         // ---------- shared ----------
+
+        private static void WriteVector(SocialVector vector, List<AuthoredLongData> target)
+        {
+            foreach (KeyValuePair<AuthoredId, long> value in vector.All)
+            {
+                target.Add(new AuthoredLongData { Key = value.Key.Value, Value = value.Value });
+            }
+        }
+
+        private static SocialVector ReadVector(List<AuthoredLongData> source)
+        {
+            var vector = new SocialVector();
+            for (int i = 0; i < source.Count; i++)
+            {
+                vector.Set(new AuthoredId(source[i].Key), source[i].Value);
+            }
+            return vector;
+        }
+
+        private static void WriteTags(WeightedTagSet tags, List<AuthoredLongData> target)
+        {
+            foreach (KeyValuePair<AuthoredId, long> value in tags.All)
+            {
+                target.Add(new AuthoredLongData { Key = value.Key.Value, Value = value.Value });
+            }
+        }
+
+        private static void ReadTags(WeightedTagSet tags, List<AuthoredLongData> source, int revision)
+        {
+            for (int i = 0; i < source.Count; i++)
+            {
+                tags.Restore(new AuthoredId(source[i].Key), source[i].Value);
+            }
+            tags.RestoreRevision(revision);
+        }
+
+        private static AppraisalFieldData ToDto(AppraisalField field)
+        {
+            var dto = new AppraisalFieldData
+            {
+                LensId = field.LensId.Value,
+                Bias = field.Bias,
+                CalibrationProfileId = field.CalibrationProfileId.Value,
+                Revision = field.Revision,
+            };
+            WriteLinear(field.LinearTerms, dto.LinearTerms);
+            WritePairwise(field.PairwiseTerms, dto.PairwiseTerms);
+            WriteVector(field.IdealPoint, dto.IdealPoint);
+            WriteFactors(field.IdealFactors, dto.IdealFactors);
+            for (int i = 0; i < field.ContextModifiers.Count; i++)
+            {
+                AppraisalContextModifier modifier = field.ContextModifiers[i];
+                var modifierDto = new AppraisalContextModifierData
+                {
+                    ContextId = modifier.ContextId.Value,
+                    BiasDelta = modifier.BiasDelta,
+                    Provenance = modifier.Provenance.Value,
+                };
+                WriteLinear(modifier.LinearDeltas, modifierDto.LinearDeltas);
+                WritePairwise(modifier.PairwiseDeltas, modifierDto.PairwiseDeltas);
+                WriteVector(modifier.IdealPointDelta, modifierDto.IdealPointDelta);
+                WriteFactors(modifier.IdealFactorDeltas, modifierDto.IdealFactorDeltas);
+                dto.ContextModifiers.Add(modifierDto);
+            }
+            return dto;
+        }
+
+        private static AppraisalField FromDto(AppraisalFieldData dto, CharacterId observerId)
+        {
+            var modifiers = new AppraisalContextModifier[dto.ContextModifiers.Count];
+            for (int i = 0; i < modifiers.Length; i++)
+            {
+                AppraisalContextModifierData source = dto.ContextModifiers[i];
+                modifiers[i] = new AppraisalContextModifier(
+                    new AuthoredId(source.ContextId),
+                    source.BiasDelta,
+                    ReadLinear(source.LinearDeltas),
+                    ReadPairwise(source.PairwiseDeltas),
+                    ReadVector(source.IdealPointDelta),
+                    ReadFactors(source.IdealFactorDeltas),
+                    new AuthoredId(source.Provenance));
+            }
+
+            return new AppraisalField(
+                observerId,
+                new AuthoredId(dto.LensId),
+                dto.Bias,
+                ReadLinear(dto.LinearTerms),
+                ReadPairwise(dto.PairwiseTerms),
+                ReadVector(dto.IdealPoint),
+                ReadFactors(dto.IdealFactors),
+                modifiers,
+                new AuthoredId(dto.CalibrationProfileId),
+                dto.Revision);
+        }
+
+        private static void WriteLinear(IReadOnlyList<SocialLinearTerm> source, List<SocialTermData> target)
+        {
+            for (int i = 0; i < source.Count; i++)
+            {
+                target.Add(new SocialTermData
+                {
+                    FirstDimension = source[i].Dimension.Value,
+                    Coefficient = source[i].Coefficient,
+                    Provenance = source[i].Provenance.Value,
+                });
+            }
+        }
+
+        private static SocialLinearTerm[] ReadLinear(List<SocialTermData> source)
+        {
+            var result = new SocialLinearTerm[source.Count];
+            for (int i = 0; i < result.Length; i++)
+            {
+                result[i] = new SocialLinearTerm(
+                    new AuthoredId(source[i].FirstDimension),
+                    source[i].Coefficient,
+                    new AuthoredId(source[i].Provenance));
+            }
+            return result;
+        }
+
+        private static void WritePairwise(IReadOnlyList<SocialPairwiseTerm> source, List<SocialTermData> target)
+        {
+            for (int i = 0; i < source.Count; i++)
+            {
+                target.Add(new SocialTermData
+                {
+                    FirstDimension = source[i].Pair.First.Value,
+                    SecondDimension = source[i].Pair.Second.Value,
+                    Coefficient = source[i].Coefficient,
+                    Provenance = source[i].Provenance.Value,
+                });
+            }
+        }
+
+        private static SocialPairwiseTerm[] ReadPairwise(List<SocialTermData> source)
+        {
+            var result = new SocialPairwiseTerm[source.Count];
+            for (int i = 0; i < result.Length; i++)
+            {
+                result[i] = new SocialPairwiseTerm(
+                    new AuthoredId(source[i].FirstDimension),
+                    new AuthoredId(source[i].SecondDimension),
+                    source[i].Coefficient,
+                    new AuthoredId(source[i].Provenance));
+            }
+            return result;
+        }
+
+        private static void WriteFactors(IReadOnlyList<IdealFactor> source, List<IdealFactorData> target)
+        {
+            for (int i = 0; i < source.Count; i++)
+            {
+                var dto = new IdealFactorData { Id = source[i].Id.Value, Provenance = source[i].Provenance.Value };
+                WriteLinear(source[i].Coefficients, dto.Coefficients);
+                target.Add(dto);
+            }
+        }
+
+        private static IdealFactor[] ReadFactors(List<IdealFactorData> source)
+        {
+            var result = new IdealFactor[source.Count];
+            for (int i = 0; i < result.Length; i++)
+            {
+                result[i] = new IdealFactor(
+                    new AuthoredId(source[i].Id),
+                    ReadLinear(source[i].Coefficients),
+                    new AuthoredId(source[i].Provenance));
+            }
+            return result;
+        }
+
+        private static DirectionalRelationshipData ToDto(DirectionalRelationshipState direction)
+        {
+            var dto = new DirectionalRelationshipData
+            {
+                ObserverId = direction.ObserverId.Value,
+                TargetId = direction.TargetId.Value,
+                Familiarity = (int)direction.FamiliarityAt(direction.LastInteractionAt ?? direction.EstablishedAt),
+                FamiliarityProgression = ToDto(direction.FamiliarityProgression),
+                HasFamiliarityProgression = true,
+                ExposureMinutes = direction.ExposureMinutes,
+                LastInteractionAtMinutes = direction.LastInteractionAt?.TotalMinutes ?? -1,
+                Revision = direction.Revision,
+            };
+            foreach (KeyValuePair<AuthoredId, AnalyticalProgression> channel in direction.Channels)
+            {
+                dto.Channels.Add(new RelationshipChannelData
+                {
+                    ChannelId = channel.Key.Value,
+                    Progression = ToDto(channel.Value),
+                });
+            }
+            for (int i = 0; i < direction.Memories.Count; i++)
+            {
+                RelationshipMemory memory = direction.Memories[i];
+                var memoryDto = new RelationshipMemoryData
+                {
+                    MemoryKind = memory.MemoryKind.Value,
+                    OccurredAtMinutes = memory.OccurredAt.TotalMinutes,
+                    ExplanationId = memory.ExplanationId.Value,
+                    SourceHistoryEntryId = memory.SourceHistoryEntryId.Value,
+                };
+                foreach (KeyValuePair<AuthoredId, long> effect in memory.ChannelEffects)
+                {
+                    memoryDto.ChannelEffects.Add(new AuthoredLongData { Key = effect.Key.Value, Value = effect.Value });
+                }
+                dto.Memories.Add(memoryDto);
+            }
+            return dto;
+        }
+
+        private static void RestoreDirection(DirectionalRelationshipState direction, DirectionalRelationshipData dto)
+        {
+            if (dto == null || dto.ObserverId == 0)
+            {
+                return;
+            }
+            for (int i = 0; i < dto.Channels.Count; i++)
+            {
+                direction.SetChannel(new AuthoredId(dto.Channels[i].ChannelId), FromDto(dto.Channels[i].Progression));
+            }
+            for (int i = 0; i < dto.Memories.Count; i++)
+            {
+                RelationshipMemoryData source = dto.Memories[i];
+                var effects = new SortedDictionary<AuthoredId, long>();
+                for (int e = 0; e < source.ChannelEffects.Count; e++)
+                {
+                    effects.Add(new AuthoredId(source.ChannelEffects[e].Key), source.ChannelEffects[e].Value);
+                }
+                direction.AddMemory(new RelationshipMemory(
+                    new AuthoredId(source.MemoryKind),
+                    new SimTime(source.OccurredAtMinutes),
+                    new AuthoredId(source.ExplanationId),
+                    effects,
+                    new HistoryEntryId(source.SourceHistoryEntryId)));
+            }
+            direction.RestoreState(
+                dto.HasFamiliarityProgression
+                    ? FromDto(dto.FamiliarityProgression)
+                    : AnalyticalProgression.Constant(dto.Familiarity, new SimTime(dto.LastInteractionAtMinutes < 0 ? 0 : dto.LastInteractionAtMinutes), 0, 10000),
+                dto.ExposureMinutes,
+                dto.LastInteractionAtMinutes >= 0 ? new SimTime(dto.LastInteractionAtMinutes) : (SimTime?)null,
+                dto.Revision);
+        }
 
         private static ProgressionData ToDto(AnalyticalProgression progression) => new ProgressionData
         {

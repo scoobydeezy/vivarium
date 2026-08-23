@@ -6,6 +6,7 @@ using Vivarium.Domain.Decisions;
 using Vivarium.Domain.Relationships;
 using Vivarium.Domain.Simulation;
 using Vivarium.Domain.Spatial;
+using Vivarium.Domain.Social;
 using Vivarium.Domain.Time;
 using Vivarium.Infrastructure.Bootstrap;
 
@@ -150,6 +151,7 @@ namespace Vivarium.SimRunner
             }
 
             world.Characters.Add(character.Id, character);
+            new SocialProfileGenerator(host.Simulation.Random).Generate(character, SampleContent.SocialCalibrationStandard);
 
             // Needs progress analytically and arm their own threshold events (§10.1, §10.2).
             NeedDefinition hunger = host.Catalog.Needs[SampleContent.NeedHunger];

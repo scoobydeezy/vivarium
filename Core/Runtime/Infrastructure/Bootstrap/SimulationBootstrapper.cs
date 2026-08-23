@@ -18,6 +18,7 @@ using Vivarium.Domain.Randomness;
 using Vivarium.Domain.Relationships;
 using Vivarium.Domain.Scheduling;
 using Vivarium.Domain.Simulation;
+using Vivarium.Domain.Social;
 using Vivarium.Domain.Time;
 
 namespace Vivarium.Infrastructure.Bootstrap
@@ -200,11 +201,25 @@ namespace Vivarium.Infrastructure.Bootstrap
             var decisionReevaluation = new DecisionReevaluationService();
             var holdPolicy = new DecisionHoldPolicy(maxGlobalHeld: 12, maxHeldPerCharacter: 3);
             var interactionCandidates = new InteractionCandidateSelector(random);
+            var socialBeliefs = new SocialBeliefUpdateService();
 
             var knowledgeDiscovery = new KnowledgeDiscoveryService();
             knowledgeDiscovery.RegisterProvider(new CharacterFactProvider(catalog.Traits));
             knowledgeDiscovery.RegisterProvider(new DecisionInfluenceFactProvider());
-            var interactions = new InteractionService(interactionCandidates, knowledgeDiscovery);
+            IInteractionRelevance interactionRelevance = catalog.SocialPressures.TryGetValue(
+                new AuthoredId("social.pressure.interaction_relevance"),
+                out SocialPressureDefinition interactionPressure)
+                ? new SocialInteractionRelevance(world, catalog, interactionPressure, AppraisalLenses.Affiliation)
+                : null;
+            var interactions = new InteractionService(interactionCandidates, knowledgeDiscovery, interactionRelevance);
+
+            foreach (KeyValuePair<AuthoredId, DecisionDefinition> pair in catalog.Decisions)
+            {
+                if (pair.Value.SocialTrigger != null)
+                {
+                    decisionReevaluation.Register(new SocialDecisionInfluenceReevaluator(pair.Value, catalog));
+                }
+            }
 
             // Scheduler handler registry. Registration is explicit and ordered by hand (§11.3, §12.1).
             var scheduledHandlers = new ScheduledEventHandlerRegistry();
@@ -220,6 +235,14 @@ namespace Vivarium.Infrastructure.Bootstrap
             domainHandlers.Register(new DecisionActivityOutcomeHandler(catalog, transitions), 100);
             domainHandlers.Register(new CharacterArrivedInteractionHandler(interactions), 100);
             domainHandlers.Register(new TravelStartedInteractionHandler(interactions), 100);
+            domainHandlers.Register(new SocialInteractionDecisionGenerationHandler(catalog), 150);
+            domainHandlers.Register(new InteractionSocialEvidenceHandler(
+                catalog,
+                socialBeliefs,
+                new AuthoredId("social.action.interaction"),
+                maxWitnesses: 2), 200);
+            domainHandlers.Register(new SocialBeliefDecisionHandler(decisionReevaluation), 300);
+            domainHandlers.Register(new DecisionRelationshipOutcomeHandler(catalog), 200);
             domainHandlers.Register(new DecisionCreatedHistoryHandler(), 900);
             domainHandlers.Register(new DecisionInterventionHistoryHandler(), 900);
 

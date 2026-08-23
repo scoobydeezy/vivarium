@@ -3,7 +3,7 @@ using Vivarium.Domain.Time;
 
 namespace Vivarium.Domain.Knowledge
 {
-    /// <summary>How sure the player is about an observation (§23). Deliberately open to extension.</summary>
+    /// <summary>How sure an observer is about an observation (§23). Deliberately open to extension.</summary>
     public enum KnowledgeConfidence
     {
         /// <summary>Hinted at but not established.</summary>
@@ -44,7 +44,7 @@ namespace Vivarium.Domain.Knowledge
     }
 
     /// <summary>
-    /// What the player observed, when, and how sure they are (§22, §23).
+    /// What an observer learned, when, and how sure they are (§22, §23).
     /// <para>
     /// <b>Current truth ≠ player knowledge.</b> This record is a snapshot of an observation, not a live
     /// view of the world. The relationship may have changed since; knowledge going stale is a feature.
@@ -57,14 +57,18 @@ namespace Vivarium.Domain.Knowledge
             ObservedValue observedValue,
             SimTime observedAt,
             KnowledgeConfidence confidence,
-            DiscoverySource source)
+            DiscoverySource source,
+            ObserverRef observer = default)
         {
+            Observer = observer.Equals(default(ObserverRef)) ? ObserverRef.Player : observer;
             Key = key;
             ObservedValue = observedValue;
             ObservedAt = observedAt;
             Confidence = confidence;
             Source = source;
         }
+
+        public ObserverRef Observer { get; }
 
         public FactKey Key { get; }
 
@@ -77,6 +81,6 @@ namespace Vivarium.Domain.Knowledge
         /// <summary>Where this came from. Durable descriptive data, not a live foreign key (§23.1).</summary>
         public DiscoverySource Source { get; }
 
-        public override string ToString() => $"{Key} = {ObservedValue} ({Confidence}, {ObservedAt})";
+        public override string ToString() => $"{Observer}: {Key} = {ObservedValue} ({Confidence}, {ObservedAt})";
     }
 }

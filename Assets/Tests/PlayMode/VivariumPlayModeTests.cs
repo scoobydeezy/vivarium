@@ -20,6 +20,7 @@ namespace Vivarium.Unity.Tests
 {
     public sealed class VivariumPlayModeTests
     {
+        private static readonly AuthoredId DemoDecisionId = new AuthoredId("decision.leave_work_early");
         private GameBootstrapper _bootstrapper;
         private WorldPresenter _presenter;
 
@@ -153,7 +154,7 @@ namespace Vivarium.Unity.Tests
         public IEnumerator Authored_need_crossing_generates_a_projectable_decision()
         {
             AdvanceToDemoDecision();
-            Decision decision = FirstDecision();
+            Decision decision = DemoDecision();
             DecisionDefinition definition = _bootstrapper.Host.Catalog.Decisions[decision.DefinitionId];
             var projector = new DecisionProjector(_bootstrapper.Host.Catalog.Interventions);
             DecisionView view = projector.Project(_bootstrapper.Host.World, decision);
@@ -175,7 +176,7 @@ namespace Vivarium.Unity.Tests
         public IEnumerator Decision_can_be_held_released_and_intervened_on()
         {
             AdvanceToDemoDecision();
-            Decision decision = FirstDecision();
+            Decision decision = DemoDecision();
             DecisionInfluence influence = FirstIntervenableInfluence(decision);
             int originalSides = influence.CurrentDie.Sides;
 
@@ -202,7 +203,7 @@ namespace Vivarium.Unity.Tests
         {
             AdvanceToDemoDecision();
             DecisionPanel panel = Object.FindAnyObjectByType<DecisionPanel>();
-            Decision decision = FirstDecision();
+            Decision decision = DemoDecision();
             DecisionInfluence influence = FirstIntervenableInfluence(decision);
             Assert.That(panel.DisplayedText, Does.Contain("Recent events"));
             Assert.That(panel.DisplayedText, Does.Contain("faces decision.leave_work_early"));
@@ -222,7 +223,7 @@ namespace Vivarium.Unity.Tests
         {
             Character mina = CharacterNamed("Mina Test");
             Character glen = CharacterNamed("Glen Test");
-            Assert.That(_bootstrapper.Host.World.Decisions.Count, Is.EqualTo(0));
+            Assert.That(TryFindDecision(DemoDecisionId, out Decision _), Is.False);
 
             _bootstrapper.Host.Session.Advance(SimDuration.FromMinutes(2));
             Assert.That(_bootstrapper.Host.World.TryGetSpatialContext(mina.Id, out ActivitySpatialContext minaTravel), Is.True);
@@ -236,10 +237,10 @@ namespace Vivarium.Unity.Tests
             ActivityInstance work = _bootstrapper.Host.World.Activities.Get(mina.CurrentActivityId);
             Assert.That(work.DefinitionId, Is.EqualTo(new AuthoredId("activity.working")));
             Assert.That(work.HasModifier(new AuthoredId("activity_modifier.disliked_colleague_present")), Is.True);
-            Assert.That(_bootstrapper.Host.World.Decisions.Count, Is.EqualTo(0));
+            Assert.That(TryFindDecision(DemoDecisionId, out Decision _), Is.False);
 
             _bootstrapper.Host.Session.Advance(SimDuration.FromMinutes(2));
-            Assert.That(FirstDecision().DefinitionId, Is.EqualTo(new AuthoredId("decision.leave_work_early")));
+            Assert.That(DemoDecision().DefinitionId, Is.EqualTo(DemoDecisionId));
             yield return null;
         }
 
@@ -270,7 +271,7 @@ namespace Vivarium.Unity.Tests
 
         private void AdvanceToDemoDecision()
         {
-            if (_bootstrapper.Host.World.Decisions.Count == 0)
+            if (!TryFindDecision(DemoDecisionId, out Decision _))
             {
                 _bootstrapper.Host.Session.Advance(SimDuration.FromMinutes(34));
             }
@@ -311,15 +312,30 @@ namespace Vivarium.Unity.Tests
             return longest;
         }
 
-        private Decision FirstDecision()
+        private Decision DemoDecision()
         {
-            foreach (Decision decision in _bootstrapper.Host.World.Decisions.All)
+            if (TryFindDecision(DemoDecisionId, out Decision decision))
             {
                 return decision;
             }
 
-            Assert.Fail("The demo world did not seed a decision.");
+            Assert.Fail("The demo world did not generate the authored Need Decision.");
             return null;
+        }
+
+        private bool TryFindDecision(AuthoredId definitionId, out Decision found)
+        {
+            foreach (Decision decision in _bootstrapper.Host.World.Decisions.All)
+            {
+                if (decision.DefinitionId == definitionId)
+                {
+                    found = decision;
+                    return true;
+                }
+            }
+
+            found = null;
+            return false;
         }
     }
 }

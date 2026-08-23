@@ -6,6 +6,7 @@ using Vivarium.Domain.Knowledge;
 using Vivarium.Domain.Relationships;
 using Vivarium.Domain.Simulation;
 using Vivarium.Domain.Time;
+using Vivarium.Domain.Social;
 using Xunit;
 
 namespace Vivarium.Application.Tests
@@ -33,19 +34,31 @@ namespace Vivarium.Application.Tests
             Assert.True(fixture.Host.World.RelationshipIndex.TryGetBetween(fixture.Mina, glen.Id, out RelationshipId relationshipId));
 
             Relationship relationship = fixture.Host.World.Relationships.Get(relationshipId);
-            Assert.Equal(100, relationship.AffinityAt(fixture.Host.World.Clock.Now));
-            Assert.Equal(250, relationship.Familiarity);
+            Assert.Equal(100, relationship.From(fixture.Mina).ChannelAt(RelationshipChannels.Affection, fixture.Host.World.Clock.Now));
+            Assert.Equal(250, relationship.From(fixture.Mina).FamiliarityAt(fixture.Host.World.Clock.Now));
+            Assert.Equal(100, relationship.From(glen.Id).ChannelAt(RelationshipChannels.Affection, fixture.Host.World.Clock.Now));
+            Assert.Equal(250, relationship.From(glen.Id).FamiliarityAt(fixture.Host.World.Clock.Now));
             Assert.Equal(fixture.Host.World.Clock.Now, relationship.LastInteractionAt);
             Assert.Equal(1, fixture.Host.World.Attention.ObservationOrdinal(fixture.Mina));
 
             var traitFact = new FactKey(FactKinds.CharacterTrait, fixture.Mina.ToRef(), TestWorld.TraitAmbitious);
             Assert.True(fixture.Host.World.Knowledge.TryGet(traitFact, out KnowledgeEntry _));
+            Assert.True(fixture.Host.World.Knowledge.TryGetSocialBelief(
+                ObserverRef.Character(fixture.Mina), glen.Id, out BeliefDistribution minasBelief));
+            Assert.True(minasBelief.Mean[SocialDimensions.Warmth] > 0);
+            Assert.True(fixture.Host.World.Knowledge.TryGetSocialBelief(
+                ObserverRef.Character(glen.Id), fixture.Mina, out BeliefDistribution glensBelief));
+            Assert.True(glensBelief.Mean[SocialDimensions.Warmth] > 0);
 
             WorldState restored = fixture.Host.SaveMapper.Restore(fixture.Host.Session.Save("interaction"));
             Assert.True(restored.RelationshipIndex.TryGetBetween(fixture.Mina, glen.Id, out RelationshipId restoredId));
             Relationship restoredRelationship = restored.Relationships.Get(restoredId);
-            Assert.Equal(relationship.AffinityAt(fixture.Host.World.Clock.Now), restoredRelationship.AffinityAt(restored.Clock.Now));
-            Assert.Equal(relationship.Familiarity, restoredRelationship.Familiarity);
+            Assert.Equal(
+                relationship.From(fixture.Mina).ChannelAt(RelationshipChannels.Affection, fixture.Host.World.Clock.Now),
+                restoredRelationship.From(fixture.Mina).ChannelAt(RelationshipChannels.Affection, restored.Clock.Now));
+            Assert.Equal(
+                relationship.From(glen.Id).FamiliarityAt(fixture.Host.World.Clock.Now),
+                restoredRelationship.From(glen.Id).FamiliarityAt(restored.Clock.Now));
             Assert.Equal(relationship.LastInteractionAt, restoredRelationship.LastInteractionAt);
         }
 
