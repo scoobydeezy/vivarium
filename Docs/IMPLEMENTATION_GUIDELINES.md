@@ -184,6 +184,23 @@ coverage. Establish measured budgets before architectural optimization. Substant
 construction, advanced pathfinding, procedural populations, polished animation, and large content
 libraries wait until the Golden Scenario works and the scale gate passes.
 
+Completed on **2026-08-22**. The always-on regression tier runs 250 characters for six simulated hours
+twice, requires the same authoritative hash and exact work/Activity/event counts, and enforces ceilings
+of 60 work items, 8 Activities, and 3 pending events per character. This tier deliberately does not
+assert wall time or heap usage.
+
+The measured tier runs 1,000 characters for one simulated day and is enforced when
+`VIVARIUM_ENFORCE_PERFORMANCE_BUDGETS=1`. Its initial budgets are 2 seconds to build, 15 seconds to run,
+128 MB managed heap, 200 work items, 30 Activities, and 2 pending events per character. The 2026-08-22
+baseline on the development machine was 97 ms build, 6,938 ms run, 28 MB, 141,894 work items, 24,994
+Activities, 1,002 pending events, and authoritative hash `A332FAE357E085CD`. The CLI reports these
+metrics for arbitrary population/day inputs and only enforces measured limits for the standard tier
+when the environment flag is enabled.
+
+The architecture gate has passed for beginning one deliberately narrow management vertical slice.
+Select that slice from concrete product intent; do not infer a broad economy, construction, or job
+model merely because performance coverage now exists.
+
 ## Implementation checklist
 
 Use the applicable checks, not boilerplate for its own sake.

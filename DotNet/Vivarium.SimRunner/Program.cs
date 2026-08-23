@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics;
 using Vivarium.Application.Commands;
 using Vivarium.Domain.Content;
 using Vivarium.Application.Persistence;
@@ -219,30 +218,33 @@ namespace Vivarium.SimRunner
         /// </summary>
         private static int RunBenchmark(int population, int days)
         {
-            DefinitionCatalog catalog = SampleContent.Build();
+            ScaleBenchmarkResult result = ScaleBenchmark.Run(population, SimDuration.FromDays(days), DefaultSeed);
+            ScaleBudget budget = ScaleBudget.StandardOneDay;
+            bool comparableToStandard = population == budget.Population && result.Duration == budget.Duration;
+            bool structuralPass = !comparableToStandard || ScaleBenchmark.MeetsStructuralBudget(result, budget);
+            bool measuredPass = !comparableToStandard || ScaleBenchmark.MeetsMeasuredBudget(result, budget);
+            bool enforceMeasured = string.Equals(
+                Environment.GetEnvironmentVariable("VIVARIUM_ENFORCE_PERFORMANCE_BUDGETS"),
+                "1",
+                StringComparison.Ordinal);
 
-            var buildWatch = Stopwatch.StartNew();
-            SimulationHost host = SimulationBootstrapper.CreateNewWorld(DefaultSeed, SimTime.Epoch, catalog);
-            SampleWorld.Populate(host, Math.Max(0, population - 3));
-            buildWatch.Stop();
-
-            long eventsBefore = host.World.Scheduler.PendingCount;
-
-            var runWatch = Stopwatch.StartNew();
-            host.Session.Advance(SimDuration.FromDays(days), SimulationMode.PlayerFastForward);
-            runWatch.Stop();
-
-            long managedBytes = GC.GetTotalMemory(false);
-
-            Console.WriteLine($"population           : {host.World.Characters.Count}");
-            Console.WriteLine($"build                : {buildWatch.ElapsedMilliseconds} ms");
+            Console.WriteLine($"population           : {result.Population}");
+            Console.WriteLine($"build                : {result.BuildMilliseconds} ms");
             Console.WriteLine($"simulated days       : {days}");
-            Console.WriteLine($"run                  : {runWatch.ElapsedMilliseconds} ms ({(days == 0 ? 0 : runWatch.ElapsedMilliseconds / days)} ms/day)");
-            Console.WriteLine($"pending events       : {eventsBefore} -> {host.World.Scheduler.PendingCount}");
-            Console.WriteLine($"activities created   : {host.World.Activities.Count}");
-            Console.WriteLine($"managed heap         : {managedBytes / (1024 * 1024)} MB");
-            Console.WriteLine($"runner               : {host.Session.PerformanceSummary()}");
-            return 0;
+            Console.WriteLine($"run                  : {result.RunMilliseconds} ms ({(days == 0 ? 0 : result.RunMilliseconds / days)} ms/day)");
+            Console.WriteLine($"pending events       : {result.PendingEvents} ({result.PendingEventsPerCharacter}/character)");
+            Console.WriteLine($"activities created   : {result.ActivitiesCreated} ({result.ActivitiesPerCharacter}/character)");
+            Console.WriteLine($"managed heap         : {result.ManagedMegabytes} MB");
+            Console.WriteLine($"runner               : instants={result.InstantsSettled} work={result.WorkProcessed} ({result.WorkPerCharacter}/character)");
+            Console.WriteLine($"authoritative hash   : {result.Signature}");
+
+            if (comparableToStandard)
+            {
+                Console.WriteLine($"structural budget    : {(structuralPass ? "PASS" : "FAIL")} (work≤{budget.MaximumWorkPerCharacter}, activities≤{budget.MaximumActivitiesPerCharacter}, pending≤{budget.MaximumPendingEventsPerCharacter} per character)");
+                Console.WriteLine($"measured budget      : {(measuredPass ? "PASS" : "FAIL")} (build≤{budget.MaximumBuildMilliseconds}ms, run≤{budget.MaximumRunMilliseconds}ms, heap≤{budget.MaximumManagedMegabytes}MB; enforcement {(enforceMeasured ? "on" : "off")})");
+            }
+
+            return structuralPass && (!enforceMeasured || measuredPass) ? 0 : 1;
         }
 
         private static string RunScenarioSignature()

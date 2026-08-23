@@ -164,5 +164,9 @@ namespace Vivarium.Application.Session
         /// <summary>Reports how much work the runner has done, for benchmarking (§49).</summary>
         public string PerformanceSummary() =>
             $"instants={_runner.InstantsSettled} work={_runner.WorkProcessed} pendingEvents={World.Scheduler.PendingCount} characters={World.Characters.Count}";
+
+        public long InstantsSettled => _runner.InstantsSettled;
+
+        public long WorkProcessed => _runner.WorkProcessed;
     }
 }

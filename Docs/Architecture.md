@@ -85,6 +85,10 @@ Vivarium.SimRunner.exe saveload
 
 # Synthetic population benchmark
 Vivarium.SimRunner.exe bench 1000 1
+
+# Enforce the measured 1,000-character/one-day budget (PowerShell)
+$env:VIVARIUM_ENFORCE_PERFORMANCE_BUDGETS='1'
+dotnet test DotNet/Vivarium.SimRunner.Tests --filter StandardMeasuredBudget
 ```
 
 ## Language level
@@ -126,6 +130,10 @@ Working implementations:
   quiescent boundaries, knowledge-filtered decision views (§2.2.1, §26, §35).
 - **Persistence** — versioned DTOs, explicit payload codecs, revision persistence, index rebuilding on
   load, migration chain with version-drift reporting (§38–§40).
+- **Scale regression gate** — the normal suite repeats a 250-character/six-hour workload and requires
+  identical authoritative hashes and deterministic work counts under structural per-character ceilings.
+  An opt-in 1,000-character/one-day tier enforces initial wall-clock and heap budgets while the CLI
+  reports the same measurements and authoritative hash (§49–§52).
 
 Intentionally thin, pending game-design decisions:
 
@@ -188,6 +196,8 @@ The test suite is organised around the §58 invariants rather than around classe
 | Unity demo progresses through shared travel, Work pressure, and generated Decision | `VivariumPlayModeTests` |
 | Version drift diagnosed, not automatically blocking | `PersistenceTests` |
 | Offline duration computed outside Domain | `PersistenceTests` |
+| Fixed population workload has identical hash and bounded structural work | `ScaleBenchmarkTests` |
+| Opt-in 1,000-character measured budget | `ScaleBenchmarkTests.StandardMeasuredBudgetIsOptIn` |
 
 ## Adding to this codebase
 
