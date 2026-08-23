@@ -139,8 +139,9 @@ namespace Vivarium.Application.Queries
             }
 
             // Knowing the underlying fact promotes a generalized influence to a specific one.
-            var factKey = new FactKey(FactKinds.CharacterTrait, influence.Subject, influence.LabelId);
-            if (world.Knowledge.Knows(factKey))
+            var influenceFact = new FactKey(FactKinds.DecisionInfluence, influence.Subject, influence.LabelId);
+            var legacyTraitFact = new FactKey(FactKinds.CharacterTrait, influence.Subject, influence.LabelId);
+            if (world.Knowledge.Knows(influenceFact) || world.Knowledge.Knows(legacyTraitFact))
             {
                 visibility |= InfluenceVisibility.Label | InfluenceVisibility.Explanation;
             }

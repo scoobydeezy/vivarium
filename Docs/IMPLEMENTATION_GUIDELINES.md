@@ -82,53 +82,102 @@ SimRunner. `Docs/Architecture.md` contains the precise supported list and invari
 Do not rebuild those systems from scratch. Extend them only when the selected behavior exposes a
 specific missing capability.
 
-### Priority 1 — make circumstances generate and complete a real Decision
+### Completed checkpoint — circumstances generate and complete a real Decision
 
-This is the next unclaimed Core vertical slice after any active working-tree task is finished.
+Completed on **2026-08-22** for one deliberately narrow content path: a Need threshold publishes a
+Domain Event, content generates a living Decision, deterministic resolution selects an option, and an
+Activity outcome runs through the authoritative transition service. Save-before-resolution/reload
+equivalence is covered.
 
-Implement one content-backed choice arising from existing simulation pressure—for example, a Need
-threshold or adverse Work context causing Mina to consider leaving early. The slice should:
+Future Decision content should preserve the established shape:
 
 - generate the Decision through an explicitly ordered Domain Event reaction, rather than direct runner
   construction;
 - build true influences from current authoritative state and register targeted dependencies;
 - preserve existing Attention/Hold, Knowledge filtering, intervention, and deterministic resolution;
-- apply at least one real consequence through the common consequence pipeline, changing current
-  Activity and/or a future Commitment;
+- apply consequences through authoritative services rather than mutating repositories ad hoc;
 - publish the resulting projection/history only after quiescence; and
 - prove deterministic replay plus save-before-resolution/reload equivalence.
 
-Keep this to one Decision definition and the minimum supporting content. Do not build a generalized
-content language until a second concrete decision demonstrates the shared shape.
+Do not generalize the trigger/outcome model further until a second concrete Decision demonstrates the
+shared shape.
 
-### Priority 2 — interaction as a subordinate occurrence
+### Completed checkpoint — interaction as a subordinate occurrence
 
-The bounded candidate selector exists, but selection alone is not the interaction feature. Add one
-shared-context interaction that leaves the primary Activity intact, changes a relationship or Need,
-and can emit an Observation when watched. Cover a normal location/travel context and a synthetic large
-context proving bounded selection rather than pairwise population scanning.
+Completed on **2026-08-22** for location-arrival and indexed directed travel-segment contexts: bounded deterministic selection produces at
+most one interaction, leaves both primary Activities intact, changes a Relationship, records recent
+history, and creates observation-driven Knowledge only for characters supported by canonical
+`WatchState`. A 2,000-character shared-context test covers the bounded outcome, and save/reload rebuilds
+travel candidate indexes from active Traveling Activities.
 
-### Priority 3 — expand the Golden Scenario end to end
+### Priority 1 — expand the Golden Scenario end to end
 
 Connect routine planning, shared travel, Work context, Needs, the generated Decision, Knowledge reveal,
 intervention, consequences, travel, save, and reload into one growing headless scenario. Maintain it as
 an acceptance test or SimRunner scenario; do not rely on a prose demo alone.
 
-### Priority 4 — persistence and offline hardening
+Work-context pressure is now connected: a negatively related colleague's presence applies an
+interval-accurate Activity modifier, and departure reevaluates the generated Decision through its
+targeted dependency while preserving influence identity across save/load.
+
+The headless demo, determinism check, save/load check, and dedicated `Vivarium.SimRunner.Tests`
+acceptance project now use the generated leave-work choice. The
+scenario exercises routine travel, shared-segment interaction, Work pressure, Watch/Hold, a
+Knowledge-driven label reveal, targeted reevaluation, stable-identity intervention, deterministic
+resolution, an Activity consequence, and reload equivalence without runner-side Decision construction.
+
+Checkpointed assertions cover the entire causal chain. Offline coverage now proves a held generated
+Decision resolves under `OfflineCatchUp`, durable Follow and ephemeral visibility restore according to
+policy, and the resulting Decision and Activity match the uninterrupted branch.
+
+### Completed checkpoint — persistence and offline hardening
 
 Extend serialization coverage as each earlier slice adds state. Once the Golden Scenario is connected,
 stress offline catch-up with active travel, held and automatic Decisions, scheduled Need thresholds,
 Activities, Commitments, and interactions. Choose a concrete save encoding only when product/platform
 requirements resolve the format that README §57 deliberately defers.
 
-### Priority 5 — authoring and playable presentation
+Completed on **2026-08-22** with both focused held-Decision coverage and a mixed-state checkpoint
+containing active travel, held and automatic generated Decisions, multiple pending Need crossings, and
+active Commitments. Offline catch-up compares allocator counters, scheduler order, analytical Needs,
+Activities, Commitments, Decisions and rolls, Relationships, and rebuilt spatial indexes between
+uninterrupted and restored branches. Concrete save encoding remains explicitly deferred by README §57.
+
+### Priority 2 — authoring and playable presentation
 
 Author real definitions through the validated ScriptableObject-to-Domain catalog path and expose the
 Golden Scenario through character, Activity, Decision, Watch/Hold, intervention, Knowledge, and event
 feed surfaces. Presentation work may proceed earlier when explicitly requested, but it must consume
 the same commands, validation rules, and quiescent read models as the headless path.
 
-### Priority 6 — scale gate before management breadth
+The first playable authoring slice was completed on **2026-08-22**. The Unity content pack now authors
+the leave-work Decision's Need trigger, options, initial influence visibility, Activity outcome, and
+intervention. The smoke bootstrap no longer constructs a Decision directly: it settles Mina's authored
+hunger crossing and presents the generated Decision through the existing knowledge-filtered read model
+and Hold, Release, and intervention Commands. Unity assemblies and the PlayMode test assembly compile;
+the batch PlayMode run must be repeated after closing the interactive Unity instance that currently has
+the project locked.
+
+The causal event-feed slice was completed on **2026-08-22**. Decision appearance and successful player
+intervention are promoted from ordered Domain Events into bounded recent History; resolution already
+used that ledger. A knowledge-safe Application projector filters those records, returns at most five in
+newest-first order, and Unity refreshes the feed beside the Decision encounter only at quiescent
+boundaries. Rejected commands do not create history and presentation never reads the transient event
+queue.
+
+The playable progression slice was completed on **2026-08-22**. The Unity smoke world begins without a
+Decision. At 07:02 Mina and Glen follow scheduled Work Commitments onto the same directed travel
+segment and interact; at 07:32 Mina arrives beside a negatively related working colleague and receives
+the interval-accurate Work-pressure modifier; at 07:34 her authored hunger threshold generates the
+leave-work Decision. The Decision's Work-pressure dependency is now authored, and the content-specific
+reevaluator and handlers are restored whenever Unity recomposes a loaded host. The pre-Decision panel
+shows a clean inactive state. PlayMode coverage asserts each causal checkpoint.
+
+Priority 2's minimum playable loop is now connected. The next implementation gate is Priority 3:
+convert the SimRunner's existing synthetic population mode into a repeatable scale and determinism
+regression with explicit measured budgets before adding management breadth.
+
+### Priority 3 — scale gate before management breadth
 
 Turn the SimRunner's synthetic population mode into repeatable performance and determinism regression
 coverage. Establish measured budgets before architectural optimization. Substantial economy,
@@ -190,4 +239,3 @@ Commitment → planned Travel → shared-context Interaction → Work
 Use ugly, small content and roughly 8–12 characters until this chain is interesting and trustworthy.
 Only then broaden the management game. The product question at the gate is not whether another system
 can be scaffolded; it is whether the player cares what Mina decides.
-

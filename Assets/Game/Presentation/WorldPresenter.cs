@@ -24,6 +24,7 @@ namespace Vivarium.Unity.Presentation
         private readonly HashSet<int> _followedCharacters = new HashSet<int>();
         private readonly CharacterProfileProjector _profiles = new CharacterProfileProjector();
         private readonly CharacterRosterProjector _roster = new CharacterRosterProjector();
+        private readonly DecisionHistoryProjector _decisionHistory = new DecisionHistoryProjector();
 
         private ProjectionPublisher _publisher;
         private Func<ICommand, string, CommandEnvelope> _enqueue;
@@ -98,6 +99,7 @@ namespace Vivarium.Unity.Presentation
 
             rosterPanel.Apply(roster, ToggleFollow);
             RefreshDecisionPanel(world);
+            decisionPanel.ApplyHistory(_decisionHistory.Project(world));
             _visibleThisRefresh.Clear();
 
             foreach (CharacterId characterId in world.Attention.WatchedCharacters)
@@ -189,6 +191,8 @@ namespace Vivarium.Unity.Presentation
                 decisionPanel.Apply(_decisionProjector.Project(world, decision));
                 return;
             }
+
+            decisionPanel.ShowNoDecision();
         }
 
         private void HoldDecision(DecisionId decisionId) =>

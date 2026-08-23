@@ -19,6 +19,10 @@ namespace Vivarium.Unity.Presentation
         private System.Action<DecisionId, DecisionInfluenceId> _intervene;
         private DecisionId _decisionId;
         private DecisionInfluenceId _interventionTarget;
+        private string _decisionSummary = "No active decision";
+        private string _historySummary = "No recent decision events";
+
+        public string DisplayedText => summaryText == null ? string.Empty : summaryText.text;
 
         public void Configure(
             System.Action<DecisionId> hold,
@@ -62,16 +66,47 @@ namespace Vivarium.Unity.Presentation
             string resolution = view.Resolution == null
                 ? string.Empty
                 : $"\nResolved: {view.Resolution.ChosenOptionId} ({view.Resolution.DegreeLabel})";
-            summaryText.text =
+            _decisionSummary =
                 $"Decision: {view.CharacterName}\n" +
                 $"Status: {view.StatusLabel} — resolves {view.ResolveAtLabel}" +
                 options + resolution;
+            Render();
 
             holdButton.gameObject.SetActive(view.CanBeHeld && !view.IsHeld);
             releaseButton.gameObject.SetActive(view.IsHeld);
             interveneButton.gameObject.SetActive(view.Resolution == null);
             interveneButton.interactable = _interventionTarget.IsSet;
         }
+
+        public void ApplyHistory(DecisionHistoryView view)
+        {
+            _historySummary = "Recent events";
+            for (int i = 0; i < view.Entries.Count; i++)
+            {
+                DecisionHistoryEntryView entry = view.Entries[i];
+                _historySummary += $"\n{entry.OccurredAtLabel} — {entry.Message}";
+            }
+
+            if (view.Entries.Count == 0)
+            {
+                _historySummary += "\nNone yet";
+            }
+
+            Render();
+        }
+
+        public void ShowNoDecision()
+        {
+            _decisionId = DecisionId.None;
+            _interventionTarget = DecisionInfluenceId.None;
+            _decisionSummary = "No active decision";
+            holdButton.gameObject.SetActive(false);
+            releaseButton.gameObject.SetActive(false);
+            interveneButton.gameObject.SetActive(false);
+            Render();
+        }
+
+        private void Render() => summaryText.text = _decisionSummary + "\n\n" + _historySummary;
 
         private void InvokeHold() => _hold?.Invoke(_decisionId);
 

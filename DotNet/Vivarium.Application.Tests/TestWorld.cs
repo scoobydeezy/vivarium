@@ -30,11 +30,16 @@ namespace Vivarium.Application.Tests
         public static readonly AuthoredId NeedHunger = new AuthoredId("need.hunger");
         public static readonly AuthoredId ActivityWorking = new AuthoredId("activity.working");
         public static readonly AuthoredId DecisionJobOffer = new AuthoredId("decision.job_offer");
+        public static readonly AuthoredId DecisionLeaveWork = new AuthoredId("decision.leave_work_early");
         public static readonly AuthoredId OptionAccept = new AuthoredId("option.accept");
         public static readonly AuthoredId OptionStay = new AuthoredId("option.stay");
+        public static readonly AuthoredId OptionLeave = new AuthoredId("option.leave");
         public static readonly AuthoredId InterventionStepUp = new AuthoredId("intervention.encourage");
         public static readonly AuthoredId Walking = new AuthoredId("travel_mode.walking");
         public static readonly AuthoredId KindBuilding = new AuthoredId("location_kind.building");
+        public static readonly AuthoredId ContextWorkPressure = new AuthoredId("decision_context.work_pressure");
+        public static readonly AuthoredId ModifierDislikedColleague = new AuthoredId("activity_modifier.disliked_colleague_present");
+        public static readonly AuthoredId InfluenceBadWorkContext = new AuthoredId("influence.bad_work_context");
 
         public static DefinitionCatalog BuildCatalog(int contentVersion = 1)
         {
@@ -47,6 +52,7 @@ namespace Vivarium.Application.Tests
                 {
                     new DiscoveryChannel(DiscoveryChannels.Inspection),
                     new DiscoveryChannel(DiscoveryChannels.DirectObservation),
+                    new DiscoveryChannel(DiscoveryChannels.Conversation),
                 }));
 
             builder.Add(new NeedDefinition(NeedHunger, "Hunger", 0, 10000, 12, 1, new long[] { 8000 }));
@@ -65,6 +71,40 @@ namespace Vivarium.Application.Tests
                 SimDuration.FromHours(8),
                 new AuthoredId("conflict_scope.employment"),
                 importance: 10));
+
+            builder.Add(new DecisionDefinition(
+                DecisionLeaveWork,
+                new[]
+                {
+                    new DecisionOption(OptionLeave, "Leave work early", 0),
+                    new DecisionOption(OptionStay, "Finish the shift", 1),
+                },
+                SimDuration.FromMinutes(10),
+                new AuthoredId("conflict_scope.current_activity"),
+                importance: 20,
+                trigger: new NeedThresholdDecisionTrigger(NeedHunger, 8000),
+                influenceTemplates: new[]
+                {
+                    new DecisionInfluenceTemplate(
+                        OptionLeave,
+                        new AuthoredId("cat.physical"),
+                        new AuthoredId("influence.hunger"),
+                        Die.D20,
+                        InfluenceVisibility.Full,
+                        subjectIsCharacter: true),
+                    new DecisionInfluenceTemplate(
+                        OptionLeave,
+                        new AuthoredId("cat.social"),
+                        InfluenceBadWorkContext,
+                        Die.D10,
+                        InfluenceVisibility.Existence | InfluenceVisibility.Category | InfluenceVisibility.Magnitude,
+                        subjectIsCharacter: true),
+                },
+                activityOutcomes: new[]
+                {
+                    new DecisionActivityOutcome(OptionLeave, WellKnownActivities.Waiting, SimDuration.FromHours(1)),
+                },
+                dependencyTemplates: new[] { new DecisionDependencyKey(ContextWorkPressure) }));
 
             builder.Add(new InterventionDefinition(InterventionStepUp, InterventionKind.StepDieUp, 1));
 

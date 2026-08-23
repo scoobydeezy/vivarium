@@ -8,8 +8,7 @@ using Vivarium.Domain.Characters;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Content;
 using Vivarium.Domain.Decisions;
-using Vivarium.Domain.Randomness;
-using Vivarium.Domain.Scheduling;
+using Vivarium.Domain.Relationships;
 using Vivarium.Domain.Simulation;
 using Vivarium.Domain.Spatial;
 using Vivarium.Domain.Time;
@@ -36,6 +35,11 @@ namespace Vivarium.Unity.Bootstrap
     /// </summary>
     public sealed class GameBootstrapper : MonoBehaviour
     {
+        private static readonly AuthoredId ActivityWorking = new AuthoredId("activity.working");
+        private static readonly AuthoredId DecisionLeaveWork = new AuthoredId("decision.leave_work_early");
+        private static readonly AuthoredId ContextWorkPressure = new AuthoredId("decision_context.work_pressure");
+        private static readonly AuthoredId ModifierDislikedColleague = new AuthoredId("activity_modifier.disliked_colleague_present");
+        private static readonly AuthoredId InfluenceBadWorkContext = new AuthoredId("Difficult work context");
         [Header("Content")]
         [SerializeField] private ContentPackAsset contentPack;
 
@@ -98,6 +102,7 @@ namespace Vivarium.Unity.Bootstrap
                 trace: null,
                 saveStore: _saveStore,
                 realWorldClock: new UnityRealWorldClock());
+            ConfigureDemoRules(_host);
 
             if (presenter == null)
             {
@@ -130,22 +135,33 @@ namespace Vivarium.Unity.Bootstrap
         {
             _demoLocations.Clear();
             _demoCharacters.Clear();
-            SeedDemoCharacter("Mina Test", "Demo Room", 1200);
-            SeedDemoCharacter("Glen Test", "Demo Cafe", 3200);
-            SeedDemoCharacter("Darius Test", "Demo Workshop", 5200);
+            LocationId room = SeedDemoLocation("Demo Room");
+            LocationId cafe = SeedDemoLocation("Demo Cafe");
+            LocationId workshop = SeedDemoLocation("Demo Workshop");
+
+            CharacterId mina = SeedDemoCharacter("Mina Test", room, 5592);
+            CharacterId glen = SeedDemoCharacter("Glen Test", room, 2000);
+            CharacterId darius = SeedDemoCharacter("Darius Test", workshop, 1000);
 
             var walking = new AuthoredId("travel_mode.walking");
-            for (int i = 0; i < _demoLocations.Count; i++)
-            {
-                LocationId from = _demoLocations[i];
-                LocationId to = _demoLocations[(i + 1) % _demoLocations.Count];
-                _host.World.TravelNetwork.ConnectBidirectional(from, to, SimDuration.FromMinutes(30), walking);
-            }
+            _host.World.TravelNetwork.ConnectBidirectional(room, workshop, SimDuration.FromMinutes(30), walking);
+            _host.World.TravelNetwork.ConnectBidirectional(room, cafe, SimDuration.FromMinutes(10), walking);
+            _host.World.TravelNetwork.ConnectBidirectional(cafe, workshop, SimDuration.FromMinutes(20), walking);
 
-            SeedDemoDecision(_demoCharacters[0]);
+            SeedNegativeRelationship(mina, darius);
+            _host.Transitions.BeginActivity(
+                _host.Simulation,
+                darius,
+                ActivityWorking,
+                workshop,
+                SimDuration.FromHours(2));
+
+            SeedWorkCommitment(mina, workshop);
+            SeedWorkCommitment(glen, workshop);
+            _host.Session.Advance(SimDuration.Zero);
         }
 
-        private void SeedDemoCharacter(string characterName, string locationName, long initialHunger)
+        private LocationId SeedDemoLocation(string locationName)
         {
             var location = new LocationNode(
                 _host.World.RuntimeIds.Locations.Next(),
@@ -154,7 +170,11 @@ namespace Vivarium.Unity.Bootstrap
                 locationName);
             _host.World.Locations.Add(location);
             _demoLocations.Add(location.Id);
+            return location.Id;
+        }
 
+        private CharacterId SeedDemoCharacter(string characterName, LocationId locationId, long initialHunger)
+        {
             var character = new Character(
                 _host.World.RuntimeIds.Characters.Next(),
                 characterName,
@@ -173,7 +193,7 @@ namespace Vivarium.Unity.Bootstrap
                     hunger.DefaultRateDenominator,
                     hunger.MinValue,
                     hunger.MaxValue),
-                hunger.MaxValue);
+                DemoDecisionThresholdFor(hunger.Id, hunger.MaxValue));
             character.SetNeed(hungerState);
             _host.Needs.Rearm(_host.Simulation, character, hungerState);
 
@@ -181,47 +201,77 @@ namespace Vivarium.Unity.Bootstrap
                 _host.Simulation,
                 character.Id,
                 WellKnownActivities.Waiting,
-                location.Id,
+                locationId,
                 SimDuration.FromDays(1));
             _host.WatchSignals.SetFollowed(_host.World, character.Id, true);
+            return character.Id;
         }
 
-        private void SeedDemoDecision(CharacterId characterId)
+        private void SeedNegativeRelationship(CharacterId mina, CharacterId darius)
         {
-            AuthoredId definitionId = new AuthoredId("decision.job_offer");
-            DecisionDefinition definition = _host.Catalog.Decisions[definitionId];
-            var decision = new Decision(
-                _host.World.RuntimeIds.Decisions.Next(),
+            var relationship = new Relationship(
+                _host.World.RuntimeIds.Relationships.Next(),
+                mina,
+                darius,
+                new AuthoredId("relationship.disliked_colleague"),
+                AnalyticalProgression.Constant(-5000, _host.World.Clock.Now),
+                _host.World.Clock.Now);
+            _host.World.Relationships.Add(relationship.Id, relationship);
+            _host.World.RelationshipIndex.Register(relationship);
+        }
+
+        private void SeedWorkCommitment(CharacterId characterId, LocationId workshop)
+        {
+            SimTime startsAt = _host.World.Clock.Now.Plus(SimDuration.FromMinutes(32));
+            var commitment = new Commitment(
+                _host.World.RuntimeIds.Commitments.Next(),
                 characterId,
-                definition.Id,
-                _host.World.Clock.Now,
-                _host.World.Clock.Now.Plus(definition.TimeToResolve),
-                definition.Options,
-                new DecisionConflictScope(definition.ConflictScopeKind, characterId.ToRef()),
-                definition.Importance);
+                new AuthoredId("commitment.demo_work_shift"),
+                startsAt,
+                startsAt.Plus(SimDuration.FromMinutes(5)),
+                SimDuration.FromHours(2),
+                workshop,
+                priority: 100,
+                activityDefinitionId: ActivityWorking,
+                sourceTemplateId: new AuthoredId("routine.demo_work_shift"));
+            _host.World.Commitments.Add(commitment.Id, commitment);
+            _host.World.BumpRevision(commitment.ScheduleRevisionKey);
+            _host.Planner.TryPlanCommitmentStart(_host.Simulation, commitment);
+        }
 
-            decision.AddInfluence(
-                new AuthoredId("option.accept"),
-                new AuthoredId("influence_category.practical"),
-                new AuthoredId("influence.new_opportunity"),
-                Die.D6,
-                InfluenceVisibility.Full);
-            decision.AddInfluence(
-                new AuthoredId("option.stay"),
-                new AuthoredId("influence_category.personal"),
-                new AuthoredId("influence.familiar_routine"),
-                Die.D8,
-                InfluenceVisibility.Full);
+        private static void ConfigureDemoRules(SimulationHost host)
+        {
+            host.DecisionReevaluation.Register(new ActivityContextInfluenceReevaluator(
+                DecisionLeaveWork,
+                ContextWorkPressure,
+                ModifierDislikedColleague,
+                InfluenceBadWorkContext,
+                Die.D10,
+                Die.D6));
+            var workPressure = new WorkContextPressureService(
+                host.Transitions,
+                host.DecisionReevaluation,
+                ActivityWorking,
+                ModifierDislikedColleague,
+                ContextWorkPressure,
+                affinityThreshold: -1000,
+                pressuredRate: -2);
+            host.DomainEventHandlers.Register(new WorkContextArrivalHandler(workPressure), 200);
+            host.DomainEventHandlers.Register(new WorkContextDepartureHandler(workPressure), 200);
+        }
 
-            _host.World.Decisions.Add(decision.Id, decision);
-            _host.World.DecisionDependencies.Register(decision);
-            ScheduledEvent scheduled = _host.World.Scheduler.Schedule(
-                decision.ResolveAt,
-                SchedulePhase.Decision,
-                ScheduledEventTypes.DecisionResolve,
-                new DecisionResolvePayload(decision.Id, characterId));
-            decision.SetPendingResolveEvent(scheduled.Id);
-            _host.World.Publish(new DecisionCreatedEvent(decision.Id, characterId, definition.Id));
+        private long DemoDecisionThresholdFor(AuthoredId needId, long fallback)
+        {
+            foreach (KeyValuePair<AuthoredId, DecisionDefinition> pair in _host.Catalog.Decisions)
+            {
+                NeedThresholdDecisionTrigger trigger = pair.Value.Trigger;
+                if (trigger != null && trigger.NeedId == needId)
+                {
+                    return trigger.Threshold;
+                }
+            }
+
+            return fallback;
         }
 
         private ICommand CreateDemoTravelCommand(CharacterId characterId)
@@ -256,6 +306,7 @@ namespace Vivarium.Unity.Bootstrap
                 trace: null,
                 saveStore: _saveStore,
                 realWorldClock: new UnityRealWorldClock());
+            ConfigureDemoRules(_host);
 
             _accumulatedMinutes = 0f;
             presenter.PrepareForWorldReload();

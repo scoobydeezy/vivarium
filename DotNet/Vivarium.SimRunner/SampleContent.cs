@@ -43,8 +43,10 @@ namespace Vivarium.SimRunner
         public static readonly AuthoredId TemplateBakeryShift = new AuthoredId("routine.bakery_shift");
 
         public static readonly AuthoredId DecisionJobOffer = new AuthoredId("decision.job_offer");
+        public static readonly AuthoredId DecisionLeaveWork = new AuthoredId("decision.leave_work_early");
         public static readonly AuthoredId OptionAccept = new AuthoredId("option.accept");
         public static readonly AuthoredId OptionStay = new AuthoredId("option.stay");
+        public static readonly AuthoredId OptionLeave = new AuthoredId("option.leave");
 
         public static readonly AuthoredId ConflictScopeEmployment = new AuthoredId("conflict_scope.employment");
 
@@ -56,6 +58,9 @@ namespace Vivarium.SimRunner
         public static readonly AuthoredId CategorySocial = new AuthoredId("influence_category.social");
 
         public static readonly AuthoredId ContextHousingMarket = new AuthoredId("decision_context.local_opportunity");
+        public static readonly AuthoredId ContextWorkPressure = new AuthoredId("decision_context.work_pressure");
+        public static readonly AuthoredId ModifierDislikedColleague = new AuthoredId("activity_modifier.disliked_colleague_present");
+        public static readonly AuthoredId InfluenceBadWorkContext = new AuthoredId("influence.bad_work_context");
 
         /// <summary>Home and the bakery are wired into the travel network by <see cref="SampleWorld"/>.</summary>
         public static DefinitionCatalog Build(int contentVersion = 1)
@@ -107,6 +112,46 @@ namespace Vivarium.SimRunner
                 importance: 10,
                 holdEligible: true,
                 dependencyTemplates: new[] { new DecisionDependencyKey(ContextHousingMarket) }));
+
+            builder.Add(new DecisionDefinition(
+                DecisionLeaveWork,
+                new[]
+                {
+                    new DecisionOption(OptionLeave, "Leave work early", 0),
+                    new DecisionOption(OptionStay, "Finish the shift", 1),
+                },
+                SimDuration.FromMinutes(10),
+                new AuthoredId("conflict_scope.current_activity"),
+                importance: 20,
+                trigger: new NeedThresholdDecisionTrigger(NeedHunger, 6000),
+                influenceTemplates: new[]
+                {
+                    new DecisionInfluenceTemplate(
+                        OptionLeave,
+                        CategoryPersonalConcern,
+                        new AuthoredId("influence.hunger"),
+                        Die.D20,
+                        InfluenceVisibility.Full,
+                        subjectIsCharacter: true),
+                    new DecisionInfluenceTemplate(
+                        OptionLeave,
+                        CategorySocial,
+                        InfluenceBadWorkContext,
+                        Die.D10,
+                        InfluenceVisibility.Existence | InfluenceVisibility.Category | InfluenceVisibility.Magnitude,
+                        subjectIsCharacter: true),
+                    new DecisionInfluenceTemplate(
+                        OptionStay,
+                        CategoryPractical,
+                        new AuthoredId("influence.reliability"),
+                        Die.D6,
+                        InfluenceVisibility.Full),
+                },
+                activityOutcomes: new[]
+                {
+                    new DecisionActivityOutcome(OptionLeave, WellKnownActivities.Waiting, SimDuration.FromHours(1)),
+                },
+                dependencyTemplates: new[] { new DecisionDependencyKey(ContextWorkPressure) }));
 
             builder.Add(new InterventionDefinition(InterventionStepUp, InterventionKind.StepDieUp, 1));
             builder.Add(new InterventionDefinition(InterventionReroll, InterventionKind.Reroll, 1));

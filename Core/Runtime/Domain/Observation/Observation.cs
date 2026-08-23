@@ -18,6 +18,9 @@ namespace Vivarium.Domain.Observation
 
         /// <summary>The player watched a decision resolve.</summary>
         WitnessDecision = 4,
+
+        /// <summary>The player watched two characters interact in a shared context.</summary>
+        WitnessInteraction = 5,
     }
 
     /// <summary>

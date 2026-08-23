@@ -26,6 +26,7 @@ literally:
   Vivarium.Domain.Tests/    net10.0, xunit
   Vivarium.Application.Tests/
   Vivarium.SimRunner/       net10.0 console app
+  Vivarium.SimRunner.Tests/ net10.0 Golden Scenario acceptance tests
 
 /Assets/Game                Unity-side code, one asmdef per layer
   /Presentation             Vivarium.Unity.Presentation   (Domain, Application, Unity)
@@ -110,12 +111,17 @@ Working implementations:
 - **Settlement** — `SettlementLoop` drains scheduled events and Domain Event reactions together to
   quiescence, with the runaway guard raising `SimulationCascadeLimitExceeded` (§11.4, §12.1).
 - **Activities** — one authoritative primary Activity per character, travel as an Activity, occupancy
-  indexes maintained on transition, time-weighted context modifiers (§29, §30).
+  indexes maintained on transition, time-weighted context modifiers, and a content-configurable
+  disliked-colleague Work pressure reaction (§29, §30).
 - **Decisions** — living influence sets with stable influence identity, dependency-indexed
   reevaluation, deterministic dice resolution, bounded held decisions, one authority for intervention
-  rules (§17–§20).
+  rules, one content-backed Need-threshold generation path with an Activity consequence, and targeted
+  Activity-context influence reevaluation (§17–§20).
 - **Knowledge** — fact providers, a knowledge ledger that goes stale by design, discovery driven by
   observation through one canonical `WatchState` (§20.1, §22–§25).
+- **Interactions** — location-arrival and indexed shared-travel-segment opportunities use bounded
+  deterministic candidate selection, leave primary Activities intact, update Relationships, and create
+  observation-driven Knowledge only through canonical `WatchState` (§25, §32).
 - **Commands and queries** — deterministic ingress queue, dispatcher, projections published only at
   quiescent boundaries, knowledge-filtered decision views (§2.2.1, §26, §35).
 - **Persistence** — versioned DTOs, explicit payload codecs, revision persistence, index rebuilding on
@@ -123,15 +129,26 @@ Working implementations:
 
 Intentionally thin, pending game-design decisions:
 
-- **Decision generation.** Nothing decides *when* a character faces a choice yet; the runner creates
-  decisions explicitly. Generation is content-driven and belongs with the first real decision content.
-- **Consequences.** `IActivityConsequenceHandler` and the Domain Event chains are wired but empty —
-  resolving a decision changes status and history, not yet employment or relationships.
+- **Decision generation breadth.** One Need-threshold trigger now generates a content-backed Decision;
+  other circumstances and targeted live influence construction remain to be added as concrete content
+  requires them. All headless runner execution paths now use the generated leave-work choice.
+- **Consequences breadth.** A resolved option can now change the primary Activity through the common
+  transition service. Employment, relationship, and Commitment consequences remain unimplemented.
 - **Save serialization format.** Explicitly deferred (§57). `ISaveGameSerializer` is defined;
   `InMemorySaveGameStore` exercises mapping without committing to an encoding.
-- **Needs → behaviour.** Threshold crossings publish `NeedThresholdReachedEvent`; nothing reacts yet.
-- **Presentation.** `CharacterView` / `WorldPresenter` show the pooling and command-translation shape.
-  No UI Toolkit surfaces, no art direction (§44, §45 remain open).
+- **Needs → behaviour breadth.** Threshold crossings can generate one Decision type; direct routine,
+  Activity-priority, and other behavioral reactions remain unimplemented.
+- **Unity authoring/presentation.** `ContentPackAsset` converts authored Needs, Activities, Decisions
+  (including threshold triggers, initial influences, and Activity outcomes), and interventions into the
+  validated Domain catalog. The smoke scene schedules two shared work Commitments: Mina and Glen
+  interact while travelling, Mina arrives beside a disliked working colleague and gains Work pressure,
+  then a real hunger crossing generates the leave-work Decision. `WorldPresenter` surfaces the
+  resulting knowledge-filtered projection and sends
+  Hold, Release, and intervention Commands. A bounded newest-first Decision history projection promotes
+  appearance, successful intervention, and resolution events into explanatory recent History and is
+  rendered at quiescence alongside the encounter. Character/roster/travel surfaces remain deliberately
+  utilitarian, with no general-purpose event browser, UI Toolkit layer, or art direction (§44, §45
+  remain open).
 
 ## Invariants with test coverage
 
@@ -153,6 +170,22 @@ The test suite is organised around the §58 invariants rather than around classe
 | Hidden influence count not exposed | `CommandAndProjectionTests` |
 | Different knowledge yields different views of one decision | `CommandAndProjectionTests` |
 | Save/load round-trip, including active travel and revisions | `PersistenceTests` |
+| Need pressure generates a Decision and Activity consequence | `PersistenceTests` |
+| Generated Decision resolves identically after save/reload | `PersistenceTests` |
+| Work pressure counts only while context is present | `WorkContextTests` |
+| Living influence reevaluates with stable identity and reloads | `WorkContextTests` |
+| Observation reveals a generalized live influence | `WorkContextTests` |
+| Shared-context interaction leaves Activities intact | `InteractionTests` |
+| Shared travel segment interaction survives index rebuild/load | `InteractionTests` |
+| Watched interaction creates Knowledge; unwatched does not | `InteractionTests` |
+| Large shared context produces a bounded interaction outcome | `SimulationInvariantTests` |
+| Full Golden Scenario causal chain | `GoldenScenarioTests` |
+| Held generated Decision resolves identically offline after reload | `GoldenScenarioTests` |
+| Mixed travel/Decision/Need/Commitment offline checkpoint is equivalent | `GoldenScenarioTests` |
+| Authored Unity Need crossing generates the projectable Decision | `VivariumPlayModeTests` |
+| Decision history feed is causal, bounded, filtered, and newest-first | `CommandAndProjectionTests` |
+| Unity Decision feed refreshes after intervention at quiescence | `VivariumPlayModeTests` |
+| Unity demo progresses through shared travel, Work pressure, and generated Decision | `VivariumPlayModeTests` |
 | Version drift diagnosed, not automatically blocking | `PersistenceTests` |
 | Offline duration computed outside Domain | `PersistenceTests` |
 

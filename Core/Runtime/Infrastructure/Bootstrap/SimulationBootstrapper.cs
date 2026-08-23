@@ -203,6 +203,8 @@ namespace Vivarium.Infrastructure.Bootstrap
 
             var knowledgeDiscovery = new KnowledgeDiscoveryService();
             knowledgeDiscovery.RegisterProvider(new CharacterFactProvider(catalog.Traits));
+            knowledgeDiscovery.RegisterProvider(new DecisionInfluenceFactProvider());
+            var interactions = new InteractionService(interactionCandidates, knowledgeDiscovery);
 
             // Scheduler handler registry. Registration is explicit and ordered by hand (§11.3, §12.1).
             var scheduledHandlers = new ScheduledEventHandlerRegistry();
@@ -212,8 +214,14 @@ namespace Vivarium.Infrastructure.Bootstrap
             scheduledHandlers.Register(new NeedThresholdHandler());
             scheduledHandlers.Register(new DecisionResolveHandler(decisionResolution, holdPolicy));
 
-            // Domain Event chains start empty: content registers reactions with explicit orders.
+            // Content-backed reactions use explicit stable order (§12.1).
             var domainHandlers = new OrderedDomainEventHandlerRegistry();
+            domainHandlers.Register(new NeedThresholdDecisionGenerationHandler(catalog), 100);
+            domainHandlers.Register(new DecisionActivityOutcomeHandler(catalog, transitions), 100);
+            domainHandlers.Register(new CharacterArrivedInteractionHandler(interactions), 100);
+            domainHandlers.Register(new TravelStartedInteractionHandler(interactions), 100);
+            domainHandlers.Register(new DecisionCreatedHistoryHandler(), 900);
+            domainHandlers.Register(new DecisionInterventionHistoryHandler(), 900);
 
             var settlement = new SettlementLoop(scheduledHandlers, domainHandlers);
             var projections = new ProjectionPublisher();

@@ -4,7 +4,6 @@ using Vivarium.Domain.Characters;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Decisions;
 using Vivarium.Domain.Relationships;
-using Vivarium.Domain.Scheduling;
 using Vivarium.Domain.Simulation;
 using Vivarium.Domain.Spatial;
 using Vivarium.Domain.Time;
@@ -56,7 +55,7 @@ namespace Vivarium.SimRunner
 
             // --- characters ---
             layout.Mina = AddCharacter(host, "Mina Cairn", layout.Home, new[] { SampleContent.TraitAmbitious, SampleContent.TraitEnjoysBaking });
-            layout.Glen = AddCharacter(host, "Glen Ashby", layout.Cafe, new[] { SampleContent.TraitHomebound });
+            layout.Glen = AddCharacter(host, "Glen Ashby", layout.Home, new[] { SampleContent.TraitHomebound });
             layout.Darius = AddCharacter(host, "Darius Vale", layout.Bakery, new[] { SampleContent.TraitAmbitious });
 
             // A synthetic crowd, to prove the same systems run at a larger scale (§49, §56).
@@ -77,6 +76,34 @@ namespace Vivarium.SimRunner
             world.Relationships.Add(relationship.Id, relationship);
             world.RelationshipIndex.Register(relationship);
 
+            var dislikedBoss = new Relationship(
+                world.RuntimeIds.Relationships.Next(),
+                layout.Mina,
+                layout.Darius,
+                new AuthoredId("relationship.disliked_boss"),
+                AnalyticalProgression.Constant(-5000, world.Clock.Now),
+                world.Clock.Now);
+            world.Relationships.Add(dislikedBoss.Id, dislikedBoss);
+            world.RelationshipIndex.Register(dislikedBoss);
+
+            host.DecisionReevaluation.Register(new ActivityContextInfluenceReevaluator(
+                SampleContent.DecisionLeaveWork,
+                SampleContent.ContextWorkPressure,
+                SampleContent.ModifierDislikedColleague,
+                SampleContent.InfluenceBadWorkContext,
+                Die.D10,
+                Die.D6));
+            var workPressure = new WorkContextPressureService(
+                host.Transitions,
+                host.DecisionReevaluation,
+                SampleContent.ActivityWorking,
+                SampleContent.ModifierDislikedColleague,
+                SampleContent.ContextWorkPressure,
+                affinityThreshold: -1000,
+                pressuredRate: -2);
+            host.DomainEventHandlers.Register(new WorkContextArrivalHandler(workPressure), 200);
+            host.DomainEventHandlers.Register(new WorkContextDepartureHandler(workPressure), 100);
+
             // --- one recurring routine, materialized across a bounded horizon (§29.4) ---
             CommitmentTemplate shift = SampleContent.BakeryShiftTemplate(layout.Bakery);
             IReadOnlyList<Commitment> commitments = host.Planner.MaterializeCommitments(
@@ -90,62 +117,19 @@ namespace Vivarium.SimRunner
                 host.Planner.TryPlanCommitmentStart(context, commitments[i]);
             }
 
+            // Glen has the same destination and departure window. Their indexed shared travel segment
+            // creates an interaction opportunity without either leaving the Traveling Activity (§32).
+            IReadOnlyList<Commitment> glensCommitments = host.Planner.MaterializeCommitments(
+                context,
+                layout.Glen,
+                new[] { shift },
+                SimDuration.FromDays(2));
+            for (int i = 0; i < glensCommitments.Count; i++)
+            {
+                host.Planner.TryPlanCommitmentStart(context, glensCommitments[i]);
+            }
+
             return layout;
-        }
-
-        /// <summary>
-        /// Creates a Decision with a true influence set, some of it hidden from the player (§17, §26).
-        /// </summary>
-        public static Decision CreateJobOfferDecision(SimulationHost host, CharacterId character, LocationId opportunityLocation)
-        {
-            WorldState world = host.World;
-            DecisionDefinition definition = host.Catalog.Decisions[SampleContent.DecisionJobOffer];
-
-            var decision = new Decision(
-                world.RuntimeIds.Decisions.Next(),
-                character,
-                definition.Id,
-                world.Clock.Now,
-                world.Clock.Now.Plus(definition.TimeToResolve),
-                definition.Options,
-                new DecisionConflictScope(SampleContent.ConflictScopeEmployment, character.ToRef()),
-                definition.Importance);
-
-            // Definition-derived values are snapshotted now, so a later content reload cannot rewrite
-            // this open decision underneath the player (§42.1).
-            decision.SnapshotParameter(new AuthoredId("decision.param.time_to_resolve_minutes"), definition.TimeToResolve.TotalMinutes);
-
-            // Four reasons to accept, three to stay — the player will not be shown all of them.
-            decision.AddInfluence(SampleContent.OptionAccept, SampleContent.CategoryPersonalConcern, SampleContent.TraitAmbitious, Die.D10, InfluenceVisibility.Full, default, character.ToRef());
-            decision.AddInfluence(SampleContent.OptionAccept, SampleContent.CategoryPersonalConcern, SampleContent.TraitEnjoysBaking, Die.D8, InfluenceVisibility.Existence | InfluenceVisibility.Category | InfluenceVisibility.Magnitude, default, character.ToRef());
-            decision.AddInfluence(SampleContent.OptionAccept, SampleContent.CategoryPractical, new AuthoredId("influence.better_pay"), Die.D6, InfluenceVisibility.Full);
-            decision.AddInfluence(
-                SampleContent.OptionAccept,
-                SampleContent.CategoryPractical,
-                new AuthoredId("influence.good_location"),
-                Die.D6,
-                InfluenceVisibility.Full,
-                new DecisionDependencyKey(SampleContent.ContextHousingMarket, opportunityLocation.ToRef()));
-
-            decision.AddInfluence(SampleContent.OptionStay, SampleContent.CategorySocial, new AuthoredId("influence.family_routine"), Die.D8, InfluenceVisibility.Full);
-            decision.AddInfluence(SampleContent.OptionStay, SampleContent.CategorySocial, new AuthoredId("influence.friendship"), Die.D6, InfluenceVisibility.Existence | InfluenceVisibility.Magnitude);
-
-            // Entirely hidden: the player is not even told that a third reason to stay exists (§26).
-            decision.AddInfluence(SampleContent.OptionStay, SampleContent.CategoryPractical, new AuthoredId("influence.commute"), Die.D6, InfluenceVisibility.Hidden);
-
-            world.Decisions.Add(decision.Id, decision);
-            world.DecisionDependencies.Register(decision);
-
-            ScheduledEvent scheduled = world.Scheduler.Schedule(
-                decision.ResolveAt,
-                SchedulePhase.Decision,
-                ScheduledEventTypes.DecisionResolve,
-                new DecisionResolvePayload(decision.Id, character));
-
-            decision.SetPendingResolveEvent(scheduled.Id);
-            world.Publish(new DecisionCreatedEvent(decision.Id, character, definition.Id));
-
-            return decision;
         }
 
         private static LocationId AddLocation(WorldState world, LocationId parent, AuthoredId kind, string name)

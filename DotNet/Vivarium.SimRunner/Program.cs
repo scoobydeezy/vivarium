@@ -4,8 +4,10 @@ using Vivarium.Application.Commands;
 using Vivarium.Domain.Content;
 using Vivarium.Application.Persistence;
 using Vivarium.Application.Queries;
+using Vivarium.Domain.Activities;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Decisions;
+using Vivarium.Domain.Relationships;
 using Vivarium.Domain.Simulation;
 using Vivarium.Domain.Time;
 using Vivarium.Infrastructure.Bootstrap;
@@ -81,38 +83,52 @@ namespace Vivarium.SimRunner
             PrintCharacter(host, layout.Mina);
 
             // The player begins watching her: one canonical watch signal feeding observation (§20.1, §25).
+            host.Session.Enqueue(new FollowCharacterCommand(layout.Mina, true));
             host.Session.Enqueue(new BeginObservingCharacterCommand(layout.Mina));
             host.Session.Enqueue(new InspectCharacterCommand(layout.Mina));
             host.Session.Pump();
             Console.WriteLine($"\nAfter observing, the player knows {host.World.Knowledge.Count} fact(s).");
 
-            // A decision forms with a true influence set the player only partly sees (§17, §26).
-            Decision decision = SampleWorld.CreateJobOfferDecision(host, layout.Mina, layout.Cafe);
-            host.Session.Advance(SimDuration.Zero);
+            // Hunger and the bad Work context generate a Decision without runner construction.
+            host.Session.Advance(SimDuration.FromMinutes(35));
+            Decision decision = FindActiveDecision(host.World, SampleContent.DecisionLeaveWork);
 
             var projector = new DecisionProjector(catalog.Interventions);
-            Console.WriteLine("\n-- decision as the player sees it --");
+            Console.WriteLine("\n-- generated decision before discovery --");
             PrintDecision(projector.Project(host.World, decision));
 
             // Hold it, so it does not auto-resolve while the player thinks (§20).
             Console.WriteLine("\nHold: " + host.Session.Execute(new HoldDecisionCommand(decision.Id)));
 
-            // The world changes while the decision is open: a better opportunity appears (§17.2).
-            decision.ChangeInfluenceDie(FindInfluence(decision, "influence.good_location"), Die.D10);
-            host.World.BumpRevision(decision.InfluenceRevisionKey);
-            Console.WriteLine($"A better location appears — influence revision is now {decision.InfluenceRevision}.");
+            // Refocusing observation after the Decision exists discovers its generalized influence.
+            host.Session.Execute(new EndObservingCharacterCommand(layout.Mina));
+            host.Session.Execute(new FollowCharacterCommand(layout.Mina, true));
+            host.Session.Execute(new BeginObservingCharacterCommand(layout.Mina));
+            Console.WriteLine("\n-- after observing the live circumstances --");
+            PrintDecision(projector.Project(host.World, decision));
+
+            // Darius leaves. The Activity modifier is materialized and the same influence reevaluates.
+            host.Transitions.BeginActivity(
+                host.Simulation,
+                layout.Darius,
+                WellKnownActivities.Waiting,
+                layout.Cafe,
+                SimDuration.FromHours(1));
+            host.Session.Advance(SimDuration.Zero);
+            Console.WriteLine($"\nDarius leaves — influence revision is now {decision.InfluenceRevision}.");
 
             // The player spends an intervention on a stable influence id (§19).
-            DecisionInfluenceId ambition = FindInfluence(decision, SampleContent.TraitAmbitious.Value);
-            Result intervention = host.Session.Execute(new ApplyDecisionInterventionCommand(decision.Id, SampleContent.InterventionStepUp, ambition));
+            DecisionInfluenceId pressure = FindInfluence(decision, SampleContent.InfluenceBadWorkContext.Value);
+            Result intervention = host.Session.Execute(new ApplyDecisionInterventionCommand(decision.Id, SampleContent.InterventionStepUp, pressure));
             Console.WriteLine($"Intervention: {intervention}");
 
             // Release and let it resolve.
             Console.WriteLine("Release: " + host.Session.Execute(new ReleaseDecisionCommand(decision.Id)));
-            host.Session.Advance(SimDuration.FromHours(12));
+            host.Session.Advance(SimDuration.FromMinutes(10));
 
             Console.WriteLine("\n-- resolved --");
             PrintDecision(projector.Project(host.World, decision));
+            PrintCharacter(host, layout.Mina);
 
             Console.WriteLine($"\n{host.Session.PerformanceSummary()}");
             Console.WriteLine($"trace entries: {trace.Entries.Count}");
@@ -153,13 +169,24 @@ namespace Vivarium.SimRunner
                 DefaultSeed, SimTime.FromClockTime(0, 7, 0), catalog, 1, null, store, clock);
 
             SampleWorldLayout layout = SampleWorld.Populate(host);
-            host.Session.Advance(SimDuration.FromHours(3));
-            Decision decision = SampleWorld.CreateJobOfferDecision(host, layout.Mina, layout.Cafe);
+            host.Session.Advance(SimDuration.FromHours(5));
+            host.Session.Execute(new FollowCharacterCommand(layout.Mina, true));
+            host.Session.Execute(new BeginObservingCharacterCommand(layout.Mina));
+            host.Session.Advance(SimDuration.FromMinutes(35));
+            Decision decision = FindActiveDecision(host.World, SampleContent.DecisionLeaveWork);
+            host.Session.Execute(new HoldDecisionCommand(decision.Id));
+            host.Transitions.BeginActivity(
+                host.Simulation, layout.Darius, WellKnownActivities.Waiting, layout.Cafe, SimDuration.FromHours(1));
             host.Session.Advance(SimDuration.Zero);
+            host.Session.Execute(new ApplyDecisionInterventionCommand(
+                decision.Id,
+                SampleContent.InterventionStepUp,
+                FindInfluence(decision, SampleContent.InfluenceBadWorkContext.Value)));
+            host.Session.Execute(new ReleaseDecisionCommand(decision.Id));
 
             // Save with the decision still open, then finish it in the original session.
             host.Session.Save("checkpoint");
-            host.Session.Advance(SimDuration.FromHours(12));
+            host.Session.Advance(SimDuration.FromMinutes(10));
             string original = Signature(host);
 
             // Reload and run the identical remaining advance.
@@ -168,7 +195,7 @@ namespace Vivarium.SimRunner
             SimulationHost restored = SimulationBootstrapper.CreateFromRestoredWorld(
                 restoredWorld, catalog, saved.LastCommandSequence, 1, null, store, clock);
 
-            restored.Session.Advance(SimDuration.FromHours(12));
+            restored.Session.Advance(SimDuration.FromMinutes(10));
             string reloaded = Signature(restored);
 
             Console.WriteLine("original: " + original);
@@ -181,6 +208,8 @@ namespace Vivarium.SimRunner
             }
 
             Console.WriteLine("FAIL — reload diverged from the original run.");
+            DumpState("original", host);
+            DumpState("reloaded", restored);
             return 1;
         }
 
@@ -222,18 +251,24 @@ namespace Vivarium.SimRunner
             SimulationHost host = SimulationBootstrapper.CreateNewWorld(DefaultSeed, SimTime.FromClockTime(0, 7, 0), catalog);
             SampleWorldLayout layout = SampleWorld.Populate(host);
 
-            host.Session.Advance(SimDuration.FromHours(3));
+            host.Session.Advance(SimDuration.FromHours(5));
+            host.Session.Enqueue(new FollowCharacterCommand(layout.Mina, true));
             host.Session.Enqueue(new BeginObservingCharacterCommand(layout.Mina));
             host.Session.Pump();
 
-            Decision decision = SampleWorld.CreateJobOfferDecision(host, layout.Mina, layout.Cafe);
+            host.Session.Advance(SimDuration.FromMinutes(35));
+            Decision decision = FindActiveDecision(host.World, SampleContent.DecisionLeaveWork);
+            host.Session.Execute(new HoldDecisionCommand(decision.Id));
+            host.Transitions.BeginActivity(
+                host.Simulation, layout.Darius, WellKnownActivities.Waiting, layout.Cafe, SimDuration.FromHours(1));
             host.Session.Advance(SimDuration.Zero);
             host.Session.Execute(new ApplyDecisionInterventionCommand(
                 decision.Id,
                 SampleContent.InterventionStepUp,
-                FindInfluence(decision, SampleContent.TraitAmbitious.Value)));
+                FindInfluence(decision, SampleContent.InfluenceBadWorkContext.Value)));
+            host.Session.Execute(new ReleaseDecisionCommand(decision.Id));
 
-            host.Session.Advance(SimDuration.FromHours(12));
+            host.Session.Advance(SimDuration.FromMinutes(10));
             return Signature(host);
         }
 
@@ -276,6 +311,16 @@ namespace Vivarium.SimRunner
                 hash = StableHash.Combine(hash, (int)activity.Status);
             }
 
+            foreach (Relationship relationship in world.Relationships.All)
+            {
+                hash = StableHash.Combine(hash, relationship.Id.Value);
+                hash = StableHash.Combine(hash, relationship.LowCharacterId.Value);
+                hash = StableHash.Combine(hash, relationship.HighCharacterId.Value);
+                hash = StableHash.Combine(hash, relationship.AffinityAt(world.Clock.Now));
+                hash = StableHash.Combine(hash, relationship.Familiarity);
+                hash = StableHash.Combine(hash, relationship.LastInteractionAt?.TotalMinutes ?? -1);
+            }
+
             return hash.ToString("X16");
         }
 
@@ -290,6 +335,45 @@ namespace Vivarium.SimRunner
             }
 
             throw new InvalidOperationException($"No influence labelled '{labelId}' on decision {decision.Id}.");
+        }
+
+        private static Decision FindActiveDecision(WorldState world, AuthoredId definitionId)
+        {
+            foreach (Decision decision in world.Decisions.All)
+            {
+                if (decision.IsActive && decision.DefinitionId == definitionId)
+                {
+                    return decision;
+                }
+            }
+
+            throw new InvalidOperationException($"No active generated decision '{definitionId}'.");
+        }
+
+        private static void DumpState(string label, SimulationHost host)
+        {
+            WorldState world = host.World;
+            Console.WriteLine($"-- {label}: now={world.Clock.Now.TotalMinutes} pending={world.Scheduler.PendingCount} activities={world.Activities.Count} decisions={world.Decisions.Count} relationships={world.Relationships.Count} knowledge={world.Knowledge.Count}");
+            foreach (Decision decision in world.Decisions.All)
+            {
+                string rolls = decision.Resolution == null ? "-" : string.Join(",", RollValues(decision.Resolution));
+                Console.WriteLine($"decision {decision.Id.Value} {decision.DefinitionId} {decision.Status} rev={decision.InfluenceRevision} result={decision.Resolution?.ChosenOptionId.ToString() ?? "-"} degree={decision.Resolution?.Degree.ToString() ?? "-"} rolls={rolls}");
+            }
+            foreach (Domain.Activities.ActivityInstance activity in world.Activities.All)
+            {
+                Console.WriteLine($"activity {activity.Id.Value} char={activity.CharacterId.Value} {activity.DefinitionId} {activity.Status} start={activity.StartedAt.TotalMinutes}");
+            }
+            foreach (Relationship relationship in world.Relationships.All)
+            {
+                Console.WriteLine($"relationship {relationship.Id.Value} {relationship.LowCharacterId.Value}-{relationship.HighCharacterId.Value} affinity={relationship.AffinityAt(world.Clock.Now)} familiarity={relationship.Familiarity} last={relationship.LastInteractionAt?.TotalMinutes.ToString() ?? "-"}");
+            }
+        }
+
+        private static int[] RollValues(DecisionResolution resolution)
+        {
+            var values = new int[resolution.Rolls.Count];
+            for (int i = 0; i < values.Length; i++) values[i] = resolution.Rolls[i].Rolled;
+            return values;
         }
 
         private static void PrintCharacter(SimulationHost host, CharacterId characterId)

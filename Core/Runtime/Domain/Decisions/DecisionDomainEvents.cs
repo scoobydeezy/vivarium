@@ -9,6 +9,7 @@ namespace Vivarium.Domain.Decisions
         public static readonly AuthoredId DecisionCreated = new AuthoredId("domain.decision.created");
         public static readonly AuthoredId DecisionResolved = new AuthoredId("domain.decision.resolved");
         public static readonly AuthoredId DecisionInfluencesChanged = new AuthoredId("domain.decision.influences_changed");
+        public static readonly AuthoredId DecisionInterventionApplied = new AuthoredId("domain.decision.intervention_applied");
     }
 
     /// <summary>A new Decision entered the world.</summary>
@@ -68,5 +69,27 @@ namespace Vivarium.Domain.Decisions
         public DecisionId DecisionId { get; }
 
         public int InfluenceRevision { get; }
+    }
+
+    /// <summary>A validated player intervention changed one stable influence on an open Decision.</summary>
+    public sealed class DecisionInterventionAppliedEvent : IDomainEvent
+    {
+        public DecisionInterventionAppliedEvent(
+            DecisionId decisionId,
+            CharacterId characterId,
+            AuthoredId interventionDefinitionId,
+            DecisionInfluenceId influenceId)
+        {
+            DecisionId = decisionId;
+            CharacterId = characterId;
+            InterventionDefinitionId = interventionDefinitionId;
+            InfluenceId = influenceId;
+        }
+
+        public AuthoredId EventType => DecisionDomainEventTypes.DecisionInterventionApplied;
+        public DecisionId DecisionId { get; }
+        public CharacterId CharacterId { get; }
+        public AuthoredId InterventionDefinitionId { get; }
+        public DecisionInfluenceId InfluenceId { get; }
     }
 }

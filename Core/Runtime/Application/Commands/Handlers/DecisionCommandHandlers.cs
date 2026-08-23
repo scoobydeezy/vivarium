@@ -47,6 +47,11 @@ namespace Vivarium.Application.Commands.Handlers
             DecisionInterventionRules.Apply(decision, intervention, command.TargetInfluenceId, context.CommandSequence);
             context.World.BumpRevision(decision.InfluenceRevisionKey);
             context.World.Publish(new DecisionInfluencesChangedEvent(decision.Id, decision.InfluenceRevision));
+            context.World.Publish(new DecisionInterventionAppliedEvent(
+                decision.Id,
+                decision.CharacterId,
+                intervention.Id,
+                command.TargetInfluenceId));
 
             if (context.Simulation.Trace.IsEnabled)
             {

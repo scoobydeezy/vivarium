@@ -37,8 +37,9 @@ namespace Vivarium.Unity.Authoring
 
         [SerializeField] private string[] locationKindIds = new string[0];
 
-        [Tooltip("Adds the authored decision/intervention content used by the Unity smoke-test scene.")]
-        [SerializeField] private bool includeDemoDecisionContent;
+        [SerializeField] private DecisionEntry[] decisions = new DecisionEntry[0];
+
+        [SerializeField] private InterventionEntry[] interventions = new InterventionEntry[0];
 
         public int ContentVersion => contentVersion;
 
@@ -73,22 +74,14 @@ namespace Vivarium.Unity.Authoring
                 builder.Add(new LocationKindDefinition(new AuthoredId(locationKindIds[i]), locationKindIds[i]));
             }
 
-            if (includeDemoDecisionContent)
+            for (int i = 0; i < decisions.Length; i++)
             {
-                builder.Add(new DecisionDefinition(
-                    new AuthoredId("decision.job_offer"),
-                    new[]
-                    {
-                        new DecisionOption(new AuthoredId("option.accept"), "Take the opportunity", 0),
-                        new DecisionOption(new AuthoredId("option.stay"), "Stay where you are", 1),
-                    },
-                    SimDuration.FromHours(8),
-                    new AuthoredId("conflict_scope.employment"),
-                    importance: 10));
-                builder.Add(new InterventionDefinition(
-                    new AuthoredId("intervention.encourage"),
-                    InterventionKind.StepDieUp,
-                    cost: 1));
+                builder.Add(decisions[i].ToDefinition());
+            }
+
+            for (int i = 0; i < interventions.Length; i++)
+            {
+                builder.Add(interventions[i].ToDefinition());
             }
 
             // The system-provided activities the architecture assumes exist (§29.2, invariant 39).
@@ -193,6 +186,144 @@ namespace Vivarium.Unity.Authoring
                 producesOutcome,
                 supportsInteractiveResolution,
                 isTravel);
+        }
+
+        [System.Serializable]
+        public struct DecisionEntry
+        {
+            public string authoredId;
+            public DecisionOptionEntry[] options;
+            public int timeToResolveMinutes;
+            public string conflictScopeKindId;
+            public int importance;
+            public bool holdEligible;
+            public DecisionDependencyEntry[] dependencies;
+            public NeedThresholdTriggerEntry trigger;
+            public DecisionInfluenceEntry[] influences;
+            public DecisionActivityOutcomeEntry[] activityOutcomes;
+
+            public DecisionDefinition ToDefinition()
+            {
+                var domainOptions = new DecisionOption[options?.Length ?? 0];
+                for (int i = 0; i < domainOptions.Length; i++)
+                {
+                    domainOptions[i] = options[i].ToDefinition(i);
+                }
+
+                var domainInfluences = new DecisionInfluenceTemplate[influences?.Length ?? 0];
+                for (int i = 0; i < domainInfluences.Length; i++)
+                {
+                    domainInfluences[i] = influences[i].ToDefinition();
+                }
+
+                var domainOutcomes = new DecisionActivityOutcome[activityOutcomes?.Length ?? 0];
+                for (int i = 0; i < domainOutcomes.Length; i++)
+                {
+                    domainOutcomes[i] = activityOutcomes[i].ToDefinition();
+                }
+
+                return new DecisionDefinition(
+                    new AuthoredId(authoredId),
+                    domainOptions,
+                    SimDuration.FromMinutes(timeToResolveMinutes),
+                    new AuthoredId(conflictScopeKindId),
+                    importance,
+                    holdEligible,
+                    dependencyTemplates: ToDependencies(),
+                    trigger: trigger.IsConfigured ? trigger.ToDefinition() : null,
+                    influenceTemplates: domainInfluences,
+                    activityOutcomes: domainOutcomes);
+            }
+
+            private DecisionDependencyKey[] ToDependencies()
+            {
+                var result = new DecisionDependencyKey[dependencies?.Length ?? 0];
+                for (int i = 0; i < result.Length; i++)
+                {
+                    result[i] = dependencies[i].ToDefinition();
+                }
+
+                return result;
+            }
+        }
+
+        [System.Serializable]
+        public struct DecisionDependencyEntry
+        {
+            public string contextKindId;
+
+            public DecisionDependencyKey ToDefinition() =>
+                new DecisionDependencyKey(new AuthoredId(contextKindId));
+        }
+
+        [System.Serializable]
+        public struct DecisionOptionEntry
+        {
+            public string authoredId;
+            public string labelId;
+            public int orderIndex;
+
+            public DecisionOption ToDefinition(int fallbackOrder) => new DecisionOption(
+                new AuthoredId(authoredId),
+                new AuthoredId(labelId),
+                orderIndex < 0 ? fallbackOrder : orderIndex);
+        }
+
+        [System.Serializable]
+        public struct NeedThresholdTriggerEntry
+        {
+            public string needId;
+            public long threshold;
+
+            public bool IsConfigured => !string.IsNullOrWhiteSpace(needId);
+
+            public NeedThresholdDecisionTrigger ToDefinition() =>
+                new NeedThresholdDecisionTrigger(new AuthoredId(needId), threshold);
+        }
+
+        [System.Serializable]
+        public struct DecisionInfluenceEntry
+        {
+            public string optionId;
+            public string categoryId;
+            public string labelId;
+            public int dieSides;
+            public InfluenceVisibility visibility;
+            public bool subjectIsCharacter;
+
+            public DecisionInfluenceTemplate ToDefinition() => new DecisionInfluenceTemplate(
+                new AuthoredId(optionId),
+                new AuthoredId(categoryId),
+                new AuthoredId(labelId),
+                new Die(dieSides),
+                visibility,
+                subjectIsCharacter);
+        }
+
+        [System.Serializable]
+        public struct DecisionActivityOutcomeEntry
+        {
+            public string optionId;
+            public string activityDefinitionId;
+            public int durationMinutes;
+
+            public DecisionActivityOutcome ToDefinition() => new DecisionActivityOutcome(
+                new AuthoredId(optionId),
+                new AuthoredId(activityDefinitionId),
+                SimDuration.FromMinutes(durationMinutes));
+        }
+
+        [System.Serializable]
+        public struct InterventionEntry
+        {
+            public string authoredId;
+            public InterventionKind kind;
+            public int cost;
+
+            public InterventionDefinition ToDefinition() => new InterventionDefinition(
+                new AuthoredId(authoredId),
+                kind,
+                cost);
         }
     }
 }

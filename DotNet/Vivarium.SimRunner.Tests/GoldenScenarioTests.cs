@@ -1,0 +1,368 @@
+using System.Text;
+using Vivarium.Application.Commands;
+using Vivarium.Application.Persistence;
+using Vivarium.Application.Queries;
+using Vivarium.Application.Session;
+using Vivarium.Domain.Activities;
+using Vivarium.Domain.Common;
+using Vivarium.Domain.Content;
+using Vivarium.Domain.Decisions;
+using Vivarium.Domain.Characters;
+using Vivarium.Domain.Relationships;
+using Vivarium.Domain.Simulation;
+using Vivarium.Domain.Spatial;
+using Vivarium.Domain.Scheduling;
+using Vivarium.Domain.Time;
+using Vivarium.Infrastructure.Bootstrap;
+using Vivarium.Infrastructure.Clock;
+using Vivarium.Infrastructure.Persistence;
+using Xunit;
+
+namespace Vivarium.SimRunner.Tests
+{
+    public sealed class GoldenScenarioTests
+    {
+        private const long Seed = 827119;
+
+        private sealed class Fixture
+        {
+            public DefinitionCatalog Catalog;
+            public SimulationHost Host;
+            public SampleWorldLayout Layout;
+            public InMemorySaveGameStore Store;
+            public FixedRealWorldClock Clock;
+        }
+
+        [Fact]
+        public void GoldenScenarioConnectsTheWholeCausalChain()
+        {
+            Fixture fixture = Create();
+            WorldState world = fixture.Host.World;
+
+            fixture.Host.Session.Advance(SimDuration.FromHours(5));
+
+            Assert.True(world.TryGetCurrentActivity(fixture.Layout.Mina, out ActivityInstance work));
+            Assert.Equal(SampleContent.ActivityWorking, work.DefinitionId);
+            Assert.True(work.HasModifier(SampleContent.ModifierDislikedColleague));
+
+            var sharedSegment = new TravelSegmentKey(fixture.Layout.Home, fixture.Layout.Bakery);
+            Assert.True(world.RelationshipIndex.TryGetBetween(fixture.Layout.Mina, fixture.Layout.Glen, out RelationshipId friendshipId));
+            Relationship friendship = world.Relationships.Get(friendshipId);
+            Assert.NotNull(friendship.LastInteractionAt);
+            Assert.True(friendship.LastInteractionAt < world.Clock.Now);
+
+            fixture.Host.Session.Execute(new FollowCharacterCommand(fixture.Layout.Mina, true));
+            fixture.Host.Session.Execute(new BeginObservingCharacterCommand(fixture.Layout.Mina));
+            fixture.Host.Session.Advance(SimDuration.FromMinutes(35));
+
+            Decision decision = FindDecision(world, fixture.Layout.Mina);
+            DecisionInfluence pressure = FindInfluence(decision, SampleContent.InfluenceBadWorkContext);
+            DecisionInfluenceId stableInfluenceId = pressure.Id;
+            Assert.Equal(Die.D10, pressure.CurrentDie);
+
+            InfluenceView concealed = FindInfluenceView(
+                new DecisionProjector(fixture.Catalog.Interventions).Project(world, decision),
+                stableInfluenceId);
+            Assert.Null(concealed.Label);
+            Assert.Equal(SampleContent.CategorySocial.Value, concealed.Category);
+            Assert.True(fixture.Host.Session.Execute(new HoldDecisionCommand(decision.Id)).IsSuccess);
+
+            fixture.Host.Session.Execute(new EndObservingCharacterCommand(fixture.Layout.Mina));
+            fixture.Host.Session.Execute(new BeginObservingCharacterCommand(fixture.Layout.Mina));
+            InfluenceView revealed = FindInfluenceView(
+                new DecisionProjector(fixture.Catalog.Interventions).Project(world, decision),
+                stableInfluenceId);
+            Assert.Equal(SampleContent.InfluenceBadWorkContext.Value, revealed.Label);
+
+            fixture.Host.Transitions.BeginActivity(
+                fixture.Host.Simulation,
+                fixture.Layout.Darius,
+                WellKnownActivities.Waiting,
+                fixture.Layout.Cafe,
+                SimDuration.FromHours(1));
+            fixture.Host.Session.Advance(SimDuration.Zero);
+
+            Assert.False(work.HasModifier(SampleContent.ModifierDislikedColleague));
+            Assert.Equal(stableInfluenceId, pressure.Id);
+            Assert.Equal(Die.D6, pressure.CurrentDie);
+
+            Assert.True(fixture.Host.Session.Execute(new ApplyDecisionInterventionCommand(
+                decision.Id,
+                SampleContent.InterventionStepUp,
+                stableInfluenceId)).IsSuccess);
+            Assert.Equal(Die.D8, pressure.CurrentDie);
+
+            Assert.True(fixture.Host.Session.Execute(new ReleaseDecisionCommand(decision.Id)).IsSuccess);
+            fixture.Host.Session.Advance(SimDuration.FromMinutes(10));
+
+            Assert.Equal(DecisionStatus.Resolved, decision.Status);
+            Assert.Equal(SampleContent.OptionLeave, decision.Resolution.ChosenOptionId);
+            Assert.True(world.TryGetCurrentActivity(fixture.Layout.Mina, out ActivityInstance consequence));
+            Assert.Equal(WellKnownActivities.Waiting, consequence.DefinitionId);
+            Assert.Equal(fixture.Layout.Bakery, consequence.SpatialContext.LocationId);
+
+            // The shared segment was derived state: neither character remains indexed there after arrival.
+            Assert.DoesNotContain(fixture.Layout.Mina, world.Spatial.TravelersOn(sharedSegment));
+            Assert.DoesNotContain(fixture.Layout.Glen, world.Spatial.TravelersOn(sharedSegment));
+        }
+
+        [Fact]
+        public void OfflineCatchUpResolvesHeldGeneratedDecisionAndMatchesReload()
+        {
+            Fixture fixture = Create();
+            fixture.Host.Session.Advance(SimDuration.FromHours(5));
+            fixture.Host.Session.Execute(new FollowCharacterCommand(fixture.Layout.Mina, true));
+            fixture.Host.Session.Execute(new BeginObservingCharacterCommand(fixture.Layout.Mina));
+            fixture.Host.Session.Advance(SimDuration.FromMinutes(35));
+
+            Decision decision = FindDecision(fixture.Host.World, fixture.Layout.Mina);
+            Assert.True(fixture.Host.Session.Execute(new HoldDecisionCommand(decision.Id)).IsSuccess);
+            SaveGameData saved = fixture.Host.Session.Save("offline-golden");
+
+            fixture.Clock.AdvanceMinutes(20);
+            SimDuration elapsed = new OfflineProgressionService(fixture.Clock).ElapsedSince(saved);
+            Assert.Equal(20, elapsed.TotalMinutes);
+
+            fixture.Host.Session.Advance(elapsed, SimulationMode.OfflineCatchUp);
+            DecisionResolution uninterrupted = decision.Resolution;
+            ActivityInstance uninterruptedActivity = fixture.Host.World.Activities.Get(
+                fixture.Host.World.Characters.Get(fixture.Layout.Mina).CurrentActivityId);
+
+            WorldState restoredWorld = fixture.Host.SaveMapper.Restore(saved);
+            SimulationHost restored = SimulationBootstrapper.CreateFromRestoredWorld(
+                restoredWorld,
+                fixture.Catalog,
+                saved.LastCommandSequence,
+                1,
+                null,
+                fixture.Store,
+                fixture.Clock);
+
+            Assert.True(restored.World.Attention.WatchStateOf(fixture.Layout.Mina).IsFollowed);
+            Assert.False(restored.World.Attention.WatchStateOf(fixture.Layout.Mina).IsVisible);
+            restored.Session.Advance(elapsed, SimulationMode.OfflineCatchUp);
+
+            Decision reloadedDecision = restored.World.Decisions.Get(decision.Id);
+            ActivityInstance reloadedActivity = restored.World.Activities.Get(
+                restored.World.Characters.Get(fixture.Layout.Mina).CurrentActivityId);
+
+            Assert.Equal(DecisionStatus.Resolved, reloadedDecision.Status);
+            Assert.Equal(uninterrupted.ChosenOptionId, reloadedDecision.Resolution.ChosenOptionId);
+            Assert.Equal(uninterrupted.Degree, reloadedDecision.Resolution.Degree);
+            Assert.Equal(uninterruptedActivity.Id, reloadedActivity.Id);
+            Assert.Equal(uninterruptedActivity.DefinitionId, reloadedActivity.DefinitionId);
+            Assert.Equal(uninterruptedActivity.SpatialContext.LocationId, reloadedActivity.SpatialContext.LocationId);
+        }
+
+        [Fact]
+        public void MixedActiveStateRemainsEquivalentAcrossOfflineCatchUpAndReload()
+        {
+            Fixture fixture = Create();
+            fixture.Host.Session.Advance(SimDuration.FromHours(5));
+            fixture.Host.Session.Advance(SimDuration.FromMinutes(35));
+
+            WorldState world = fixture.Host.World;
+            Decision minaDecision = FindDecision(world, fixture.Layout.Mina);
+            Decision glenDecision = FindDecision(world, fixture.Layout.Glen);
+            Decision dariusDecision = FindDecision(world, fixture.Layout.Darius);
+            Assert.True(fixture.Host.Session.Execute(new HoldDecisionCommand(minaDecision.Id)).IsSuccess);
+            Assert.False(world.Attention.IsHeld(glenDecision.Id));
+            Assert.False(world.Attention.IsHeld(dariusDecision.Id));
+
+            RearmNextHungerThreshold(fixture.Host, fixture.Layout.Mina);
+            RearmNextHungerThreshold(fixture.Host, fixture.Layout.Glen);
+            RearmNextHungerThreshold(fixture.Host, fixture.Layout.Darius);
+
+            Assert.True(fixture.Host.Transitions.TryBeginTravel(
+                fixture.Host.Simulation, fixture.Layout.Mina, fixture.Layout.Home, out ActivityInstance minaTravel));
+            Assert.True(fixture.Host.Transitions.TryBeginTravel(
+                fixture.Host.Simulation, fixture.Layout.Glen, fixture.Layout.Home, out ActivityInstance glenTravel));
+            fixture.Host.Session.Advance(SimDuration.Zero);
+
+            Assert.True(minaTravel.SpatialContext.IsTraveling);
+            Assert.True(glenTravel.SpatialContext.IsTraveling);
+            Assert.Contains(fixture.Layout.Mina, world.Spatial.Travelers);
+            Assert.Contains(fixture.Layout.Glen, world.Spatial.Travelers);
+
+            int activeCommitments = 0;
+            foreach (Commitment commitment in world.Commitments.All)
+            {
+                if (commitment.Status == CommitmentStatus.Active)
+                {
+                    activeCommitments++;
+                }
+            }
+            Assert.True(activeCommitments >= 2);
+            AssertPendingNeedCrossing(world, fixture.Layout.Mina);
+            AssertPendingNeedCrossing(world, fixture.Layout.Glen);
+            AssertPendingNeedCrossing(world, fixture.Layout.Darius);
+
+            SaveGameData saved = fixture.Host.Session.Save("mixed-offline");
+            fixture.Clock.AdvanceMinutes(40);
+            SimDuration elapsed = new OfflineProgressionService(fixture.Clock).ElapsedSince(saved);
+
+            fixture.Host.Session.Advance(elapsed, SimulationMode.OfflineCatchUp);
+            string uninterrupted = AuthoritativeSignature(fixture.Host.World);
+
+            WorldState restoredWorld = fixture.Host.SaveMapper.Restore(saved);
+            SimulationHost restored = SimulationBootstrapper.CreateFromRestoredWorld(
+                restoredWorld,
+                fixture.Catalog,
+                saved.LastCommandSequence,
+                1,
+                null,
+                fixture.Store,
+                fixture.Clock);
+            restored.Session.Advance(elapsed, SimulationMode.OfflineCatchUp);
+
+            Assert.Equal(uninterrupted, AuthoritativeSignature(restored.World));
+            Assert.Equal(DecisionStatus.Resolved, restored.World.Decisions.Get(minaDecision.Id).Status);
+            Assert.Equal(DecisionStatus.Resolved, restored.World.Decisions.Get(glenDecision.Id).Status);
+            Assert.Equal(DecisionStatus.Resolved, restored.World.Decisions.Get(dariusDecision.Id).Status);
+            Assert.DoesNotContain(fixture.Layout.Mina, restored.World.Spatial.Travelers);
+            Assert.DoesNotContain(fixture.Layout.Glen, restored.World.Spatial.Travelers);
+            Assert.Contains(fixture.Layout.Mina, restored.World.Spatial.DirectOccupantsOf(fixture.Layout.Home));
+            Assert.Contains(fixture.Layout.Glen, restored.World.Spatial.DirectOccupantsOf(fixture.Layout.Home));
+        }
+
+        private static Fixture Create()
+        {
+            DefinitionCatalog catalog = SampleContent.Build();
+            var store = new InMemorySaveGameStore();
+            var clock = new FixedRealWorldClock(1000000000000L);
+            SimulationHost host = SimulationBootstrapper.CreateNewWorld(
+                Seed,
+                SimTime.FromClockTime(0, 7, 0),
+                catalog,
+                1,
+                null,
+                store,
+                clock);
+
+            return new Fixture
+            {
+                Catalog = catalog,
+                Host = host,
+                Layout = SampleWorld.Populate(host),
+                Store = store,
+                Clock = clock,
+            };
+        }
+
+        private static void RearmNextHungerThreshold(SimulationHost host, CharacterId characterId)
+        {
+            Character character = host.World.Characters.Get(characterId);
+            host.Needs.SetThreshold(host.Simulation, character, SampleContent.NeedHunger, 8000);
+        }
+
+        private static void AssertPendingNeedCrossing(WorldState world, CharacterId characterId)
+        {
+            Assert.True(world.Characters.Get(characterId).TryGetNeed(SampleContent.NeedHunger, out NeedState need));
+            Assert.True(need.PendingThresholdEventId.IsSet);
+            Assert.True(world.Scheduler.Contains(need.PendingThresholdEventId));
+        }
+
+        private static string AuthoritativeSignature(WorldState world)
+        {
+            var text = new StringBuilder();
+            RuntimeIdCounters ids = world.RuntimeIds.Snapshot();
+            text.Append("clock:").Append(world.Clock.Now.TotalMinutes)
+                .Append("|ids:").Append(ids.Characters).Append(',').Append(ids.Activities).Append(',')
+                .Append(ids.Commitments).Append(',').Append(ids.Relationships).Append(',').Append(ids.Decisions)
+                .Append(',').Append(ids.ScheduledEvents).Append(',').Append(ids.HistoryEntries).Append(',').Append(ids.EventSequence);
+
+            foreach (ScheduledEvent scheduled in world.Scheduler.PendingEvents)
+            {
+                text.Append("|event:").Append(scheduled.Id.Value).Append(',').Append(scheduled.DueAt.TotalMinutes)
+                    .Append(',').Append((int)scheduled.Phase).Append(',').Append(scheduled.EventSequence)
+                    .Append(',').Append(scheduled.EventType.Value);
+            }
+            foreach (Character character in world.Characters.All)
+            {
+                text.Append("|char:").Append(character.Id.Value).Append(',').Append(character.CurrentActivityId.Value);
+                foreach (var needPair in character.Needs)
+                {
+                    NeedState need = needPair.Value;
+                    text.Append(",need:").Append(need.NeedId.Value).Append(',').Append(need.ValueAt(world.Clock.Now))
+                        .Append(',').Append(need.BehaviouralThreshold).Append(',').Append(need.PendingThresholdEventId.Value);
+                }
+            }
+            foreach (ActivityInstance activity in world.Activities.All)
+            {
+                text.Append("|activity:").Append(activity.Id.Value).Append(',').Append(activity.CharacterId.Value)
+                    .Append(',').Append(activity.DefinitionId.Value).Append(',').Append((int)activity.Status)
+                    .Append(',').Append(activity.StartedAt.TotalMinutes).Append(',').Append((int)activity.SpatialContext.Kind)
+                    .Append(',').Append(activity.SpatialContext.DirectOccupancy.Value);
+            }
+            foreach (Commitment commitment in world.Commitments.All)
+            {
+                text.Append("|commitment:").Append(commitment.Id.Value).Append(',').Append((int)commitment.Status)
+                    .Append(',').Append(commitment.FulfillingActivityId.Value);
+            }
+            foreach (Decision decision in world.Decisions.All)
+            {
+                text.Append("|decision:").Append(decision.Id.Value).Append(',').Append((int)decision.Status)
+                    .Append(',').Append(decision.InfluenceRevision).Append(',');
+                text.Append(decision.Resolution == null ? "-" : decision.Resolution.ChosenOptionId.Value.ToString());
+                if (decision.Resolution != null)
+                {
+                    for (int i = 0; i < decision.Resolution.Rolls.Count; i++)
+                    {
+                        text.Append(',').Append(decision.Resolution.Rolls[i].Rolled);
+                    }
+                }
+            }
+            foreach (Relationship relationship in world.Relationships.All)
+            {
+                text.Append("|relationship:").Append(relationship.Id.Value).Append(',')
+                    .Append(relationship.AffinityAt(world.Clock.Now)).Append(',').Append(relationship.Familiarity)
+                    .Append(',').Append(relationship.LastInteractionAt?.TotalMinutes ?? -1);
+            }
+
+            return text.ToString();
+        }
+
+        private static Decision FindDecision(WorldState world, CharacterId character)
+        {
+            foreach (Decision decision in world.Decisions.All)
+            {
+                if (decision.IsActive && decision.CharacterId == character && decision.DefinitionId == SampleContent.DecisionLeaveWork)
+                {
+                    return decision;
+                }
+            }
+
+            return null;
+        }
+
+        private static DecisionInfluence FindInfluence(Decision decision, AuthoredId label)
+        {
+            for (int i = 0; i < decision.Influences.Count; i++)
+            {
+                if (decision.Influences[i].LabelId == label)
+                {
+                    return decision.Influences[i];
+                }
+            }
+
+            return null;
+        }
+
+        private static InfluenceView FindInfluenceView(DecisionView decision, DecisionInfluenceId id)
+        {
+            for (int option = 0; option < decision.Options.Count; option++)
+            {
+                for (int influence = 0; influence < decision.Options[option].Influences.Count; influence++)
+                {
+                    InfluenceView view = decision.Options[option].Influences[influence];
+                    if (view.InfluenceId == id.Value)
+                    {
+                        return view;
+                    }
+                }
+            }
+
+            return null;
+        }
+    }
+}

@@ -64,6 +64,7 @@ namespace Vivarium.Domain.Randomness
         public static readonly AuthoredId Activity = new AuthoredId("rng.scope.activity");
         public static readonly AuthoredId Relationship = new AuthoredId("rng.scope.relationship");
         public static readonly AuthoredId Location = new AuthoredId("rng.scope.location");
+        public static readonly AuthoredId TravelSegment = new AuthoredId("rng.scope.travel_segment");
         public static readonly AuthoredId Group = new AuthoredId("rng.scope.group");
     }
 

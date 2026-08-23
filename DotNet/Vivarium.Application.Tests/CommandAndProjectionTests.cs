@@ -170,6 +170,52 @@ namespace Vivarium.Application.Tests
         }
 
         [Fact]
+        public void DecisionHistoryFeedExplainsAppearanceInterventionAndResolutionNewestFirst()
+        {
+            TestWorld fixture = TestWorld.Create();
+            Decision decision = fixture.CreateDecision();
+            fixture.Host.World.Publish(new DecisionCreatedEvent(decision.Id, decision.CharacterId, decision.DefinitionId));
+            fixture.Host.Session.Advance(SimDuration.Zero);
+
+            Result intervention = fixture.Host.Session.Execute(new ApplyDecisionInterventionCommand(
+                decision.Id,
+                TestWorld.InterventionStepUp,
+                decision.Influences[0].Id));
+            Assert.True(intervention.IsSuccess);
+
+            fixture.Host.Session.Advance(SimDuration.FromHours(8));
+
+            DecisionHistoryView feed = new DecisionHistoryProjector().Project(fixture.Host.World, 3);
+            Assert.Equal(3, feed.Entries.Count);
+            Assert.Contains("resolved", feed.Entries[0].Message);
+            Assert.Contains("You influenced Mina Cairn", feed.Entries[1].Message);
+            Assert.Contains("Mina Cairn faces", feed.Entries[2].Message);
+        }
+
+        [Fact]
+        public void DecisionHistoryFeedIsBoundedAndIgnoresUnrelatedHistory()
+        {
+            TestWorld fixture = TestWorld.Create();
+            fixture.Host.World.HistoryLedger.Record(
+                new AuthoredId("history.unrelated"),
+                fixture.Host.World.Clock.Now,
+                Domain.History.RetentionTier.Recent,
+                "not a decision");
+
+            for (int i = 0; i < 7; i++)
+            {
+                Decision decision = fixture.CreateDecision();
+                fixture.Host.World.Publish(new DecisionCreatedEvent(decision.Id, decision.CharacterId, decision.DefinitionId));
+            }
+            fixture.Host.Session.Advance(SimDuration.Zero);
+
+            DecisionHistoryView feed = new DecisionHistoryProjector().Project(fixture.Host.World, 5);
+            Assert.Equal(5, feed.Entries.Count);
+            Assert.All(feed.Entries, entry => Assert.DoesNotContain("not a decision", entry.Message));
+            Assert.True(feed.Entries[0].HistoryEntryId > feed.Entries[4].HistoryEntryId);
+        }
+
+        [Fact]
         public void HiddenInfluencesAreNotShownAndTheirCountIsNotExposed()
         {
             // §26: the number of hidden influences is not inherently exposed either.

@@ -10,6 +10,7 @@ using Vivarium.Domain.Activities;
 using Vivarium.Domain.Characters;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Decisions;
+using Vivarium.Domain.Relationships;
 using Vivarium.Domain.Spatial;
 using Vivarium.Domain.Time;
 using Vivarium.Unity.Bootstrap;
@@ -107,7 +108,7 @@ namespace Vivarium.Unity.Tests
         {
             CharacterId characterId = FirstCharacter().Id;
             _bootstrapper.Host.World.TryGetSpatialContext(characterId, out ActivitySpatialContext initial);
-            TravelConnection connection = _bootstrapper.Host.World.TravelNetwork.ConnectionsFrom(initial.LocationId)[0];
+            TravelConnection connection = LongestConnectionFrom(initial.LocationId);
             _bootstrapper.Host.Session.Execute(new TravelCharacterCommand(characterId, connection.To));
             _bootstrapper.Host.Session.Advance(SimDuration.FromMinutes(10));
 
@@ -149,12 +150,20 @@ namespace Vivarium.Unity.Tests
         }
 
         [UnityTest]
-        public IEnumerator Demo_decision_projects_visible_options_and_influences()
+        public IEnumerator Authored_need_crossing_generates_a_projectable_decision()
         {
+            AdvanceToDemoDecision();
             Decision decision = FirstDecision();
+            DecisionDefinition definition = _bootstrapper.Host.Catalog.Decisions[decision.DefinitionId];
             var projector = new DecisionProjector(_bootstrapper.Host.Catalog.Interventions);
             DecisionView view = projector.Project(_bootstrapper.Host.World, decision);
 
+            Assert.That(decision.DefinitionId, Is.EqualTo(new AuthoredId("decision.leave_work_early")));
+            Assert.That(definition.Trigger, Is.Not.Null);
+            Assert.That(definition.Trigger.NeedId, Is.EqualTo(new AuthoredId("need.hunger")));
+            Assert.That(definition.DependencyTemplates.Count, Is.EqualTo(1));
+            Assert.That(definition.DependencyTemplates[0].ContextKind, Is.EqualTo(new AuthoredId("decision_context.work_pressure")));
+            Assert.That(definition.ActivityOutcomes.Count, Is.EqualTo(1));
             Assert.That(view.Options.Count, Is.EqualTo(2));
             Assert.That(view.Options[0].Influences.Count, Is.GreaterThan(0));
             Assert.That(view.Options[1].Influences.Count, Is.GreaterThan(0));
@@ -165,8 +174,9 @@ namespace Vivarium.Unity.Tests
         [UnityTest]
         public IEnumerator Decision_can_be_held_released_and_intervened_on()
         {
+            AdvanceToDemoDecision();
             Decision decision = FirstDecision();
-            DecisionInfluence influence = decision.Influences[0];
+            DecisionInfluence influence = FirstIntervenableInfluence(decision);
             int originalSides = influence.CurrentDie.Sides;
 
             Result held = _bootstrapper.Host.Session.Execute(new HoldDecisionCommand(decision.Id));
@@ -187,6 +197,52 @@ namespace Vivarium.Unity.Tests
             yield return null;
         }
 
+        [UnityTest]
+        public IEnumerator Decision_panel_feed_refreshes_after_intervention_at_quiescence()
+        {
+            AdvanceToDemoDecision();
+            DecisionPanel panel = Object.FindAnyObjectByType<DecisionPanel>();
+            Decision decision = FirstDecision();
+            DecisionInfluence influence = FirstIntervenableInfluence(decision);
+            Assert.That(panel.DisplayedText, Does.Contain("Recent events"));
+            Assert.That(panel.DisplayedText, Does.Contain("faces decision.leave_work_early"));
+
+            Result result = _bootstrapper.Host.Session.Execute(new ApplyDecisionInterventionCommand(
+                decision.Id,
+                new AuthoredId("intervention.encourage"),
+                influence.Id));
+            Assert.That(result.IsSuccess, Is.True);
+            yield return null;
+
+            Assert.That(panel.DisplayedText, Does.Contain("You influenced Mina Test"));
+        }
+
+        [UnityTest]
+        public IEnumerator Demo_progresses_through_shared_travel_work_pressure_and_need_decision()
+        {
+            Character mina = CharacterNamed("Mina Test");
+            Character glen = CharacterNamed("Glen Test");
+            Assert.That(_bootstrapper.Host.World.Decisions.Count, Is.EqualTo(0));
+
+            _bootstrapper.Host.Session.Advance(SimDuration.FromMinutes(2));
+            Assert.That(_bootstrapper.Host.World.TryGetSpatialContext(mina.Id, out ActivitySpatialContext minaTravel), Is.True);
+            Assert.That(_bootstrapper.Host.World.TryGetSpatialContext(glen.Id, out ActivitySpatialContext glenTravel), Is.True);
+            Assert.That(minaTravel.IsTraveling, Is.True);
+            Assert.That(glenTravel.IsTraveling, Is.True);
+            Assert.That(_bootstrapper.Host.World.RelationshipIndex.TryGetBetween(mina.Id, glen.Id, out RelationshipId sharedTravelRelationship), Is.True);
+            Assert.That(_bootstrapper.Host.World.Relationships.Get(sharedTravelRelationship).LastInteractionAt.HasValue, Is.True);
+
+            _bootstrapper.Host.Session.Advance(SimDuration.FromMinutes(30));
+            ActivityInstance work = _bootstrapper.Host.World.Activities.Get(mina.CurrentActivityId);
+            Assert.That(work.DefinitionId, Is.EqualTo(new AuthoredId("activity.working")));
+            Assert.That(work.HasModifier(new AuthoredId("activity_modifier.disliked_colleague_present")), Is.True);
+            Assert.That(_bootstrapper.Host.World.Decisions.Count, Is.EqualTo(0));
+
+            _bootstrapper.Host.Session.Advance(SimDuration.FromMinutes(2));
+            Assert.That(FirstDecision().DefinitionId, Is.EqualTo(new AuthoredId("decision.leave_work_early")));
+            yield return null;
+        }
+
         private Character FirstCharacter()
         {
             foreach (Character character in _bootstrapper.Host.World.Characters.All)
@@ -196,6 +252,63 @@ namespace Vivarium.Unity.Tests
 
             Assert.Fail("The demo world did not seed any characters.");
             return null;
+        }
+
+        private Character CharacterNamed(string displayName)
+        {
+            foreach (Character character in _bootstrapper.Host.World.Characters.All)
+            {
+                if (character.DisplayName == displayName)
+                {
+                    return character;
+                }
+            }
+
+            Assert.Fail($"The demo world did not seed '{displayName}'.");
+            return null;
+        }
+
+        private void AdvanceToDemoDecision()
+        {
+            if (_bootstrapper.Host.World.Decisions.Count == 0)
+            {
+                _bootstrapper.Host.Session.Advance(SimDuration.FromMinutes(34));
+            }
+        }
+
+        private DecisionInfluence FirstIntervenableInfluence(Decision decision)
+        {
+            InterventionDefinition intervention =
+                _bootstrapper.Host.Catalog.Interventions[new AuthoredId("intervention.encourage")];
+            for (int i = 0; i < decision.Influences.Count; i++)
+            {
+                DecisionInfluence influence = decision.Influences[i];
+                if (DecisionInterventionRules.Evaluate(decision, intervention, influence.Id).IsSuccess)
+                {
+                    return influence;
+                }
+            }
+
+            Assert.Fail("The authored demo Decision has no influence eligible for encouragement.");
+            return null;
+        }
+
+        private TravelConnection LongestConnectionFrom(LocationId locationId)
+        {
+            IReadOnlyList<TravelConnection> connections =
+                _bootstrapper.Host.World.TravelNetwork.ConnectionsFrom(locationId);
+            Assert.That(connections, Is.Not.Empty);
+
+            TravelConnection longest = connections[0];
+            for (int i = 1; i < connections.Count; i++)
+            {
+                if (connections[i].Cost > longest.Cost)
+                {
+                    longest = connections[i];
+                }
+            }
+
+            return longest;
         }
 
         private Decision FirstDecision()

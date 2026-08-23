@@ -177,6 +177,32 @@ namespace Vivarium.Domain.Content
                 {
                     errors.Add($"decision '{decision.Id}' has a negative resolve delay");
                 }
+
+                if (decision.Trigger != null && !catalog.Needs.ContainsKey(decision.Trigger.NeedId))
+                {
+                    errors.Add($"decision '{decision.Id}' trigger references unknown need '{decision.Trigger.NeedId}'");
+                }
+
+                for (int i = 0; i < decision.InfluenceTemplates.Count; i++)
+                {
+                    if (!seenOptions.Contains(decision.InfluenceTemplates[i].OptionId.Value))
+                    {
+                        errors.Add($"decision '{decision.Id}' influence references unknown option '{decision.InfluenceTemplates[i].OptionId}'");
+                    }
+                }
+
+                for (int i = 0; i < decision.ActivityOutcomes.Count; i++)
+                {
+                    DecisionActivityOutcome outcome = decision.ActivityOutcomes[i];
+                    if (!seenOptions.Contains(outcome.OptionId.Value))
+                    {
+                        errors.Add($"decision '{decision.Id}' outcome references unknown option '{outcome.OptionId}'");
+                    }
+                    if (!catalog.Activities.ContainsKey(outcome.ActivityDefinitionId))
+                    {
+                        errors.Add($"decision '{decision.Id}' outcome references unknown activity '{outcome.ActivityDefinitionId}'");
+                    }
+                }
             }
 
             foreach (KeyValuePair<AuthoredId, CommitmentTemplate> pair in catalog.CommitmentTemplates)

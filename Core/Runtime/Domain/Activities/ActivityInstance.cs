@@ -138,6 +138,19 @@ namespace Vivarium.Domain.Activities
 
         public void AddModifier(ActivityContextModifier modifier) => _activeModifiers.Add(modifier);
 
+        public bool HasModifier(AuthoredId modifierId)
+        {
+            for (int i = 0; i < _activeModifiers.Count; i++)
+            {
+                if (_activeModifiers[i].ModifierId == modifierId)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         public bool RemoveModifier(AuthoredId modifierId)
         {
             for (int i = 0; i < _activeModifiers.Count; i++)

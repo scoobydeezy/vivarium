@@ -4,6 +4,7 @@ using Vivarium.Domain.Characters;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Decisions;
 using Vivarium.Domain.Events;
+using Vivarium.Domain.Knowledge;
 using Vivarium.Domain.Randomness;
 using Vivarium.Domain.Relationships;
 using Vivarium.Domain.Scheduling;
@@ -375,6 +376,40 @@ namespace Vivarium.Domain.Tests
                 new CharacterId(1), crowd, index, 3, RandomScopeTypes.Location, 1, 0);
 
             Assert.Equal(new CharacterId(500), candidates[0]);
+        }
+
+        [Fact]
+        public void OneArrivalInALargeSharedContextProducesAtMostOneInteraction()
+        {
+            Fixture fixture = Build();
+            const int crowdSize = 2000;
+
+            for (int i = 0; i < crowdSize; i++)
+            {
+                var character = new Character(
+                    fixture.World.RuntimeIds.Characters.Next(),
+                    "Crowd " + i,
+                    fixture.World.Clock.Now);
+                fixture.World.Characters.Add(character.Id, character);
+                fixture.Transitions.BeginActivity(
+                    fixture.Context,
+                    character.Id,
+                    Waiting,
+                    fixture.Home,
+                    SimDuration.FromHours(1));
+            }
+
+            // Setup arrivals are irrelevant to this single-opportunity scale check.
+            fixture.World.DomainEvents.Clear();
+            int activitiesBefore = fixture.World.Activities.Count;
+            var discovery = new KnowledgeDiscoveryService();
+            var service = new InteractionService(
+                new InteractionCandidateSelector(new DeterministicRandomOracle(827119)),
+                discovery);
+
+            Assert.True(service.TryInteractOnArrival(fixture.Context, fixture.Mina, fixture.Home));
+            Assert.Equal(1, fixture.World.Relationships.Count);
+            Assert.Equal(activitiesBefore, fixture.World.Activities.Count);
         }
 
         private static Decision MakeDecision(int id, SimTime createdAt, int importance) => new Decision(

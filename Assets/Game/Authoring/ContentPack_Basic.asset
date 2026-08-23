@@ -34,4 +34,48 @@ MonoBehaviour:
     isTravel: 0
   locationKindIds:
   - location_kind.building
-  includeDemoDecisionContent: 1
+  decisions:
+  - authoredId: decision.leave_work_early
+    options:
+    - authoredId: option.leave
+      labelId: Leave work early
+      orderIndex: 0
+    - authoredId: option.stay
+      labelId: Finish the shift
+      orderIndex: 1
+    timeToResolveMinutes: 10
+    conflictScopeKindId: conflict_scope.current_activity
+    importance: 20
+    holdEligible: 1
+    dependencies:
+    - contextKindId: decision_context.work_pressure
+    trigger:
+      needId: need.hunger
+      threshold: 6000
+    influences:
+    - optionId: option.leave
+      categoryId: influence_category.personal_concern
+      labelId: Hunger
+      dieSides: 20
+      visibility: 31
+      subjectIsCharacter: 1
+    - optionId: option.leave
+      categoryId: influence_category.social
+      labelId: Difficult work context
+      dieSides: 10
+      visibility: 11
+      subjectIsCharacter: 1
+    - optionId: option.stay
+      categoryId: influence_category.practical
+      labelId: Reliability
+      dieSides: 6
+      visibility: 31
+      subjectIsCharacter: 0
+    activityOutcomes:
+    - optionId: option.leave
+      activityDefinitionId: activity.waiting
+      durationMinutes: 60
+  interventions:
+  - authoredId: intervention.encourage
+    kind: 2
+    cost: 1

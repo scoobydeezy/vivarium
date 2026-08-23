@@ -326,6 +326,71 @@ namespace Vivarium.Application.Tests
         }
 
         [Fact]
+        public void NeedPressureGeneratesAndCompletesARealDecision()
+        {
+            TestWorld fixture = TestWorld.Create();
+            fixture.Host.Transitions.BeginActivity(
+                fixture.Host.Simulation,
+                fixture.Mina,
+                TestWorld.ActivityWorking,
+                fixture.Bakery,
+                SimDuration.FromHours(12));
+
+            fixture.Host.Session.Advance(SimDuration.FromMinutes(510));
+
+            Decision generated = null;
+            foreach (Decision decision in fixture.Host.World.Decisions.All)
+            {
+                if (decision.DefinitionId == TestWorld.DecisionLeaveWork)
+                {
+                    generated = decision;
+                }
+            }
+
+            Assert.NotNull(generated);
+            Assert.Equal(DecisionStatus.Resolved, generated.Status);
+            Assert.Equal(TestWorld.OptionLeave, generated.Resolution.ChosenOptionId);
+
+            ActivityInstance current = fixture.Host.World.Activities.Get(
+                fixture.Host.World.Characters.Get(fixture.Mina).CurrentActivityId);
+            Assert.Equal(WellKnownActivities.Waiting, current.DefinitionId);
+            Assert.Equal(fixture.Bakery, current.SpatialContext.LocationId);
+        }
+
+        [Fact]
+        public void GeneratedDecisionAndConsequenceMatchAfterSaveReload()
+        {
+            TestWorld fixture = TestWorld.Create();
+            fixture.Host.Transitions.BeginActivity(
+                fixture.Host.Simulation,
+                fixture.Mina,
+                TestWorld.ActivityWorking,
+                fixture.Bakery,
+                SimDuration.FromHours(12));
+
+            fixture.Host.Session.Advance(SimDuration.FromMinutes(500));
+            Assert.Single(fixture.Host.World.Decisions.All);
+            Assert.Equal(DecisionStatus.Active, fixture.Host.World.Decisions.Get(new DecisionId(1)).Status);
+            SaveGameData saved = fixture.Host.Session.Save("generated-decision");
+
+            fixture.Host.Session.Advance(SimDuration.FromMinutes(10));
+            ActivityInstance originalActivity = fixture.Host.World.Activities.Get(
+                fixture.Host.World.Characters.Get(fixture.Mina).CurrentActivityId);
+
+            WorldState restoredWorld = fixture.Host.SaveMapper.Restore(saved);
+            SimulationHost restored = SimulationBootstrapper.CreateFromRestoredWorld(
+                restoredWorld, fixture.Catalog, saved.LastCommandSequence, 1, null, fixture.Store, fixture.Clock);
+            restored.Session.Advance(SimDuration.FromMinutes(10));
+            ActivityInstance restoredActivity = restored.World.Activities.Get(
+                restored.World.Characters.Get(fixture.Mina).CurrentActivityId);
+
+            Assert.Equal(originalActivity.Id, restoredActivity.Id);
+            Assert.Equal(originalActivity.DefinitionId, restoredActivity.DefinitionId);
+            Assert.Equal(originalActivity.StartedAt, restoredActivity.StartedAt);
+            Assert.Equal(originalActivity.SpatialContext.LocationId, restoredActivity.SpatialContext.LocationId);
+        }
+
+        [Fact]
         public void ScheduledEventWithoutACodecFailsLoudlyRatherThanVanishing()
         {
             TestWorld fixture = TestWorld.Create();
