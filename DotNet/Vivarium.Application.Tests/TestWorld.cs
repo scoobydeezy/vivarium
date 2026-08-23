@@ -3,6 +3,7 @@ using Vivarium.Domain.Activities;
 using Vivarium.Domain.Characters;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Decisions;
+using Vivarium.Domain.Evaluation;
 using Vivarium.Domain.Knowledge;
 using Vivarium.Domain.Scheduling;
 using Vivarium.Domain.Simulation;
@@ -42,6 +43,8 @@ namespace Vivarium.Application.Tests
         public static readonly AuthoredId ContextWorkPressure = new AuthoredId("decision_context.work_pressure");
         public static readonly AuthoredId ModifierDislikedColleague = new AuthoredId("activity_modifier.disliked_colleague_present");
         public static readonly AuthoredId InfluenceBadWorkContext = new AuthoredId("influence.bad_work_context");
+        public static readonly AuthoredId LeaveOptionMarker = new AuthoredId("decision.option_marker.leave_work");
+        public static readonly AuthoredId StayOptionMarker = new AuthoredId("decision.option_marker.finish_shift");
 
         public static DefinitionCatalog BuildCatalog(int contentVersion = 1, bool includeSocialDecision = false)
         {
@@ -78,35 +81,18 @@ namespace Vivarium.Application.Tests
                 DecisionLeaveWork,
                 new[]
                 {
-                    new DecisionOption(OptionLeave, "Leave work early", 0),
-                    new DecisionOption(OptionStay, "Finish the shift", 1),
+                    MarkedOption(OptionLeave, "Leave work early", 0, LeaveOptionMarker),
+                    MarkedOption(OptionStay, "Finish the shift", 1, StayOptionMarker),
                 },
                 SimDuration.FromMinutes(10),
                 new AuthoredId("conflict_scope.current_activity"),
                 importance: 20,
                 trigger: new NeedThresholdDecisionTrigger(NeedHunger, 8000),
-                influenceTemplates: new[]
-                {
-                    new DecisionInfluenceTemplate(
-                        OptionLeave,
-                        new AuthoredId("cat.physical"),
-                        new AuthoredId("influence.hunger"),
-                        Die.D20,
-                        InfluenceVisibility.Full,
-                        subjectIsCharacter: true),
-                    new DecisionInfluenceTemplate(
-                        OptionLeave,
-                        new AuthoredId("cat.social"),
-                        InfluenceBadWorkContext,
-                        Die.D10,
-                        InfluenceVisibility.Existence | InfluenceVisibility.Category | InfluenceVisibility.Magnitude,
-                        subjectIsCharacter: true),
-                },
                 activityOutcomes: new[]
                 {
                     new DecisionActivityOutcome(OptionLeave, WellKnownActivities.Waiting, SimDuration.FromHours(1)),
                 },
-                dependencyTemplates: new[] { new DecisionDependencyKey(ContextWorkPressure) }));
+                reasoningProgram: LeaveWorkReasoningProgram()));
 
             builder.Add(new InterventionDefinition(InterventionStepUp, InterventionKind.StepDieUp, 1));
 
@@ -171,6 +157,125 @@ namespace Vivarium.Application.Tests
 
             return builder.Build();
         }
+
+        private static DecisionOption MarkedOption(AuthoredId id, AuthoredId label, int order, AuthoredId marker)
+        {
+            var option = new DecisionOption(id, label, order);
+            option.SetContext(marker, DecisionParameterValue.FromInteger(1));
+            return option;
+        }
+
+        private static DecisionReasoningProgram LeaveWorkReasoningProgram() => new DecisionReasoningProgram(
+            new[]
+            {
+                new CompiledConsiderationBinding(
+                    new AuthoredId("binding.leave_work.hunger"),
+                    new AuthoredId("consideration.need_urgency"),
+                    1,
+                    new[]
+                    {
+                        new ConsiderationParameter(LeaveOptionMarker, DecisionParameterKind.Integer),
+                        new ConsiderationParameter(DecisionReasoningParameters.Actor, DecisionParameterKind.Entity),
+                        new ConsiderationParameter(DecisionReasoningParameters.Urgency, DecisionParameterKind.Integer),
+                    },
+                    new[]
+                    {
+                        new CompiledParameterBinding(LeaveOptionMarker, ParameterBindingSource.OptionContext, LeaveOptionMarker),
+                        new CompiledParameterBinding(DecisionReasoningParameters.Actor, ParameterBindingSource.DecisionActor),
+                        new CompiledParameterBinding(
+                            DecisionReasoningParameters.Urgency,
+                            ParameterBindingSource.DecisionContext,
+                            DecisionReasoningParameters.Urgency),
+                    },
+                    new[]
+                    {
+                        new DecisionSignalRequest(
+                            DecisionReasoningParameters.Urgency,
+                            DecisionSignalProviderIds.DecisionContext),
+                    },
+                    new SignalFieldDefinition(
+                        new AuthoredId("field.leave_work.hunger"),
+                        0,
+                        new[]
+                        {
+                            new SignalLinearTerm(
+                                DecisionReasoningParameters.Urgency,
+                                SignalNumeric.Scale,
+                                new AuthoredId("reason.hunger")),
+                        }, null, null, null),
+                    new ReasonChannelDefinition(new AuthoredId("reason_channel.physical_urgency")),
+                    new ReasonScaleProfile(
+                        new AuthoredId("reason_scale.hunger"),
+                        new[] { new ReasonDieThreshold(0, Die.D20) }),
+                    new AuthoredId("cat.physical"),
+                    new AuthoredId("influence.hunger"),
+                    new AuthoredId("influence.not_hungry"),
+                    InfluenceVisibility.Full),
+                new CompiledConsiderationBinding(
+                    new AuthoredId("binding.leave_work.work_context"),
+                    new AuthoredId("consideration.activity_context"),
+                    1,
+                    new[]
+                    {
+                        new ConsiderationParameter(LeaveOptionMarker, DecisionParameterKind.Integer),
+                        new ConsiderationParameter(DecisionReasoningParameters.Actor, DecisionParameterKind.Entity),
+                        new ConsiderationParameter(DecisionReasoningParameters.ActivityModifierId, DecisionParameterKind.AuthoredId),
+                    },
+                    new[]
+                    {
+                        new CompiledParameterBinding(LeaveOptionMarker, ParameterBindingSource.OptionContext, LeaveOptionMarker),
+                        new CompiledParameterBinding(DecisionReasoningParameters.Actor, ParameterBindingSource.DecisionActor),
+                        new CompiledParameterBinding(
+                            DecisionReasoningParameters.ActivityModifierId,
+                            ParameterBindingSource.Literal,
+                            literal: DecisionParameterValue.FromAuthoredId(ModifierDislikedColleague)),
+                    },
+                    new[]
+                    {
+                        new DecisionSignalRequest(ContextWorkPressure, DecisionSignalProviderIds.ActivityModifier),
+                    },
+                    new SignalFieldDefinition(
+                        new AuthoredId("field.leave_work.work_context"),
+                        0,
+                        new[]
+                        {
+                            new SignalLinearTerm(
+                                ContextWorkPressure,
+                                SignalNumeric.Scale,
+                                new AuthoredId("reason.difficult_work_context")),
+                        }, null, null, null),
+                    new ReasonChannelDefinition(new AuthoredId("reason_channel.work_context")),
+                    new ReasonScaleProfile(
+                        new AuthoredId("reason_scale.work_context"),
+                        new[]
+                        {
+                            new ReasonDieThreshold(0, Die.D6),
+                            new ReasonDieThreshold(4000, Die.D10),
+                        }),
+                    new AuthoredId("cat.social"),
+                    InfluenceBadWorkContext,
+                    new AuthoredId("influence.supportive_work_context"),
+                    InfluenceVisibility.Existence | InfluenceVisibility.Category | InfluenceVisibility.Magnitude),
+                new CompiledConsiderationBinding(
+                    new AuthoredId("binding.leave_work.reliability"),
+                    new AuthoredId("consideration.reliability"),
+                    1,
+                    new[] { new ConsiderationParameter(StayOptionMarker, DecisionParameterKind.Integer) },
+                    new[]
+                    {
+                        new CompiledParameterBinding(StayOptionMarker, ParameterBindingSource.OptionContext, StayOptionMarker),
+                    },
+                    new DecisionSignalRequest[0],
+                    new SignalFieldDefinition(new AuthoredId("field.leave_work.reliability"), 1000, null, null, null, null),
+                    new ReasonChannelDefinition(new AuthoredId("reason_channel.reliability")),
+                    new ReasonScaleProfile(
+                        new AuthoredId("reason_scale.reliability"),
+                        new[] { new ReasonDieThreshold(0, Die.D6) }),
+                    new AuthoredId("cat.practical"),
+                    new AuthoredId("influence.reliability"),
+                    new AuthoredId("influence.unreliable"),
+                    InfluenceVisibility.Full),
+            });
 
         public static TestWorld Create(long seed = 827119, int contentVersion = 1, bool includeSocialDecision = false)
         {

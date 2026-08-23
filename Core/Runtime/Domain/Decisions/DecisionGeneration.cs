@@ -5,6 +5,7 @@ using Vivarium.Domain.Characters;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Content;
 using Vivarium.Domain.Events;
+using Vivarium.Domain.Evaluation;
 using Vivarium.Domain.Scheduling;
 using Vivarium.Domain.Simulation;
 using Vivarium.Domain.Time;
@@ -101,11 +102,15 @@ namespace Vivarium.Domain.Decisions
             matching.Sort((a, b) => a.Id.CompareTo(b.Id));
             for (int i = 0; i < matching.Count; i++)
             {
-                TryGenerate(matching[i], domainEvent.CharacterId, world);
+                TryGenerate(matching[i], domainEvent.CharacterId, domainEvent.Value, world);
             }
         }
 
-        private void TryGenerate(DecisionDefinition definition, CharacterId characterId, WorldState world)
+        private void TryGenerate(
+            DecisionDefinition definition,
+            CharacterId characterId,
+            long triggeringNeedValue,
+            WorldState world)
         {
             var conflict = definition.ConflictScopeKind.IsSet
                 ? new DecisionConflictScope(definition.ConflictScopeKind, characterId.ToRef())
@@ -131,6 +136,10 @@ namespace Vivarium.Domain.Decisions
                 definition.Importance);
 
             decision.SnapshotParameter(ResolveDelayParameter, definition.TimeToResolve.TotalMinutes);
+            decision.SetContextParameter(
+                DecisionReasoningParameters.Urgency,
+                DecisionParameterValue.FromInteger(
+                    IntegerMath.Clamp(triggeringNeedValue, -SignalNumeric.Scale, SignalNumeric.Scale)));
             if (definition.ReasoningProgram != null) decision.SnapshotReasoningProgram(definition.ReasoningProgram);
             for (int i = 0; i < definition.InfluenceTemplates.Count; i++)
             {

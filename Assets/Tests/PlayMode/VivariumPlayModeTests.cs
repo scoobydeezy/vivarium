@@ -222,12 +222,25 @@ namespace Vivarium.Unity.Tests
             Assert.That(decision.DefinitionId, Is.EqualTo(new AuthoredId("decision.leave_work_early")));
             Assert.That(definition.Trigger, Is.Not.Null);
             Assert.That(definition.Trigger.NeedId, Is.EqualTo(new AuthoredId("need.hunger")));
-            Assert.That(definition.DependencyTemplates.Count, Is.EqualTo(1));
-            Assert.That(definition.DependencyTemplates[0].ContextKind, Is.EqualTo(new AuthoredId("decision_context.work_pressure")));
+            Assert.That(definition.DependencyTemplates, Is.Empty);
+            Assert.That(definition.InfluenceTemplates, Is.Empty);
+            Assert.That(definition.ReasoningProgram, Is.Not.Null);
+            Assert.That(definition.ReasoningProgram.Bindings.Count, Is.EqualTo(3));
+            Assert.That(decision.ReasoningProgram, Is.Not.Null);
+            Assert.That(decision.TryGetContextParameter(
+                DecisionReasoningParameters.Urgency,
+                out DecisionParameterValue urgency), Is.True);
+            Assert.That(urgency.Integer, Is.EqualTo(6000));
             Assert.That(definition.ActivityOutcomes.Count, Is.EqualTo(1));
             Assert.That(view.Options.Count, Is.EqualTo(2));
             Assert.That(view.Options[0].Influences.Count, Is.GreaterThan(0));
             Assert.That(view.Options[1].Influences.Count, Is.GreaterThan(0));
+            DecisionInfluence workContext = InfluenceWithLabel(
+                decision, new AuthoredId("Difficult work context"));
+            Assert.That(workContext.CurrentDie, Is.EqualTo(Die.D10));
+            Assert.That(workContext.ReasonChannelId,
+                Is.EqualTo(new AuthoredId("reason_channel.work_context")));
+            Assert.That(workContext.Evaluation.Signals[0].Mean, Is.EqualTo(10000));
             Assert.That(view.Resolution, Is.Null);
             yield return null;
         }
@@ -351,6 +364,20 @@ namespace Vivarium.Unity.Tests
             }
 
             Assert.Fail("The authored demo Decision has no influence eligible for encouragement.");
+            return null;
+        }
+
+        private static DecisionInfluence InfluenceWithLabel(Decision decision, AuthoredId label)
+        {
+            for (int i = 0; i < decision.Influences.Count; i++)
+            {
+                if (!decision.Influences[i].IsRetracted && decision.Influences[i].LabelId == label)
+                {
+                    return decision.Influences[i];
+                }
+            }
+
+            Assert.Fail($"The Decision has no active influence labelled '{label}'.");
             return null;
         }
 

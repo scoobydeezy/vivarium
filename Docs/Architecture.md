@@ -120,7 +120,7 @@ Working implementations:
 - **Decisions** — living influence sets with stable influence identity, dependency-indexed
   reevaluation, deterministic dice resolution, bounded held decisions, one authority for intervention
   rules, one content-backed Need-threshold generation path with an Activity consequence, and targeted
-  Activity-context influence reevaluation (§17–§20). Influences now carry persisted option-relative
+  compiled Activity-context influence reevaluation (§17–§20). Influences now carry persisted option-relative
   polarity: the current replaceable resolution policy adds supporting rolls and subtracts opposing
   rolls, while interventions modify die magnitude without changing polarity.
 - **Knowledge** — player- and character-scoped fact providers, sparse social belief distributions,
@@ -146,7 +146,8 @@ Working implementations:
   typed semantic contexts, and an in-flight Decision deep-snapshots a compiled reasoning program made
   of validated parameter schemas/bindings, Signal requests, fixed-point fields, ReasonChannels, and die
   scales. Minimal capability providers cover Decision context, character Values, target availability,
-  directional relationship channels, and travel burden. One evaluator handles any number of target,
+  directional relationship channels, travel burden, and authored modifiers on the actor's current
+  Activity. One evaluator handles any number of target,
   self, and wait Options, distinguishes unknown/not-applicable Signals from neutral values, and produces
   consolidated signed reasons through the existing Influence policy. Save schema v4 round-trips the
   authoritative typed contexts and complete compiled program; Candidate Reasons and dependency indexes
@@ -161,7 +162,10 @@ Working implementations:
   sources, provider requests, linear/pairwise/ideal Signal fields, ReasonChannels, scales, labels, and
   visibility. Pre-play lint rejects unknown providers, invalid or unbound parameters, impossible Option
   bindings, unrequested Signals, unsupported dice, and incompatible legacy/social reasoning paths; the
-  Domain catalog repeats the authoritative validation at construction.
+  Domain catalog repeats the authoritative validation at construction. The playable leave-work Decision
+  is the first Unity-authored production consumer: hunger urgency supports leaving, reliability supports
+  staying, and disliked-colleague Activity context reevaluates the same work-context reason from d10 to
+  d6. Its old direct templates and content-specific reevaluator have been removed.
 - **Frozen Decision explanations** — live compiled Influences retain their latest compact evaluation
   snapshot (signed expectation, output variance, Signal means/variance/applicability/source revisions,
   and contribution amounts). Resolution deep-copies that evidence plus semantic label/category/channel,
@@ -197,7 +201,7 @@ Intentionally thin, pending game-design decisions:
   social evidence/pressure, and interventions into the validated Domain catalog. Demo characters receive deterministic social
   profiles. The smoke scene schedules two shared work Commitments: Mina and Glen
   interact while travelling, Mina arrives beside a disliked working colleague and gains Work pressure,
-  then a real hunger crossing generates the leave-work Decision. `WorldPresenter` surfaces the
+  then a real hunger crossing generates the compiled, explainable leave-work Decision. `WorldPresenter` surfaces the
   resulting knowledge-filtered projection and sends
   Hold, Release, and intervention Commands. A bounded newest-first Decision history projection promotes
   appearance, successful intervention, and resolution events into explanatory recent History and is
@@ -231,6 +235,7 @@ The test suite is organised around the §58 invariants rather than around classe
 | Resolved explanations freeze evaluation evidence across drift and reload | `DecisionReasoningTests`, `PersistenceTests` |
 | Resolution evidence prunes with linked Decision history | `DecisionReasoningTests`, `PersistenceTests` |
 | Authored reasoning programs reject invalid providers, bindings, Signals, and scales | `DecisionReasoningTests`, `VivariumPlayModeTests` |
+| Playable leave-work content runs entirely through authored compiled reasons | `WorkContextTests`, `GoldenScenarioTests`, `VivariumPlayModeTests` |
 | Held decisions bounded, overflow deterministic | `SimulationInvariantTests`, `CommandAndProjectionTests` |
 | Commands execute in ingress order at quiescent boundaries | `CommandAndProjectionTests` |
 | UI availability and command validation share one authority | `CommandAndProjectionTests` |

@@ -33,13 +33,6 @@ namespace Vivarium.Application.Tests
             fixture.Host.World.Relationships.Add(relationship.Id, relationship);
             fixture.Host.World.RelationshipIndex.Register(relationship);
 
-            fixture.Host.DecisionReevaluation.Register(new ActivityContextInfluenceReevaluator(
-                TestWorld.DecisionLeaveWork,
-                TestWorld.ContextWorkPressure,
-                TestWorld.ModifierDislikedColleague,
-                TestWorld.InfluenceBadWorkContext,
-                Die.D10,
-                Die.D6));
             var pressure = new WorkContextPressureService(
                 fixture.Host.Transitions,
                 fixture.Host.DecisionReevaluation,
@@ -63,9 +56,18 @@ namespace Vivarium.Application.Tests
 
             fixture.Host.Session.Advance(SimDuration.FromMinutes(500));
             Decision decision = fixture.Host.World.Decisions.Get(new DecisionId(1));
+            Assert.NotNull(decision.ReasoningProgram);
+            Assert.Empty(fixture.Catalog.Decisions[TestWorld.DecisionLeaveWork].InfluenceTemplates);
+            Assert.True(decision.TryGetContextParameter(
+                DecisionReasoningParameters.Urgency,
+                out DecisionParameterValue urgency));
+            Assert.Equal(8000, urgency.Integer);
             DecisionInfluence pressureInfluence = FindInfluence(decision, TestWorld.InfluenceBadWorkContext);
             DecisionInfluenceId stableId = pressureInfluence.Id;
+            int beforeDepartureRevision = decision.InfluenceRevision;
             Assert.Equal(Die.D10, pressureInfluence.CurrentDie);
+            Assert.Equal(TestWorld.ContextWorkPressure, pressureInfluence.Evaluation.Signals[0].SignalId);
+            Assert.Equal(10000, pressureInfluence.Evaluation.Signals[0].Mean);
 
             InfluenceView beforeDiscovery = FindInfluenceView(new DecisionProjector().Project(fixture.Host.World, decision), stableId);
             Assert.Null(beforeDiscovery.Label);
@@ -85,7 +87,8 @@ namespace Vivarium.Application.Tests
             Assert.False(work.HasModifier(TestWorld.ModifierDislikedColleague));
             Assert.Equal(stableId, pressureInfluence.Id);
             Assert.Equal(Die.D6, pressureInfluence.CurrentDie);
-            Assert.Equal(3, decision.InfluenceRevision);
+            Assert.Equal(0, pressureInfluence.Evaluation.Signals[0].Mean);
+            Assert.Equal(beforeDepartureRevision + 1, decision.InfluenceRevision);
 
             fixture.Host.Session.Advance(SimDuration.FromMinutes(20));
             Assert.Equal((500 * 2) + (20 * 10), work.Performance.ValueAt(fixture.Host.World.Clock.Now));

@@ -56,9 +56,13 @@ namespace Vivarium.SimRunner.Tests
             fixture.Host.Session.Advance(SimDuration.FromMinutes(35));
 
             Decision decision = FindDecision(world, fixture.Layout.Mina);
+            Assert.NotNull(decision.ReasoningProgram);
+            Assert.Empty(fixture.Catalog.Decisions[SampleContent.DecisionLeaveWork].InfluenceTemplates);
             DecisionInfluence pressure = FindInfluence(decision, SampleContent.InfluenceBadWorkContext);
             DecisionInfluenceId stableInfluenceId = pressure.Id;
             Assert.Equal(Die.D10, pressure.CurrentDie);
+            Assert.Equal(SampleContent.ContextWorkPressure, pressure.Evaluation.Signals[0].SignalId);
+            Assert.Equal(10000, pressure.Evaluation.Signals[0].Mean);
 
             InfluenceView concealed = FindInfluenceView(
                 new DecisionProjector(fixture.Catalog.Interventions).Project(world, decision),
@@ -74,6 +78,12 @@ namespace Vivarium.SimRunner.Tests
                 stableInfluenceId);
             Assert.Equal(SampleContent.InfluenceBadWorkContext.Value, revealed.Label);
 
+            Assert.True(fixture.Host.Session.Execute(new ApplyDecisionInterventionCommand(
+                decision.Id,
+                SampleContent.InterventionStepUp,
+                stableInfluenceId)).IsSuccess);
+            Assert.Equal(Die.D12, pressure.CurrentDie);
+
             fixture.Host.Transitions.BeginActivity(
                 fixture.Host.Simulation,
                 fixture.Layout.Darius,
@@ -84,19 +94,26 @@ namespace Vivarium.SimRunner.Tests
 
             Assert.False(work.HasModifier(SampleContent.ModifierDislikedColleague));
             Assert.Equal(stableInfluenceId, pressure.Id);
-            Assert.Equal(Die.D6, pressure.CurrentDie);
-
-            Assert.True(fixture.Host.Session.Execute(new ApplyDecisionInterventionCommand(
-                decision.Id,
-                SampleContent.InterventionStepUp,
-                stableInfluenceId)).IsSuccess);
             Assert.Equal(Die.D8, pressure.CurrentDie);
+            Assert.Equal(0, pressure.Evaluation.Signals[0].Mean);
 
             Assert.True(fixture.Host.Session.Execute(new ReleaseDecisionCommand(decision.Id)).IsSuccess);
             fixture.Host.Session.Advance(SimDuration.FromMinutes(10));
 
             Assert.Equal(DecisionStatus.Resolved, decision.Status);
             Assert.Equal(SampleContent.OptionLeave, decision.Resolution.ChosenOptionId);
+            InfluenceRoll? frozenPressure = null;
+            for (int i = 0; i < decision.Resolution.Rolls.Count; i++)
+            {
+                if (decision.Resolution.Rolls[i].InfluenceId == stableInfluenceId)
+                {
+                    frozenPressure = decision.Resolution.Rolls[i];
+                    break;
+                }
+            }
+            Assert.NotNull(frozenPressure);
+            Assert.Equal(new AuthoredId("binding.leave_work.work_context"), frozenPressure.Value.Reason.BindingId);
+            Assert.Equal(0, frozenPressure.Value.Reason.Evaluation.Signals[0].Mean);
             Assert.True(world.TryGetCurrentActivity(fixture.Layout.Mina, out ActivityInstance consequence));
             Assert.Equal(WellKnownActivities.Waiting, consequence.DefinitionId);
             Assert.Equal(fixture.Layout.Bakery, consequence.SpatialContext.LocationId);

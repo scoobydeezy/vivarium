@@ -37,10 +37,8 @@ namespace Vivarium.Unity.Bootstrap
     public sealed class GameBootstrapper : MonoBehaviour
     {
         private static readonly AuthoredId ActivityWorking = new AuthoredId("activity.working");
-        private static readonly AuthoredId DecisionLeaveWork = new AuthoredId("decision.leave_work_early");
         private static readonly AuthoredId ContextWorkPressure = new AuthoredId("decision_context.work_pressure");
         private static readonly AuthoredId ModifierDislikedColleague = new AuthoredId("activity_modifier.disliked_colleague_present");
-        private static readonly AuthoredId InfluenceBadWorkContext = new AuthoredId("Difficult work context");
         private static readonly AuthoredId SocialCalibrationStandard = new AuthoredId("social.calibration.standard");
         [Header("Content")]
         [SerializeField] private ContentPackAsset contentPack;
@@ -247,13 +245,6 @@ namespace Vivarium.Unity.Bootstrap
 
         private static void ConfigureDemoRules(SimulationHost host)
         {
-            host.DecisionReevaluation.Register(new ActivityContextInfluenceReevaluator(
-                DecisionLeaveWork,
-                ContextWorkPressure,
-                ModifierDislikedColleague,
-                InfluenceBadWorkContext,
-                Die.D10,
-                Die.D6));
             var workPressure = new WorkContextPressureService(
                 host.Transitions,
                 host.DecisionReevaluation,

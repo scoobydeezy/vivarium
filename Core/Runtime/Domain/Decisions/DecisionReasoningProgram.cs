@@ -60,6 +60,7 @@ namespace Vivarium.Domain.Decisions
         public static readonly AuthoredId Urgency = new AuthoredId("decision.parameter.urgency");
         public static readonly AuthoredId SelfOption = new AuthoredId("decision.parameter.self_option");
         public static readonly AuthoredId WaitOption = new AuthoredId("decision.parameter.wait_option");
+        public static readonly AuthoredId ActivityModifierId = new AuthoredId("decision.parameter.activity_modifier_id");
     }
 
     public enum ParameterBindingSource
@@ -389,6 +390,7 @@ namespace Vivarium.Domain.Decisions
             registry.Register(new TargetAvailabilitySignalProvider());
             registry.Register(new RelationshipChannelSignalProvider());
             registry.Register(new TravelBurdenSignalProvider());
+            registry.Register(new ActivityModifierSignalProvider());
             return registry;
         }
     }
@@ -400,9 +402,10 @@ namespace Vivarium.Domain.Decisions
         public static readonly AuthoredId TargetAvailability = new AuthoredId("decision.signal_provider.target_availability");
         public static readonly AuthoredId RelationshipChannel = new AuthoredId("decision.signal_provider.relationship_channel");
         public static readonly AuthoredId TravelBurden = new AuthoredId("decision.signal_provider.travel_burden");
+        public static readonly AuthoredId ActivityModifier = new AuthoredId("decision.signal_provider.activity_modifier");
         public static readonly AuthoredId[] BuiltIns =
         {
-            DecisionContext, ActorValue, TargetAvailability, RelationshipChannel, TravelBurden,
+            DecisionContext, ActorValue, TargetAvailability, RelationshipChannel, TravelBurden, ActivityModifier,
         };
     }
 
@@ -441,6 +444,40 @@ namespace Vivarium.Domain.Decisions
                             decision.Id.ToRef()),
                     })
                 : new ResolvedDecisionSignal(new SignalValue(request.SignalId, 0, 0, SignalApplicability.Unknown));
+        }
+    }
+
+    /// <summary>Exposes whether the deciding character's current Activity carries one authored modifier.</summary>
+    public sealed class ActivityModifierSignalProvider : IDecisionSignalProvider
+    {
+        public AuthoredId Id => DecisionSignalProviderIds.ActivityModifier;
+
+        public ResolvedDecisionSignal Resolve(
+            WorldState world, Decision decision, DecisionOption option, DecisionSignalRequest request,
+            BoundConsiderationParameters parameters)
+        {
+            var dependency = new DecisionDependencyKey(request.SignalId, decision.CharacterId.ToRef());
+            var revisionKey = new RevisionKey(decision.CharacterId.ToRef(), RevisionAspects.Activity);
+            if (!parameters.TryGet(DecisionReasoningParameters.ActivityModifierId, out DecisionParameterValue modifier) ||
+                modifier.Kind != DecisionParameterKind.AuthoredId || !modifier.AuthoredId.IsSet)
+            {
+                return new ResolvedDecisionSignal(
+                    new SignalValue(
+                        request.SignalId, 0, 0, SignalApplicability.Unknown,
+                        world.Revisions.Get(revisionKey)),
+                    new[] { dependency });
+            }
+
+            bool present = world.TryGetCurrentActivity(decision.CharacterId, out ActivityInstance activity) &&
+                activity.HasModifier(modifier.AuthoredId);
+            return new ResolvedDecisionSignal(
+                new SignalValue(
+                    request.SignalId,
+                    present ? SignalNumeric.Scale : 0,
+                    0,
+                    SignalApplicability.Known,
+                    world.Revisions.Get(revisionKey)),
+                new[] { dependency });
         }
     }
 
@@ -643,9 +680,17 @@ namespace Vivarium.Domain.Decisions
                     var orderedDependencies = new List<DecisionDependencyKey>(dependencies);
                     DecisionDependencyKey primary = orderedDependencies.Count > 0 ? orderedDependencies[0] : default;
                     if (orderedDependencies.Count > 0) orderedDependencies.RemoveAt(0);
-                    EntityRef subject = parameters.TryGet(DecisionReasoningParameters.Target, out DecisionParameterValue target)
-                        ? target.Entity
-                        : default;
+                    EntityRef subject = default;
+                    if (parameters.TryGet(DecisionReasoningParameters.Target, out DecisionParameterValue target) &&
+                        target.Kind == DecisionParameterKind.Entity)
+                    {
+                        subject = target.Entity;
+                    }
+                    else if (parameters.TryGet(DecisionReasoningParameters.Actor, out DecisionParameterValue actor) &&
+                        actor.Kind == DecisionParameterKind.Entity)
+                    {
+                        subject = actor.Entity;
+                    }
                     var contributionEvidence = new DecisionContributionEvidence[result.Contributions.Count];
                     for (int c = 0; c < contributionEvidence.Length; c++)
                     {

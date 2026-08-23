@@ -87,13 +87,6 @@ namespace Vivarium.SimRunner
             world.Relationships.Add(dislikedBoss.Id, dislikedBoss);
             world.RelationshipIndex.Register(dislikedBoss);
 
-            host.DecisionReevaluation.Register(new ActivityContextInfluenceReevaluator(
-                SampleContent.DecisionLeaveWork,
-                SampleContent.ContextWorkPressure,
-                SampleContent.ModifierDislikedColleague,
-                SampleContent.InfluenceBadWorkContext,
-                Die.D10,
-                Die.D6));
             var workPressure = new WorkContextPressureService(
                 host.Transitions,
                 host.DecisionReevaluation,

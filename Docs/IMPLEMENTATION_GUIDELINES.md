@@ -169,9 +169,17 @@ The playable progression slice was completed on **2026-08-22**. The Unity smoke 
 Decision. At 07:02 Mina and Glen follow scheduled Work Commitments onto the same directed travel
 segment and interact; at 07:32 Mina arrives beside a negatively related working colleague and receives
 the interval-accurate Work-pressure modifier; at 07:34 her authored hunger threshold generates the
-leave-work Decision. The Decision's Work-pressure dependency is now authored, and the content-specific
-reevaluator and handlers are restored whenever Unity recomposes a loaded host. The pre-Decision panel
+leave-work Decision. The Decision's Work-pressure dependency is authored, and its handlers are restored
+whenever Unity recomposes a loaded host. The pre-Decision panel
 shows a clean inactive state. PlayMode coverage asserts each causal checkpoint.
+
+The compiled-reasoning dogfood slice was completed on **2026-08-23**. The Unity content pack, headless
+sample, and Application fixture now define leave-work through three compiled bindings: Need urgency for
+leaving, reliability for staying, and current-Activity work context for leaving. The Activity-modifier
+Signal provider registers the existing targeted Work-pressure dependency, so departure updates the same
+reason from d10 to d6 and replays any intervention without a content-specific reevaluator. The old direct
+influence templates and `ActivityContextInfluenceReevaluator` were removed. Golden Scenario coverage
+retains the compiled program, live Signal evidence, stable reason identity, and frozen resolution evidence.
 
 Priority 2's minimum playable loop is now connected. The next implementation gate is Priority 3:
 convert the SimRunner's existing synthetic population mode into a repeatable scale and determinism
@@ -242,7 +250,8 @@ schema v3 migrates schema-v2 Influences as supporting legacy reasons.
 Checkpoint B is complete and remains runnable. It adds typed Decision/Option
 parameters, compiled Consideration bindings, explicit known/uncertain/unknown/not-applicable Signal
 semantics, minimal providers for Decision context, Values, target availability, directional relationship
-channels, and travel burden, plus deterministic evaluation across target and targetless/self Options.
+channels, travel burden, and current-Activity modifiers, plus deterministic evaluation across target and
+targetless/self Options.
 Compiled programs are deep-snapshotted onto in-flight Decisions and save schema v4 persists that program
 and authoritative typed context; schema-v3 direct-influence Decisions migrate without fabricated reasons.
 Candidate Reasons and routing indexes remain derived and are not persisted.
@@ -272,8 +281,9 @@ linear/pairwise/ideal Signal fields, ReasonChannels, scales, labels, and visibil
 the Domain catalog reject unknown providers, unbound or mistyped parameters, impossible Option bindings,
 unrequested Signals, invalid literals, unsupported dice, and simultaneous legacy-social/compiled paths.
 The acceptance matrix passes 138 headless tests, identical repeated SimRunner hashes
-`64668ADACCDF9099`, save/load hash equivalence, and a warning-free build of the Unity PlayMode assembly.
-The PlayMode suite now contains 11 tests, including authored-program conversion/lint coverage.
+`748901B9264B1B83`, save/load hash equivalence, and a warning-free build of the Unity PlayMode assembly.
+The PlayMode suite contains 11 tests, including both authored-program conversion/lint coverage and live
+catalog assertions that the generated leave-work Decision owns three compiled bindings and no templates.
 
 The next vertical slice requires concrete product intent. Continue using implemented social, value,
 relationship, Activity, location/travel, availability, urgency, and self-option state; do not introduce a
