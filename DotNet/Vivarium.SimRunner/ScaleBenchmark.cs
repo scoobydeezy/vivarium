@@ -4,6 +4,7 @@ using Vivarium.Domain.Activities;
 using Vivarium.Domain.Characters;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Decisions;
+using Vivarium.Domain.Employment;
 using Vivarium.Domain.Relationships;
 using Vivarium.Domain.Scheduling;
 using Vivarium.Domain.Simulation;
@@ -134,6 +135,7 @@ namespace Vivarium.SimRunner
             hash = StableHash.Combine(hash, ids.CommitmentOutcomes);
             hash = StableHash.Combine(hash, ids.Relationships);
             hash = StableHash.Combine(hash, ids.Decisions);
+            hash = StableHash.Combine(hash, ids.Employments);
             hash = StableHash.Combine(hash, ids.ScheduledEvents);
             hash = StableHash.Combine(hash, ids.HistoryEntries);
             hash = StableHash.Combine(hash, ids.EventSequence);
@@ -193,6 +195,15 @@ namespace Vivarium.SimRunner
                 hash = StableHash.Combine(hash, relationship.HighToLow.ChannelAt(RelationshipChannels.Affection, world.Clock.Now));
                 hash = StableHash.Combine(hash, relationship.HighToLow.FamiliarityAt(world.Clock.Now));
                 hash = StableHash.Combine(hash, relationship.LastInteractionAt?.TotalMinutes ?? -1);
+            }
+
+            foreach (Employment employment in world.Employments.All)
+            {
+                hash = StableHash.Combine(hash, employment.Id.Value);
+                hash = StableHash.Combine(hash, employment.EmployeeId.Value);
+                hash = StableHash.Combine(hash, employment.EmployerGroupId.Value);
+                hash = StableHash.Combine(hash, employment.DefinitionId.StableHashCode);
+                hash = StableHash.Combine(hash, employment.SupervisorId.Value);
             }
 
             return hash.ToString("X16");

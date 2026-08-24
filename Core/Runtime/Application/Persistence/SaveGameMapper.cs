@@ -7,6 +7,7 @@ using Vivarium.Domain.Common;
 using Vivarium.Domain.Decisions;
 using Vivarium.Domain.Evaluation;
 using Vivarium.Domain.Groups;
+using Vivarium.Domain.Employment;
 using Vivarium.Domain.History;
 using Vivarium.Domain.Knowledge;
 using Vivarium.Domain.Randomness;
@@ -75,6 +76,7 @@ namespace Vivarium.Application.Persistence
                 Decisions = counters.Decisions,
                 Locations = counters.Locations,
                 Groups = counters.Groups,
+                Employments = counters.Employments,
                 ScheduledEvents = counters.ScheduledEvents,
                 HistoryEntries = counters.HistoryEntries,
                 EventSequence = counters.EventSequence,
@@ -87,6 +89,7 @@ namespace Vivarium.Application.Persistence
             WriteActivities(world, data);
             WriteCommitments(world, data);
             WriteGroups(world, data);
+            WriteEmployments(world, data);
             WriteRelationships(world, data);
             WriteDecisions(world, data);
             WriteKnowledge(world, data);
@@ -125,6 +128,7 @@ namespace Vivarium.Application.Persistence
                     data.RuntimeIdCounters.Decisions,
                     data.RuntimeIdCounters.Locations,
                     data.RuntimeIdCounters.Groups,
+                    data.RuntimeIdCounters.Employments,
                     data.RuntimeIdCounters.ScheduledEvents,
                     data.RuntimeIdCounters.HistoryEntries,
                     data.RuntimeIdCounters.EventSequence));
@@ -134,6 +138,7 @@ namespace Vivarium.Application.Persistence
             ReadActivities(world, data);
             ReadCommitments(world, data);
             ReadGroups(world, data);
+            ReadEmployments(world, data);
             ReadRelationships(world, data);
             ReadDecisions(world, data);
             ReadKnowledge(world, data);
@@ -653,6 +658,79 @@ namespace Vivarium.Application.Persistence
             {
                 GroupMembershipData membership = data.GroupMemberships[i];
                 world.Memberships.Join(new GroupId(membership.GroupId), new CharacterId(membership.CharacterId));
+            }
+        }
+
+        // ---------- employments ----------
+
+        private static void WriteEmployments(WorldState world, SaveGameData data)
+        {
+            foreach (Employment employment in world.Employments.All)
+            {
+                var dto = new EmploymentData
+                {
+                    Id = employment.Id.Value,
+                    EmployeeId = employment.EmployeeId.Value,
+                    EmployerGroupId = employment.EmployerGroupId.Value,
+                    DefinitionId = employment.DefinitionId.Value,
+                    RoleId = employment.RoleId.Value,
+                    WorkLocationId = employment.WorkLocationId.Value,
+                    SupervisorId = employment.SupervisorId.Value,
+                };
+
+                for (int i = 0; i < employment.ObligationPatterns.Count; i++)
+                {
+                    EmploymentObligationPattern pattern = employment.ObligationPatterns[i];
+                    dto.ObligationPatterns.Add(new EmploymentObligationPatternData
+                    {
+                        Id = pattern.Id.Value,
+                        CommitmentKind = pattern.CommitmentKind.Value,
+                        CycleLengthDays = pattern.CycleLengthDays,
+                        ActiveDaysMask = pattern.ActiveDaysMask,
+                        StartMinuteOfDay = pattern.StartMinuteOfDay,
+                        DurationMinutes = pattern.Duration.TotalMinutes,
+                        Priority = pattern.Priority,
+                        ActivityDefinitionId = pattern.ActivityDefinitionId.Value,
+                        StartWindowMinutes = pattern.StartWindow.TotalMinutes,
+                        AccountabilityPolicy = CommitmentAccountabilityDataMapper.WritePolicy(pattern.AccountabilityPolicy),
+                    });
+                }
+                data.Employments.Add(dto);
+            }
+        }
+
+        private static void ReadEmployments(WorldState world, SaveGameData data)
+        {
+            for (int i = 0; i < data.Employments.Count; i++)
+            {
+                EmploymentData dto = data.Employments[i];
+                var patterns = new EmploymentObligationPattern[dto.ObligationPatterns.Count];
+                for (int p = 0; p < patterns.Length; p++)
+                {
+                    EmploymentObligationPatternData pattern = dto.ObligationPatterns[p];
+                    patterns[p] = new EmploymentObligationPattern(
+                        new AuthoredId(pattern.Id),
+                        new AuthoredId(pattern.CommitmentKind),
+                        pattern.CycleLengthDays,
+                        pattern.ActiveDaysMask,
+                        pattern.StartMinuteOfDay,
+                        SimDuration.FromMinutes(pattern.DurationMinutes),
+                        pattern.Priority,
+                        new AuthoredId(pattern.ActivityDefinitionId),
+                        SimDuration.FromMinutes(pattern.StartWindowMinutes),
+                        CommitmentAccountabilityDataMapper.ReadPolicy(pattern.AccountabilityPolicy));
+                }
+
+                var employment = new Employment(
+                    new EmploymentId(dto.Id),
+                    new CharacterId(dto.EmployeeId),
+                    new GroupId(dto.EmployerGroupId),
+                    new AuthoredId(dto.DefinitionId),
+                    new AuthoredId(dto.RoleId),
+                    new LocationId(dto.WorkLocationId),
+                    new CharacterId(dto.SupervisorId),
+                    patterns);
+                world.Employments.Add(employment.Id, employment);
             }
         }
 

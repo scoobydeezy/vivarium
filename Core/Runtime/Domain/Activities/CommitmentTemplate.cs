@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Time;
 
@@ -28,7 +29,8 @@ namespace Vivarium.Domain.Activities
             AuthoredId activityDefinitionId = default,
             SimDuration startWindow = default,
             EntityRef source = default,
-            CommitmentAccountabilityPolicy accountabilityPolicy = null)
+            CommitmentAccountabilityPolicy accountabilityPolicy = null,
+            IReadOnlyList<StakeholderRef> stakeholders = null)
         {
             if (!id.IsSet)
             {
@@ -52,6 +54,7 @@ namespace Vivarium.Domain.Activities
             StartWindow = startWindow;
             Source = source;
             AccountabilityPolicy = accountabilityPolicy ?? CommitmentAccountabilityPolicy.None;
+            Stakeholders = stakeholders;
         }
 
         public AuthoredId Id { get; }
@@ -81,6 +84,8 @@ namespace Vivarium.Domain.Activities
         public EntityRef Source { get; }
 
         public CommitmentAccountabilityPolicy AccountabilityPolicy { get; }
+
+        public IReadOnlyList<StakeholderRef> Stakeholders { get; }
 
         public bool OccursOnDay(int day) => (ActiveDaysMask & (1 << (((day % CycleLengthDays) + CycleLengthDays) % CycleLengthDays))) != 0;
 

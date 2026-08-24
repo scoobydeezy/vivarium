@@ -241,6 +241,36 @@ namespace Vivarium.Domain.Common
         public static bool operator !=(GroupId a, GroupId b) => a.Value != b.Value;
     }
 
+    /// <summary>Identity of one character's employment relationship.</summary>
+    public readonly struct EmploymentId : IRuntimeId, IEquatable<EmploymentId>, IComparable<EmploymentId>
+    {
+        public static readonly EmploymentId None = default;
+
+        public EmploymentId(int value) => Value = value;
+
+        public int Value { get; }
+
+        public EntityKind Kind => EntityKind.Employment;
+
+        public bool IsSet => Value > 0;
+
+        public EntityRef ToRef() => new EntityRef(EntityKind.Employment, Value);
+
+        public bool Equals(EmploymentId other) => Value == other.Value;
+
+        public override bool Equals(object obj) => obj is EmploymentId other && Equals(other);
+
+        public override int GetHashCode() => Value;
+
+        public int CompareTo(EmploymentId other) => Value.CompareTo(other.Value);
+
+        public override string ToString() => IsSet ? "Employment#" + Value : "<none>";
+
+        public static bool operator ==(EmploymentId a, EmploymentId b) => a.Value == b.Value;
+
+        public static bool operator !=(EmploymentId a, EmploymentId b) => a.Value != b.Value;
+    }
+
     /// <summary>Identity of a <see cref="Scheduling.ScheduledEvent"/>.</summary>
     public readonly struct ScheduledEventId : IRuntimeId, IEquatable<ScheduledEventId>, IComparable<ScheduledEventId>
     {

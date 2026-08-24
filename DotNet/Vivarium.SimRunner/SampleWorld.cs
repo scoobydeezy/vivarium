@@ -3,6 +3,7 @@ using Vivarium.Domain.Activities;
 using Vivarium.Domain.Characters;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Decisions;
+using Vivarium.Domain.Employment;
 using Vivarium.Domain.Groups;
 using Vivarium.Domain.Relationships;
 using Vivarium.Domain.Simulation;
@@ -26,6 +27,9 @@ namespace Vivarium.SimRunner
         public CharacterId Mina;
         public CharacterId Glen;
         public CharacterId Darius;
+        public GroupId Employer;
+        public EmploymentId MinaEmployment;
+        public EmploymentId GlenEmployment;
     }
 
     /// <summary>
@@ -60,6 +64,30 @@ namespace Vivarium.SimRunner
             layout.Mina = AddCharacter(host, "Mina Cairn", layout.Home, new[] { SampleContent.TraitAmbitious, SampleContent.TraitEnjoysBaking });
             layout.Glen = AddCharacter(host, "Glen Ashby", layout.Home, new[] { SampleContent.TraitHomebound });
             layout.Darius = AddCharacter(host, "Darius Vale", layout.Bakery, new[] { SampleContent.TraitAmbitious });
+
+            var employer = new Group(
+                world.RuntimeIds.Groups.Next(),
+                GroupKinds.Employer,
+                "East Market Bakery",
+                layout.Bakery);
+            world.Groups.Add(employer.Id, employer);
+            layout.Employer = employer.Id;
+            Employment minaEmployment = host.Employments.Create(
+                context,
+                layout.Mina,
+                employer.Id,
+                SampleContent.EmploymentBakeryWorker,
+                layout.Darius,
+                new[] { SampleContent.TemplateBakeryShift, SampleContent.TemplateBakeryClosingDuty });
+            Employment glenEmployment = host.Employments.Create(
+                context,
+                layout.Glen,
+                employer.Id,
+                SampleContent.EmploymentBakeryWorker,
+                layout.Darius,
+                new[] { SampleContent.TemplateBakeryShift });
+            layout.MinaEmployment = minaEmployment.Id;
+            layout.GlenEmployment = glenEmployment.Id;
 
             // A synthetic crowd, to prove the same systems run at a larger scale (§49, §56).
             for (int i = 0; i < extraPopulation; i++)
@@ -100,57 +128,29 @@ namespace Vivarium.SimRunner
             host.DomainEventHandlers.Register(new WorkContextArrivalHandler(workPressure), 200);
             host.DomainEventHandlers.Register(new WorkContextDepartureHandler(workPressure), 100);
 
-            // --- one recurring routine, materialized across a bounded horizon (§29.4) ---
-            CommitmentTemplate shift = SampleContent.BakeryShiftTemplate(layout.Bakery);
-            IReadOnlyList<Commitment> commitments = host.Planner.MaterializeCommitments(
-                context,
-                layout.Mina,
-                new[] { shift },
-                SimDuration.FromDays(2));
+            // Employment is the production source of regular shifts and Mina's closing duty. Glen's
+            // matching shift creates the same shared-route interaction without scenario injection.
+            host.Employments.MaterializeCommitments(context, minaEmployment, SimDuration.FromDays(2));
+            host.Employments.MaterializeCommitments(context, glenEmployment, SimDuration.FromDays(2));
 
-            for (int i = 0; i < commitments.Count; i++)
-            {
-                host.Planner.TryPlanCommitmentStart(context, commitments[i]);
-            }
-
-            // Glen has the same destination and departure window. Their indexed shared travel segment
-            // creates an interaction opportunity without either leaving the Traveling Activity (§32).
-            IReadOnlyList<Commitment> glensCommitments = host.Planner.MaterializeCommitments(
-                context,
-                layout.Glen,
-                new[] { shift },
-                SimDuration.FromDays(2));
-            for (int i = 0; i < glensCommitments.Count; i++)
-            {
-                host.Planner.TryPlanCommitmentStart(context, glensCommitments[i]);
-            }
-
-            // After the established leave-work beat, Mina learns that dinner with Glen and helping
-            // Darius close the bakery occupy the same evening. Intent becomes authoritative only when
-            // it is known, so the conflict is not visible before its cause.
+            // After the established leave-work beat, Mina learns about dinner with Glen. Her closing
+            // duty ends before dinner begins, but Bakery-to-Cafe travel makes the pair jointly
+            // infeasible. Intent becomes authoritative only when it is known, so the conflict is not
+            // visible before its final cause.
             SimTime revealAt = world.Clock.Now.Plus(SimDuration.FromHours(6));
-            SimTime commitmentStart = world.Clock.Now.Plus(SimDuration.FromHours(7));
+            SimTime dinnerStart = world.Clock.Now
+                .Plus(SimDuration.FromHours(8))
+                .Plus(SimDuration.FromMinutes(35));
             ScheduleCommitmentReveal(world, revealAt, new CommitmentBecomesKnownPayload(
                 layout.Mina,
                 SampleContent.CommitmentDinnerWithGlen,
-                commitmentStart,
-                commitmentStart.Plus(SimDuration.FromMinutes(10)),
+                dinnerStart,
+                dinnerStart.Plus(SimDuration.FromMinutes(2)),
                 SimDuration.FromMinutes(90),
                 layout.Cafe,
                 70,
                 SampleContent.ActivityDining,
                 new[] { layout.Glen },
-                accountabilityPolicy: host.Catalog.CommitmentAccountabilityPolicies[SampleContent.AccountabilitySocialCommitment]));
-            ScheduleCommitmentReveal(world, revealAt, new CommitmentBecomesKnownPayload(
-                layout.Mina,
-                SampleContent.CommitmentHelpDariusCloseBakery,
-                commitmentStart,
-                commitmentStart.Plus(SimDuration.FromMinutes(10)),
-                SimDuration.FromMinutes(90),
-                layout.Bakery,
-                90,
-                SampleContent.ActivityHelpingAtBakery,
-                new[] { layout.Darius },
                 accountabilityPolicy: host.Catalog.CommitmentAccountabilityPolicies[SampleContent.AccountabilitySocialCommitment]));
 
             return layout;

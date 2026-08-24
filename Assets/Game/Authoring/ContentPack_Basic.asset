@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: efa2c788149cc734eaa878ceb97ac2b0, type: 3}
   m_Name: ContentPack_Basic
   m_EditorClassIdentifier: Vivarium.Unity.Authoring::Vivarium.Unity.Authoring.ContentPackAsset
-  contentVersion: 3
+  contentVersion: 4
   traits:
   - {fileID: 11400000, guid: afe9983f40078e045a269c0c1854d889, type: 2}
   - {fileID: 11400000, guid: cf50c39fa4f24f64ca6fccdf406a2d68, type: 2}
@@ -521,6 +521,30 @@ MonoBehaviour:
           value: 900
     byRole: []
     specificOverrides: []
+  employmentDefinitions:
+  - authoredId: employment.bakery_worker
+    roleId: employment_role.baker
+    obligationPatterns:
+    - authoredId: routine.bakery_shift
+      commitmentKindId: commitment.demo_work_shift
+      cycleLengthDays: 7
+      activeDaysMask: 1
+      startMinuteOfDay: 452
+      durationMinutes: 120
+      priority: 100
+      activityDefinitionId: activity.working
+      startWindowMinutes: 5
+      accountabilityPolicyId: accountability.social_commitment
+    - authoredId: routine.bakery_closing_duty
+      commitmentKindId: commitment.help_darius_close_bakery
+      cycleLengthDays: 7
+      activeDaysMask: 1
+      startMinuteOfDay: 572
+      durationMinutes: 90
+      priority: 90
+      activityDefinitionId: activity.helping_at_bakery
+      startWindowMinutes: 2
+      accountabilityPolicyId: accountability.social_commitment
   socialPressures:
   - authoredId: social.pressure.seek_company
     rules: []

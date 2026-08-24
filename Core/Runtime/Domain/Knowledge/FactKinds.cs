@@ -14,6 +14,8 @@ namespace Vivarium.Domain.Knowledge
         public static readonly AuthoredId RelationshipStanding = new AuthoredId("fact.relationship.standing");
         public static readonly AuthoredId RelationshipResentment = new AuthoredId("fact.relationship.resentment");
         public static readonly AuthoredId EmploymentEmployer = new AuthoredId("fact.employment.employer");
+        public static readonly AuthoredId EmploymentRole = new AuthoredId("fact.employment.role");
+        public static readonly AuthoredId EmploymentSupervisor = new AuthoredId("fact.employment.supervisor");
         public static readonly AuthoredId HouseholdMembership = new AuthoredId("fact.household.membership");
         public static readonly AuthoredId DecisionInfluence = new AuthoredId("fact.decision.influence");
         public static readonly AuthoredId ReportedSocialBelief = new AuthoredId("fact.social.reported_belief");

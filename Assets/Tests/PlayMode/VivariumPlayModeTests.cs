@@ -10,6 +10,7 @@ using Vivarium.Domain.Activities;
 using Vivarium.Domain.Characters;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Decisions;
+using Vivarium.Domain.Employment;
 using Vivarium.Domain.Relationships;
 using Vivarium.Domain.Knowledge;
 using Vivarium.Domain.Social;
@@ -329,6 +330,23 @@ namespace Vivarium.Unity.Tests
                 new AuthoredId("accountability.social_commitment")), Is.True);
             Assert.That(_bootstrapper.Host.Catalog.SocialEvidence.ContainsKey(
                 new AuthoredId("social.action.commitment_breach")), Is.True);
+            Assert.That(_bootstrapper.Host.Catalog.EmploymentDefinitions.ContainsKey(
+                new AuthoredId("employment.bakery_worker")), Is.True);
+
+            Character mina = CharacterNamed("Mina Test");
+            Employment employment = null;
+            foreach (Employment candidate in _bootstrapper.Host.World.Employments.All)
+                if (candidate.EmployeeId == mina.Id) employment = candidate;
+            Assert.That(employment, Is.Not.Null);
+            Assert.That(employment.SupervisorId, Is.EqualTo(CharacterNamed("Darius Test").Id));
+
+            Commitment closing = null;
+            foreach (Commitment candidate in _bootstrapper.Host.World.Commitments.All)
+                if (candidate.CharacterId == mina.Id && candidate.Kind == new AuthoredId("commitment.help_darius_close_bakery"))
+                    closing = candidate;
+            Assert.That(closing, Is.Not.Null);
+            Assert.That(closing.Source, Is.EqualTo(employment.Id.ToRef()));
+            Assert.That(closing.Stakeholders[0].Role, Is.EqualTo(StakeholderRole.Authority));
             Assert.That(TryFindDecision(CommitmentConflictDecisionId, out Decision _), Is.False);
 
             _bootstrapper.Host.Session.Advance(SimDuration.FromHours(1));
@@ -340,8 +358,11 @@ namespace Vivarium.Unity.Tests
             DecisionView view = new DecisionProjector(_bootstrapper.Host.Catalog.Interventions)
                 .Project(_bootstrapper.Host.World, conflict);
             Assert.That(view.HasHardDeadline, Is.True);
-            Assert.That(view.Options[0].IntentSummary, Does.Contain("Keep Dinner With Glen"));
-            Assert.That(view.Options[0].IntentSummary, Does.Contain("give up Help Darius Close Bakery"));
+            DecisionOptionView keepDinner = null;
+            for (int i = 0; i < view.Options.Count; i++)
+                if (view.Options[i].IntentSummary.Contains("Keep Dinner With Glen")) keepDinner = view.Options[i];
+            Assert.That(keepDinner, Is.Not.Null);
+            Assert.That(keepDinner.IntentSummary, Does.Contain("give up Help Darius Close Bakery"));
 
             yield return null;
             DecisionPanel panel = Object.FindAnyObjectByType<DecisionPanel>();

@@ -21,7 +21,7 @@ namespace Vivarium.Application.Persistence
         /// <summary>
         /// The current persisted shape. Bump on any structural change and add a migration (§39).
         /// </summary>
-        public const int CurrentSchemaVersion = 7;
+        public const int CurrentSchemaVersion = 8;
 
         /// <summary>Determines whether the persisted shape can be understood or migrated (§39.1).</summary>
         public int SchemaVersion = CurrentSchemaVersion;
@@ -79,6 +79,8 @@ namespace Vivarium.Application.Persistence
 
         public List<GroupMembershipData> GroupMemberships = new List<GroupMembershipData>();
 
+        public List<EmploymentData> Employments = new List<EmploymentData>();
+
         public List<RelationshipData> Relationships = new List<RelationshipData>();
 
         public List<DecisionData> Decisions = new List<DecisionData>();
@@ -104,6 +106,7 @@ namespace Vivarium.Application.Persistence
         public int Decisions;
         public int Locations;
         public int Groups;
+        public int Employments;
         public int ScheduledEvents;
         public int HistoryEntries;
 
@@ -221,6 +224,32 @@ namespace Vivarium.Application.Persistence
         public List<int> AdditionalParticipants = new List<int>();
         public List<CommitmentStakeholderData> Stakeholders = new List<CommitmentStakeholderData>();
         public bool HasStakeholderSnapshot;
+        public CommitmentAccountabilityPolicyData AccountabilityPolicy;
+    }
+
+    public sealed class EmploymentData
+    {
+        public int Id;
+        public int EmployeeId;
+        public int EmployerGroupId;
+        public string DefinitionId;
+        public string RoleId;
+        public int WorkLocationId;
+        public int SupervisorId;
+        public List<EmploymentObligationPatternData> ObligationPatterns = new List<EmploymentObligationPatternData>();
+    }
+
+    public sealed class EmploymentObligationPatternData
+    {
+        public string Id;
+        public string CommitmentKind;
+        public int CycleLengthDays;
+        public int ActiveDaysMask;
+        public int StartMinuteOfDay;
+        public long DurationMinutes;
+        public int Priority;
+        public string ActivityDefinitionId;
+        public long StartWindowMinutes;
         public CommitmentAccountabilityPolicyData AccountabilityPolicy;
     }
 

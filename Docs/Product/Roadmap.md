@@ -33,19 +33,18 @@ supported player actions, and required Unity surfaces.
 
 The immediate next slice is:
 
-> **Employment v0 → workplace authority and recurring shift/closing-duty Commitments.**
+> **Ordinary Hunger → Eating governed by location and Activity affordances.**
 
 Observable completion test:
 
-> A character's authored Employment identity produces recurring workplace obligations with derived
-> workplace authority and stakeholder roles; attendance, fulfillment, and conflict consequences arise
-> through the existing Commitment lifecycle identically across uninterrupted and save/load runs.
+> Hunger produces an ordinary Eating Activity only where an available location affords it; travel,
+> consumption, satisfaction, and replanning remain authoritative and deterministic across save/load.
 
-The Energy/Sleep/Wake slice is complete: production content now supplies an analytically progressing
-Energy Need and a content-backed rest routine that travels to a household location, sleeps, recovers,
-wakes, and resumes fallback planning identically live, offline, and across save/load. Employment is now
-the earliest missing MPS causal link and is required before the flagship Bakery obligations are
-production-shaped rather than scenario-authored commitments.
+The Employment v0 slice is complete: authored Employment identity now owns employer, role, workplace,
+supervisor authority, and recurring shift/closing-duty patterns. Those patterns materialize ordinary
+Commitments with derived Authority stakeholders, and the flagship Bakery conflict now arises from the
+normal Commitment lifecycle identically across uninterrupted and save/load runs. Ordinary Eating is the
+earliest remaining missing link in the Phase 1 daily-routine loop.
 
 ## Ordered phases
 
@@ -79,8 +78,8 @@ The locked Phase 0 review establishes this order, subject to revalidation agains
 slice:
 
 1. Energy → Sleeping → waking → replanning. **Complete.**
-2. Employment v0 → workplace authority and recurring shift/closing-duty Commitments. **Next.**
-3. Ordinary Hunger → Eating governed by location and Activity affordances.
+2. Employment v0 → workplace authority and recurring shift/closing-duty Commitments. **Complete.**
+3. Ordinary Hunger → Eating governed by location and Activity affordances. **Next.**
 4. Discretionary Recreation → Tabletop Games / Reading selected from Interests and availability.
 5. Ordinary Socializing through bounded shared-context selection.
 

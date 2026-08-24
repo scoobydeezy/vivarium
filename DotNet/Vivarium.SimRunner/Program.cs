@@ -287,6 +287,7 @@ namespace Vivarium.SimRunner
             hash = StableHash.Combine(hash, world.Activities.Count);
             hash = StableHash.Combine(hash, world.Scheduler.PendingCount);
             hash = StableHash.Combine(hash, world.Knowledge.Count);
+            hash = StableHash.Combine(hash, world.Employments.Count);
 
             foreach (Decision decision in world.Decisions.All)
             {

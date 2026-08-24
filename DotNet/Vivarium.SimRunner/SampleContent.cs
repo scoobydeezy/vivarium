@@ -4,6 +4,7 @@ using Vivarium.Domain.Characters;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Decisions;
 using Vivarium.Domain.Evaluation;
+using Vivarium.Domain.Employment;
 using Vivarium.Domain.Groups;
 using Vivarium.Domain.Knowledge;
 using Vivarium.Domain.Relationships;
@@ -49,6 +50,9 @@ namespace Vivarium.SimRunner
         public static readonly AuthoredId CommitmentDinnerWithGlen = new AuthoredId("commitment.dinner_with_glen");
         public static readonly AuthoredId CommitmentHelpDariusCloseBakery = new AuthoredId("commitment.help_darius_close_bakery");
         public static readonly AuthoredId TemplateBakeryShift = new AuthoredId("routine.bakery_shift");
+        public static readonly AuthoredId TemplateBakeryClosingDuty = new AuthoredId("routine.bakery_closing_duty");
+        public static readonly AuthoredId EmploymentBakeryWorker = new AuthoredId("employment.bakery_worker");
+        public static readonly AuthoredId EmploymentRoleBaker = new AuthoredId("employment.role.baker");
 
         public static readonly AuthoredId DecisionJobOffer = new AuthoredId("decision.job_offer");
         public static readonly AuthoredId DecisionLeaveWork = new AuthoredId("decision.leave_work_early");
@@ -222,7 +226,36 @@ namespace Vivarium.SimRunner
                 new AuthoredId("social.measurement.commitment_breach"),
                 -6000,
                 new AuthoredId("social.explanation.commitment_breach")));
-            builder.Add(SocialCommitmentAccountabilityPolicy());
+            CommitmentAccountabilityPolicy socialCommitmentPolicy = SocialCommitmentAccountabilityPolicy();
+            builder.Add(socialCommitmentPolicy);
+            builder.Add(new EmploymentDefinition(
+                EmploymentBakeryWorker,
+                EmploymentRoleBaker,
+                new[]
+                {
+                    new EmploymentObligationPattern(
+                        TemplateBakeryShift,
+                        CommitmentWorkShift,
+                        cycleLengthDays: 7,
+                        activeDaysMask: 0b0011111,
+                        startMinuteOfDay: 9 * 60,
+                        duration: SimDuration.FromHours(5),
+                        priority: 100,
+                        activityDefinitionId: ActivityWorking,
+                        startWindow: SimDuration.FromMinutes(30),
+                        accountabilityPolicy: socialCommitmentPolicy),
+                    new EmploymentObligationPattern(
+                        TemplateBakeryClosingDuty,
+                        CommitmentHelpDariusCloseBakery,
+                        cycleLengthDays: 7,
+                        activeDaysMask: 0b0000001,
+                        startMinuteOfDay: 14 * 60,
+                        duration: SimDuration.FromMinutes(90),
+                        priority: 90,
+                        activityDefinitionId: ActivityHelpingAtBakery,
+                        startWindow: SimDuration.FromMinutes(10),
+                        accountabilityPolicy: socialCommitmentPolicy),
+                }));
             builder.Add(new SocialPressureDefinition(SocialPressureSeekCompany, new SocialFactorRule[0]));
             builder.Add(new SocialPressureDefinition(SocialPressureReliance, new SocialFactorRule[0]));
             builder.Add(new SocialPressureDefinition(
@@ -514,20 +547,5 @@ namespace Vivarium.SimRunner
                     InfluenceVisibility.Full),
             });
 
-        /// <summary>
-        /// The bakery shift routine. Note what this is <i>not</i>: a calendar. It is a pattern the
-        /// planner materializes across a bounded horizon on demand (§29.4).
-        /// </summary>
-        public static CommitmentTemplate BakeryShiftTemplate(LocationId bakery) => new CommitmentTemplate(
-            TemplateBakeryShift,
-            CommitmentWorkShift,
-            cycleLengthDays: 7,
-            activeDaysMask: 0b0011111,
-            startMinuteOfDay: 9 * 60,
-            duration: SimDuration.FromHours(6),
-            locationId: bakery,
-            priority: 100,
-            activityDefinitionId: ActivityWorking,
-            startWindow: SimDuration.FromMinutes(30));
     }
 }

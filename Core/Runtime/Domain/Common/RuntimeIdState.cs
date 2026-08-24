@@ -18,6 +18,7 @@ namespace Vivarium.Domain.Common
             Decisions = new MonotonicIdAllocator<DecisionId>(v => new DecisionId(v), restoredCounters.Decisions);
             Locations = new MonotonicIdAllocator<LocationId>(v => new LocationId(v), restoredCounters.Locations);
             Groups = new MonotonicIdAllocator<GroupId>(v => new GroupId(v), restoredCounters.Groups);
+            Employments = new MonotonicIdAllocator<EmploymentId>(v => new EmploymentId(v), restoredCounters.Employments);
             ScheduledEvents = new MonotonicIdAllocator<ScheduledEventId>(v => new ScheduledEventId(v), restoredCounters.ScheduledEvents);
             HistoryEntries = new MonotonicIdAllocator<HistoryEntryId>(v => new HistoryEntryId(v), restoredCounters.HistoryEntries);
             EventSequence = new EventSequenceAllocator(restoredCounters.EventSequence);
@@ -39,6 +40,8 @@ namespace Vivarium.Domain.Common
 
         public IIdAllocator<GroupId> Groups { get; }
 
+        public IIdAllocator<EmploymentId> Employments { get; }
+
         public IIdAllocator<ScheduledEventId> ScheduledEvents { get; }
 
         public IIdAllocator<HistoryEntryId> HistoryEntries { get; }
@@ -58,6 +61,7 @@ namespace Vivarium.Domain.Common
             Decisions.IssuedCount,
             Locations.IssuedCount,
             Groups.IssuedCount,
+            Employments.IssuedCount,
             ScheduledEvents.IssuedCount,
             HistoryEntries.IssuedCount,
             EventSequence.Issued);
@@ -75,6 +79,7 @@ namespace Vivarium.Domain.Common
             int decisions,
             int locations,
             int groups,
+            int employments,
             int scheduledEvents,
             int historyEntries,
             long eventSequence)
@@ -87,6 +92,7 @@ namespace Vivarium.Domain.Common
             Decisions = decisions;
             Locations = locations;
             Groups = groups;
+            Employments = employments;
             ScheduledEvents = scheduledEvents;
             HistoryEntries = historyEntries;
             EventSequence = eventSequence;
@@ -107,6 +113,8 @@ namespace Vivarium.Domain.Common
         public int Locations { get; }
 
         public int Groups { get; }
+
+        public int Employments { get; }
 
         public int ScheduledEvents { get; }
 

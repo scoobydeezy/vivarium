@@ -70,6 +70,7 @@ namespace Vivarium.Domain.Activities
                             template.Source,
                             null,
                             template.Id,
+                            template.Stakeholders,
                             accountabilityPolicy: template.AccountabilityPolicy);
 
                         world.Commitments.Add(commitment.Id, commitment);
@@ -85,6 +86,12 @@ namespace Vivarium.Domain.Activities
                 // One bump for the batch: the character's planned schedule changed (§11.2.1).
                 CommitmentScheduleChanges.Publish(world, characterId);
             }
+
+            created.Sort((left, right) =>
+            {
+                int byTime = left.EarliestStart.CompareTo(right.EarliestStart);
+                return byTime != 0 ? byTime : left.Id.CompareTo(right.Id);
+            });
 
             return created;
         }

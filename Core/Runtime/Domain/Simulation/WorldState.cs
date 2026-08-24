@@ -4,6 +4,7 @@ using Vivarium.Domain.Characters;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Decisions;
 using Vivarium.Domain.Events;
+using Vivarium.Domain.Employment;
 using Vivarium.Domain.Groups;
 using Vivarium.Domain.History;
 using Vivarium.Domain.Knowledge;
@@ -47,11 +48,13 @@ namespace Vivarium.Domain.Simulation
             Relationships = new EntityRepository<RelationshipId, Relationship>("Relationship");
             Decisions = new EntityRepository<DecisionId, Decision>("Decision");
             Groups = new EntityRepository<GroupId, Group>("Group");
+            Employments = new EntityRepository<EmploymentId, Employment.Employment>("Employment");
 
             Locations = new LocationHierarchy();
             TravelNetwork = new TravelNetwork();
             Spatial = new SpatialIndexes(Locations);
             Memberships = new MembershipIndex();
+            EmploymentIndex = new EmploymentIndex();
             RelationshipIndex = new RelationshipIndex();
             DecisionDependencies = new DecisionDependencyIndex();
             CommitmentConflicts = new CommitmentConflictIndex();
@@ -87,6 +90,8 @@ namespace Vivarium.Domain.Simulation
 
         public EntityRepository<GroupId, Group> Groups { get; }
 
+        public EntityRepository<EmploymentId, Employment.Employment> Employments { get; }
+
         /// <summary>Containment hierarchy (§27).</summary>
         public LocationHierarchy Locations { get; }
 
@@ -98,6 +103,8 @@ namespace Vivarium.Domain.Simulation
 
         /// <summary>Non-spatial group membership (§31). Rebuildable.</summary>
         public MembershipIndex Memberships { get; }
+
+        public EmploymentIndex EmploymentIndex { get; }
 
         /// <summary>Relationship lookups. Rebuildable.</summary>
         public RelationshipIndex RelationshipIndex { get; }
@@ -159,6 +166,7 @@ namespace Vivarium.Domain.Simulation
             RelationshipIndex.Clear();
             DecisionDependencies.Clear();
             CommitmentConflicts.Clear();
+            EmploymentIndex.Clear();
 
             foreach (Character character in Characters.All)
             {
@@ -179,6 +187,11 @@ namespace Vivarium.Domain.Simulation
                 {
                     RelationshipIndex.Register(relationship);
                 }
+            }
+
+            foreach (Employment.Employment employment in Employments.All)
+            {
+                EmploymentIndex.Register(employment);
             }
 
             foreach (Decision decision in Decisions.All)

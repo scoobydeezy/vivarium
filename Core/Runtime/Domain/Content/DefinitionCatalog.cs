@@ -4,6 +4,7 @@ using Vivarium.Domain.Activities;
 using Vivarium.Domain.Characters;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Decisions;
+using Vivarium.Domain.Employment;
 using Vivarium.Domain.Spatial;
 using Vivarium.Domain.Social;
 
@@ -36,7 +37,8 @@ namespace Vivarium.Domain.Content
             IReadOnlyDictionary<AuthoredId, AppraisalCalibrationProfile> appraisalCalibrations,
             IReadOnlyDictionary<AuthoredId, SocialEvidenceDefinition> socialEvidence,
             IReadOnlyDictionary<AuthoredId, CommitmentAccountabilityPolicy> commitmentAccountabilityPolicies,
-            IReadOnlyDictionary<AuthoredId, SocialPressureDefinition> socialPressures)
+            IReadOnlyDictionary<AuthoredId, SocialPressureDefinition> socialPressures,
+            IReadOnlyDictionary<AuthoredId, EmploymentDefinition> employmentDefinitions)
         {
             ContentVersion = contentVersion;
             Traits = traits;
@@ -50,6 +52,7 @@ namespace Vivarium.Domain.Content
             SocialEvidence = socialEvidence;
             CommitmentAccountabilityPolicies = commitmentAccountabilityPolicies;
             SocialPressures = socialPressures;
+            EmploymentDefinitions = employmentDefinitions;
         }
 
         /// <summary>Recorded in saves and traces so version-scoped reproduction is diagnosable (§39.1, §53).</summary>
@@ -77,6 +80,8 @@ namespace Vivarium.Domain.Content
 
         public IReadOnlyDictionary<AuthoredId, SocialPressureDefinition> SocialPressures { get; }
 
+        public IReadOnlyDictionary<AuthoredId, EmploymentDefinition> EmploymentDefinitions { get; }
+
         /// <summary>Mutable builder. Validate before building — see <see cref="ContentValidator"/>.</summary>
         public sealed class Builder
         {
@@ -91,6 +96,7 @@ namespace Vivarium.Domain.Content
             private readonly Dictionary<AuthoredId, SocialEvidenceDefinition> _socialEvidence = new Dictionary<AuthoredId, SocialEvidenceDefinition>();
             private readonly Dictionary<AuthoredId, CommitmentAccountabilityPolicy> _commitmentAccountabilityPolicies = new Dictionary<AuthoredId, CommitmentAccountabilityPolicy>();
             private readonly Dictionary<AuthoredId, SocialPressureDefinition> _socialPressures = new Dictionary<AuthoredId, SocialPressureDefinition>();
+            private readonly Dictionary<AuthoredId, EmploymentDefinition> _employmentDefinitions = new Dictionary<AuthoredId, EmploymentDefinition>();
             private readonly List<string> _errors = new List<string>();
 
             public int ContentVersion { get; set; } = 1;
@@ -121,6 +127,8 @@ namespace Vivarium.Domain.Content
 
             public Builder Add(SocialPressureDefinition definition) => AddTo(_socialPressures, definition.Id, definition, "social pressure");
 
+            public Builder Add(EmploymentDefinition definition) => AddTo(_employmentDefinitions, definition.Id, definition, "employment");
+
             public DefinitionCatalog Build()
             {
                 if (_errors.Count > 0)
@@ -141,7 +149,8 @@ namespace Vivarium.Domain.Content
                     _appraisalCalibrations,
                     _socialEvidence,
                     _commitmentAccountabilityPolicies,
-                    _socialPressures);
+                    _socialPressures,
+                    _employmentDefinitions);
             }
 
             private Builder AddTo<TDefinition>(Dictionary<AuthoredId, TDefinition> target, AuthoredId id, TDefinition definition, string kind)
@@ -328,6 +337,22 @@ namespace Vivarium.Domain.Content
                 if (template.ActivityDefinitionId.IsSet && !catalog.Activities.ContainsKey(template.ActivityDefinitionId))
                 {
                     errors.Add($"commitment template '{template.Id}' references unknown activity '{template.ActivityDefinitionId}'");
+                }
+            }
+
+            foreach (KeyValuePair<AuthoredId, EmploymentDefinition> pair in catalog.EmploymentDefinitions)
+            {
+                EmploymentDefinition definition = pair.Value;
+                for (int i = 0; i < definition.ObligationPatterns.Count; i++)
+                {
+                    EmploymentObligationPattern pattern = definition.ObligationPatterns[i];
+                    if (pattern.ActiveDaysMask == 0)
+                        errors.Add($"employment '{definition.Id}' obligation '{pattern.Id}' never occurs (empty day mask)");
+                    if (!catalog.Activities.ContainsKey(pattern.ActivityDefinitionId))
+                        errors.Add($"employment '{definition.Id}' obligation '{pattern.Id}' references unknown activity '{pattern.ActivityDefinitionId}'");
+                    if (pattern.AccountabilityPolicy.Id.IsSet &&
+                        !catalog.CommitmentAccountabilityPolicies.ContainsKey(pattern.AccountabilityPolicy.Id))
+                        errors.Add($"employment '{definition.Id}' obligation '{pattern.Id}' references unknown accountability policy '{pattern.AccountabilityPolicy.Id}'");
                 }
             }
 

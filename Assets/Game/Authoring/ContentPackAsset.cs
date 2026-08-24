@@ -10,6 +10,7 @@ using Vivarium.Domain.Social;
 using Vivarium.Domain.History;
 using Vivarium.Domain.Characters;
 using Vivarium.Domain.Groups;
+using Vivarium.Domain.Employment;
 
 namespace Vivarium.Unity.Authoring
 {
@@ -49,6 +50,7 @@ namespace Vivarium.Unity.Authoring
         [SerializeField] private AppraisalCalibrationEntry[] appraisalCalibrations = new AppraisalCalibrationEntry[0];
         [SerializeField] private SocialEvidenceEntry[] socialEvidence = new SocialEvidenceEntry[0];
         [SerializeField] private CommitmentAccountabilityPolicyEntry[] commitmentAccountabilityPolicies = new CommitmentAccountabilityPolicyEntry[0];
+        [SerializeField] private EmploymentDefinitionEntry[] employmentDefinitions = new EmploymentDefinitionEntry[0];
         [SerializeField] private SocialPressureEntry[] socialPressures = new SocialPressureEntry[0];
 
         public int ContentVersion => contentVersion;
@@ -102,9 +104,16 @@ namespace Vivarium.Unity.Authoring
             {
                 builder.Add(socialEvidence[i].ToDefinition());
             }
+            var accountabilityPolicies = new Dictionary<AuthoredId, CommitmentAccountabilityPolicy>();
             for (int i = 0; i < commitmentAccountabilityPolicies.Length; i++)
             {
-                builder.Add(commitmentAccountabilityPolicies[i].ToDefinition());
+                CommitmentAccountabilityPolicy policy = commitmentAccountabilityPolicies[i].ToDefinition();
+                accountabilityPolicies.Add(policy.Id, policy);
+                builder.Add(policy);
+            }
+            for (int i = 0; i < employmentDefinitions.Length; i++)
+            {
+                builder.Add(employmentDefinitions[i].ToDefinition(accountabilityPolicies));
             }
             for (int i = 0; i < socialPressures.Length; i++)
             {
@@ -579,6 +588,68 @@ namespace Vivarium.Unity.Authoring
         {
             public CommitmentOutcomeKind outcome;
             public CommitmentConsequenceSetEntry consequences;
+        }
+
+        [System.Serializable]
+        public struct EmploymentDefinitionEntry
+        {
+            public string authoredId;
+            public string roleId;
+            public EmploymentObligationPatternEntry[] obligationPatterns;
+
+            public EmploymentDefinition ToDefinition(
+                IReadOnlyDictionary<AuthoredId, CommitmentAccountabilityPolicy> accountabilityPolicies)
+            {
+                var patterns = new EmploymentObligationPattern[obligationPatterns?.Length ?? 0];
+                for (int i = 0; i < patterns.Length; i++)
+                {
+                    patterns[i] = obligationPatterns[i].ToDefinition(accountabilityPolicies);
+                }
+
+                return new EmploymentDefinition(new AuthoredId(authoredId), new AuthoredId(roleId), patterns);
+            }
+        }
+
+        [System.Serializable]
+        public struct EmploymentObligationPatternEntry
+        {
+            public string authoredId;
+            public string commitmentKindId;
+            public int cycleLengthDays;
+            public int activeDaysMask;
+            public int startMinuteOfDay;
+            public int durationMinutes;
+            public int priority;
+            public string activityDefinitionId;
+            public int startWindowMinutes;
+            public string accountabilityPolicyId;
+
+            public EmploymentObligationPattern ToDefinition(
+                IReadOnlyDictionary<AuthoredId, CommitmentAccountabilityPolicy> accountabilityPolicies)
+            {
+                CommitmentAccountabilityPolicy policy = null;
+                if (!string.IsNullOrWhiteSpace(accountabilityPolicyId))
+                {
+                    var policyId = new AuthoredId(accountabilityPolicyId);
+                    if (!accountabilityPolicies.TryGetValue(policyId, out policy))
+                    {
+                        throw new System.InvalidOperationException(
+                            $"Employment obligation '{authoredId}' references unknown accountability policy '{policyId}'.");
+                    }
+                }
+
+                return new EmploymentObligationPattern(
+                    new AuthoredId(authoredId),
+                    new AuthoredId(commitmentKindId),
+                    cycleLengthDays,
+                    activeDaysMask,
+                    startMinuteOfDay,
+                    SimDuration.FromMinutes(durationMinutes),
+                    priority,
+                    new AuthoredId(activityDefinitionId),
+                    SimDuration.FromMinutes(startWindowMinutes),
+                    policy);
+            }
         }
 
         [System.Serializable]

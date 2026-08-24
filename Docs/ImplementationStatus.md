@@ -212,9 +212,19 @@ Working implementations:
   observed without blaming the actor. Accountability settles at handler order 100, before schedule and
   social-belief-dependent Decision reactions. Ephemeral outcomes prune on the same history-retention
   cutoff while their Significant/Legacy artifacts remain meaningful.
+- **Employment v0** — an authoritative `Employment` identity snapshots employee, Employer group,
+  role, workplace, character supervisor, and assigned recurring obligation patterns. The
+  `EmploymentService` derives Employer membership and materializes bounded regular-shift and
+  closing-duty patterns as ordinary Commitments sourced to that Employment, with the supervisor as an
+  Authority stakeholder. Employer, role, and supervisor facts flow through the ordinary fact-provider
+  and inspection path. Employment identity, allocator state, and obligation snapshots persist in save
+  schema v8; rebuildable employee/employer indexes are restored after load. Focused tests cover
+  materialization, attendance/fulfillment, semantic facts, and future behavior across save/load.
 - **Golden Scenario commitment conflict** — `CommitmentBecomesKnownPayload` is persisted scheduled
-  scenario input: at its authored reveal instant it materializes one authoritative Commitment and
-  publishes the normal schedule-change event. The detector deterministically selects the first
+  scenario input for dinner: at its authored reveal instant it materializes that authoritative
+  Commitment and publishes the normal schedule-change event. Mina's closing duty already exists from
+  her Employment, and duration plus Bakery-to-Cafe travel—not simple clock overlap—makes the pair
+  jointly infeasible. The detector deterministically selects the first
   individually feasible but jointly infeasible pair by Commitment ID, so unrelated future routine
   occurrences can coexist without suppressing the v0 two-plan encounter. After the existing
   leave-work beat, Mina learns that dinner with Glen conflicts with helping Darius close the bakery.
@@ -233,7 +243,8 @@ Working implementations:
   and weak outcome provenance on Knowledge, RelationshipMemory, and History. Outcome ledgers and
   idempotency indexes are not save caches: settled durable consequences are authoritative, while pending
   policy snapshots are carried by their scheduled payload. Schema v7 adds optional travel-arrival
-  continuation fields; v6 payloads migrate with the prior no-continuation behavior.
+  continuation fields; v6 payloads migrate with the prior no-continuation behavior. Schema v8 adds
+  Employment identities, their snapshotted obligation patterns, and the Employment allocator.
 - **Scale regression gate** — the normal suite repeats a 250-character/six-hour workload and requires
   identical authoritative hashes and deterministic work counts under structural per-character ceilings.
   An opt-in 1,000-character/one-day tier enforces initial wall-clock and heap budgets while the CLI
@@ -261,21 +272,22 @@ Intentionally thin, pending game-design decisions:
   triggers now generate content-backed Decisions. Other circumstances remain content-driven additions.
 - **Consequences breadth.** Resolved options can change the primary Activity, a directional relationship
   channel, or Commitment intent through Preserve/Relinquish. Commitment outcomes now feed stakeholder
-  attribution, memories, directional channels, and live social belief/Reliance. Employment,
-  institutional-stakeholder reactions, later attribution correction, and actual Defer behavior remain
-  unimplemented.
+  attribution, memories, directional channels, and live social belief/Reliance. Institutional
+  stakeholders, wages/payroll, promotion/staffing, later attribution correction, and actual Defer
+  behavior remain unimplemented.
 - **Save serialization format.** Explicitly deferred (§57). `ISaveGameSerializer` is defined;
   `InMemorySaveGameStore` exercises mapping without committing to an encoding.
 - **Needs → behaviour breadth.** Threshold crossings can generate one Decision type and Energy now
   drives one direct Sleep/recovery routine. Ordinary Eating, competing routine priority, and other
   behavioral reactions remain unimplemented.
-- **Unity authoring/presentation.** `ContentPackAsset` converts authored Needs, Activities, Decisions
+- **Unity authoring/presentation.** `ContentPackAsset` converts authored Needs, Activities, Employment
+  definitions and obligation patterns, Decisions
   (including typed compiled reasoning, social triggers, and directional outcomes), appraisal calibration,
   social evidence/pressure, and interventions into the validated Domain catalog. Demo characters receive deterministic social
-  profiles. The smoke scene schedules two shared work Commitments: Mina and Glen
+  profiles. The smoke scene creates Mina and Glen's Bakery Employments, whose shared shift Commitments
   interact while travelling, Mina arrives beside a disliked working colleague and gains Work pressure,
   then a real hunger crossing generates the compiled, explainable leave-work Decision. After that beat,
-  two scheduled obligations become known and generate the authored commitment-conflict Decision.
+  dinner becomes known and conflicts with Mina's Employment-derived closing duty.
   `WorldPresenter` surfaces the resulting knowledge-filtered projection and sends
   Hold, Release, and intervention Commands. A bounded newest-first Decision history projection promotes
   appearance, successful intervention, and resolution events into explanatory recent History and is
@@ -339,6 +351,7 @@ The test suite is organised around the §58 invariants rather than around classe
 | Scheduled obligations generate a concrete plan Decision identically across reload | `GoldenScenarioTests`, `VivariumPlayModeTests` |
 | Terminal Commitment transitions validate, mint one outcome, and survive expiration reload | `CommitmentOutcomeTests`, `CommitmentOutcomePersistenceTests` |
 | Accountability policy/stakeholder snapshots round-trip without persisting derived routing | `CommitmentOutcomePersistenceTests`, `GoldenScenarioTests` |
+| Employment derives workplace obligations, authority facts, attendance, and identical future behavior after reload | `EmploymentTests`, `GoldenScenarioTests`, `VivariumPlayModeTests` |
 | Routine fulfillment changes Reliance evidence without Trust/memory mutation | `GoldenScenarioTests` |
 | Breach attribution produces provenance-linked belief, memory, history, and channel effects once | `GoldenScenarioTests`, `VivariumPlayModeTests` |
 | Same initial world yields a weaker later Reliance Influence after breach, exactly across pre-conflict reload | `GoldenScenarioTests` |

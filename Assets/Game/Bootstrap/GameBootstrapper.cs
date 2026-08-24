@@ -9,6 +9,7 @@ using Vivarium.Domain.Common;
 using Vivarium.Domain.Content;
 using Vivarium.Domain.Decisions;
 using Vivarium.Domain.Groups;
+using Vivarium.Domain.Employment;
 using Vivarium.Domain.Relationships;
 using Vivarium.Domain.Social;
 using Vivarium.Domain.Simulation;
@@ -45,6 +46,9 @@ namespace Vivarium.Unity.Bootstrap
         private static readonly AuthoredId ModifierDislikedColleague = new AuthoredId("activity_modifier.disliked_colleague_present");
         private static readonly AuthoredId SocialCalibrationStandard = new AuthoredId("social.calibration.standard");
         private static readonly AuthoredId AccountabilitySocialCommitment = new AuthoredId("accountability.social_commitment");
+        private static readonly AuthoredId EmploymentBakeryWorker = new AuthoredId("employment.bakery_worker");
+        private static readonly AuthoredId PatternBakeryShift = new AuthoredId("routine.bakery_shift");
+        private static readonly AuthoredId PatternBakeryClosingDuty = new AuthoredId("routine.bakery_closing_duty");
         [Header("Content")]
         [SerializeField] private ContentPackAsset contentPack;
 
@@ -161,9 +165,30 @@ namespace Vivarium.Unity.Bootstrap
                 workshop,
                 SimDuration.FromHours(2));
 
-            SeedWorkCommitment(mina, workshop);
-            SeedWorkCommitment(glen, workshop);
-            SeedCommitmentConflictReveal(mina, glen, darius, cafe, workshop);
+            var employer = new Group(
+                _host.World.RuntimeIds.Groups.Next(),
+                GroupKinds.Employer,
+                "Demo Bakery",
+                workshop);
+            _host.World.Groups.Add(employer.Id, employer);
+
+            Employment minaEmployment = _host.Employments.Create(
+                _host.Simulation,
+                mina,
+                employer.Id,
+                EmploymentBakeryWorker,
+                darius,
+                new[] { PatternBakeryShift, PatternBakeryClosingDuty });
+            Employment glenEmployment = _host.Employments.Create(
+                _host.Simulation,
+                glen,
+                employer.Id,
+                EmploymentBakeryWorker,
+                darius,
+                new[] { PatternBakeryShift });
+            _host.Employments.MaterializeCommitments(_host.Simulation, minaEmployment);
+            _host.Employments.MaterializeCommitments(_host.Simulation, glenEmployment);
+            SeedCommitmentConflictReveal(mina, glen, cafe);
             _host.Session.Advance(SimDuration.Zero);
         }
 
@@ -252,34 +277,13 @@ namespace Vivarium.Unity.Bootstrap
             _host.World.RelationshipIndex.Register(relationship);
         }
 
-        private void SeedWorkCommitment(CharacterId characterId, LocationId workshop)
-        {
-            SimTime startsAt = _host.World.Clock.Now.Plus(SimDuration.FromMinutes(32));
-            var commitment = new Commitment(
-                _host.World.RuntimeIds.Commitments.Next(),
-                characterId,
-                new AuthoredId("commitment.demo_work_shift"),
-                startsAt,
-                startsAt.Plus(SimDuration.FromMinutes(5)),
-                SimDuration.FromHours(2),
-                workshop,
-                priority: 100,
-                activityDefinitionId: ActivityWorking,
-                sourceTemplateId: new AuthoredId("routine.demo_work_shift"));
-            _host.World.Commitments.Add(commitment.Id, commitment);
-            _host.World.BumpRevision(commitment.ScheduleRevisionKey);
-            _host.Planner.TryPlanCommitmentStart(_host.Simulation, commitment);
-        }
-
         private void SeedCommitmentConflictReveal(
             CharacterId mina,
             CharacterId glen,
-            CharacterId darius,
-            LocationId cafe,
-            LocationId workshop)
+            LocationId cafe)
         {
             SimTime revealAt = _host.World.Clock.Now.Plus(SimDuration.FromHours(1));
-            SimTime startsAt = _host.World.Clock.Now.Plus(SimDuration.FromHours(2));
+            SimTime startsAt = _host.World.Clock.Now.Plus(SimDuration.FromMinutes(242));
             ScheduleCommitmentReveal(revealAt, new CommitmentBecomesKnownPayload(
                 mina,
                 new AuthoredId("commitment.dinner_with_glen"),
@@ -290,17 +294,6 @@ namespace Vivarium.Unity.Bootstrap
                 70,
                 ActivityDining,
                 new[] { glen },
-                accountabilityPolicy: _catalog.CommitmentAccountabilityPolicies[AccountabilitySocialCommitment]));
-            ScheduleCommitmentReveal(revealAt, new CommitmentBecomesKnownPayload(
-                mina,
-                new AuthoredId("commitment.help_darius_close_bakery"),
-                startsAt,
-                startsAt.Plus(SimDuration.FromMinutes(10)),
-                SimDuration.FromMinutes(90),
-                workshop,
-                90,
-                ActivityHelpingAtBakery,
-                new[] { darius },
                 accountabilityPolicy: _catalog.CommitmentAccountabilityPolicies[AccountabilitySocialCommitment]));
         }
 

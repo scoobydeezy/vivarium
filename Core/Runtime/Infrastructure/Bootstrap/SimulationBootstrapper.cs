@@ -13,6 +13,7 @@ using Vivarium.Domain.Characters;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Decisions;
 using Vivarium.Domain.Events;
+using Vivarium.Domain.Employment;
 using Vivarium.Domain.Knowledge;
 using Vivarium.Domain.Randomness;
 using Vivarium.Domain.Relationships;
@@ -31,6 +32,7 @@ namespace Vivarium.Infrastructure.Bootstrap
             ProjectionPublisher projections,
             ActivityTransitionService transitions,
             SchedulePlanner planner,
+            EmploymentService employments,
             NeedProgressionService needs,
             ActivityResolutionRegistry activityResolution,
             DecisionResolutionService decisionResolution,
@@ -49,6 +51,7 @@ namespace Vivarium.Infrastructure.Bootstrap
             Projections = projections;
             Transitions = transitions;
             Planner = planner;
+            Employments = employments;
             Needs = needs;
             ActivityResolution = activityResolution;
             DecisionResolution = decisionResolution;
@@ -75,6 +78,8 @@ namespace Vivarium.Infrastructure.Bootstrap
         public ActivityTransitionService Transitions { get; }
 
         public SchedulePlanner Planner { get; }
+
+        public EmploymentService Employments { get; }
 
         public NeedProgressionService Needs { get; }
 
@@ -195,6 +200,7 @@ namespace Vivarium.Infrastructure.Bootstrap
             // Domain services.
             var transitions = new ActivityTransitionService();
             var planner = new SchedulePlanner();
+            var employments = new EmploymentService(catalog, planner);
             var needs = new NeedProgressionService();
             var restRoutines = new NeedRestRoutineService(catalog, needs, transitions);
             var activityResolution = new ActivityResolutionRegistry();
@@ -207,6 +213,7 @@ namespace Vivarium.Infrastructure.Bootstrap
 
             var knowledgeDiscovery = new KnowledgeDiscoveryService();
             knowledgeDiscovery.RegisterProvider(new CharacterFactProvider(catalog.Traits));
+            knowledgeDiscovery.RegisterProvider(new EmploymentFactProvider());
             knowledgeDiscovery.RegisterProvider(new DecisionInfluenceFactProvider());
             IInteractionRelevance interactionRelevance = catalog.SocialPressures.TryGetValue(
                 new AuthoredId("social.pressure.interaction_relevance"),
@@ -310,6 +317,7 @@ namespace Vivarium.Infrastructure.Bootstrap
                 projections,
                 transitions,
                 planner,
+                employments,
                 needs,
                 activityResolution,
                 decisionResolution,

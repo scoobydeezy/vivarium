@@ -8,6 +8,7 @@ using Vivarium.Domain.Activities;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Content;
 using Vivarium.Domain.Decisions;
+using Vivarium.Domain.Employment;
 using Vivarium.Domain.Characters;
 using Vivarium.Domain.Relationships;
 using Vivarium.Domain.Knowledge;
@@ -275,12 +276,26 @@ namespace Vivarium.SimRunner.Tests
             Assert.Equal(2, uninterrupted.CommitmentConflictKey.ParticipatingCommitmentIds.Count);
             Assert.True(fixture.Host.World.Commitments.All.Count() > 2); // unrelated routine intent coexists
 
+            Commitment closing = FindCommitment(
+                fixture.Host.World, SampleContent.CommitmentHelpDariusCloseBakery);
+            Commitment dinner = FindCommitment(
+                fixture.Host.World, SampleContent.CommitmentDinnerWithGlen);
+            Assert.Equal(fixture.Layout.MinaEmployment.ToRef(), closing.Source);
+            Assert.Equal(StakeholderRole.Authority, Assert.Single(closing.Stakeholders).Role);
+            Assert.False(closing.OverlapsWindowOf(dinner));
+            Assert.True(fixture.Host.World.TravelNetwork.TryPlanRoute(
+                fixture.Layout.Bakery, fixture.Layout.Cafe, out TravelPlan closingToDinner));
+            Assert.True(closing.EarliestStart.Plus(closing.ExpectedDuration).Plus(closingToDinner.TotalCost) >
+                dinner.LatestStart);
+
             DecisionView view = new DecisionProjector(fixture.Catalog.Interventions)
                 .Project(fixture.Host.World, uninterrupted);
             Assert.True(view.HasHardDeadline);
-            Assert.Contains("Keep Dinner With Glen", view.Options[0].IntentSummary);
-            Assert.Contains("give up Help Darius Close Bakery", view.Options[0].IntentSummary);
-            Assert.Equal(view.Options[0].IntentSummary, view.Options[0].Label);
+            DecisionOptionView dinnerPlan = Assert.Single(
+                view.Options,
+                option => option.IntentSummary.Contains("Keep Dinner With Glen"));
+            Assert.Contains("give up Help Darius Close Bakery", dinnerPlan.IntentSummary);
+            Assert.Equal(dinnerPlan.IntentSummary, dinnerPlan.Label);
 
             SimDuration untilDeadline = uninterrupted.ResolveAt - fixture.Host.World.Clock.Now;
             fixture.Host.Session.Advance(untilDeadline);
@@ -411,7 +426,7 @@ namespace Vivarium.SimRunner.Tests
             text.Append("clock:").Append(world.Clock.Now.TotalMinutes)
                 .Append("|ids:").Append(ids.Characters).Append(',').Append(ids.Activities).Append(',')
                 .Append(ids.Commitments).Append(',').Append(ids.CommitmentOutcomes).Append(',')
-                .Append(ids.Relationships).Append(',').Append(ids.Decisions)
+                .Append(ids.Relationships).Append(',').Append(ids.Decisions).Append(',').Append(ids.Employments)
                 .Append(',').Append(ids.ScheduledEvents).Append(',').Append(ids.HistoryEntries).Append(',').Append(ids.EventSequence);
 
             foreach (ScheduledEvent scheduled in world.Scheduler.PendingEvents)
@@ -463,6 +478,12 @@ namespace Vivarium.SimRunner.Tests
                     .Append(relationship.HighToLow.ChannelAt(RelationshipChannels.Affection, world.Clock.Now)).Append(',')
                     .Append(relationship.HighToLow.FamiliarityAt(world.Clock.Now))
                     .Append(',').Append(relationship.LastInteractionAt?.TotalMinutes ?? -1);
+            }
+            foreach (Employment employment in world.Employments.All)
+            {
+                text.Append("|employment:").Append(employment.Id.Value).Append(',')
+                    .Append(employment.EmployeeId.Value).Append(',').Append(employment.EmployerGroupId.Value).Append(',')
+                    .Append(employment.DefinitionId.Value).Append(',').Append(employment.SupervisorId.Value);
             }
 
             return text.ToString();
