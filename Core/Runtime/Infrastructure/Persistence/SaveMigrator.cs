@@ -43,6 +43,7 @@ namespace Vivarium.Infrastructure.Persistence
             Register(new SaveV5ToV6CommitmentAccountabilityMigration());
             Register(new SaveV6ToV7TravelContinuationMigration());
             Register(new SaveV7ToV8EmploymentMigration());
+            Register(new SaveV8ToV9ActivityAffordanceMigration());
         }
 
         public void Register(ISaveMigration migration)

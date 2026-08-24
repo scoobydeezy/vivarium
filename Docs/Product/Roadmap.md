@@ -33,18 +33,19 @@ supported player actions, and required Unity surfaces.
 
 The immediate next slice is:
 
-> **Ordinary Hunger → Eating governed by location and Activity affordances.**
+> **Discretionary Recreation → Tabletop Games / Reading selected from Interests and availability.**
 
 Observable completion test:
 
-> Hunger produces an ordinary Eating Activity only where an available location affords it; travel,
-> consumption, satisfaction, and replanning remain authoritative and deterministic across save/load.
+> A free character selects a real available Recreation affordance consistent with their Interests,
+> travels when needed, completes it, and replans identically across uninterrupted and save/load runs.
 
-The Employment v0 slice is complete: authored Employment identity now owns employer, role, workplace,
-supervisor authority, and recurring shift/closing-duty patterns. Those patterns materialize ordinary
-Commitments with derived Authority stakeholders, and the flagship Bakery conflict now arises from the
-normal Commitment lifecycle identically across uninterrupted and save/load runs. Ordinary Eating is the
-earliest remaining missing link in the Phase 1 daily-routine loop.
+The Ordinary Hunger slice is complete: an authored satisfaction routine now turns analytical Hunger
+into Eating only at an explicit, reachable location Activity affordance. It carries snapshotted meal
+effects through Travel, applies consumption on completion, and resumes fallback planning identically
+live, offline, and across save/load. Work-context eligibility preserves Mina's Need-vs-obligation
+Decision rather than inventing a Bakery meal break. Discretionary Recreation is the earliest remaining
+missing link in the Phase 1 daily-routine loop.
 
 ## Ordered phases
 
@@ -79,8 +80,8 @@ slice:
 
 1. Energy → Sleeping → waking → replanning. **Complete.**
 2. Employment v0 → workplace authority and recurring shift/closing-duty Commitments. **Complete.**
-3. Ordinary Hunger → Eating governed by location and Activity affordances. **Next.**
-4. Discretionary Recreation → Tabletop Games / Reading selected from Interests and availability.
+3. Ordinary Hunger → Eating governed by location and Activity affordances. **Complete.**
+4. Discretionary Recreation → Tabletop Games / Reading selected from Interests and availability. **Next.**
 5. Ordinary Socializing through bounded shared-context selection.
 
 This is sequencing guidance, not permission to implement all five as one subsystem project.

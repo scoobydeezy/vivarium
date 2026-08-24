@@ -203,6 +203,7 @@ namespace Vivarium.Infrastructure.Bootstrap
             var employments = new EmploymentService(catalog, planner);
             var needs = new NeedProgressionService();
             var restRoutines = new NeedRestRoutineService(catalog, needs, transitions);
+            var satisfactionRoutines = new NeedSatisfactionRoutineService(catalog, needs, transitions);
             var activityResolution = new ActivityResolutionRegistry();
             var decisionResolution = new DecisionResolutionService();
             var decisionReevaluation = new DecisionReevaluationService();
@@ -248,6 +249,9 @@ namespace Vivarium.Infrastructure.Bootstrap
 
             // Content-backed reactions use explicit stable order (§12.1).
             var domainHandlers = new OrderedDomainEventHandlerRegistry();
+            domainHandlers.Register(new NeedSatisfactionThresholdHandler(satisfactionRoutines), 40);
+            domainHandlers.Register(new NeedSatisfactionActivityStartedHandler(satisfactionRoutines), 40);
+            domainHandlers.Register(new NeedSatisfactionActivityCompletedHandler(satisfactionRoutines), 40);
             domainHandlers.Register(new NeedRestThresholdHandler(restRoutines), 50);
             domainHandlers.Register(new NeedRestActivityStartedHandler(restRoutines), 50);
             domainHandlers.Register(new NeedRestActivityCompletedHandler(restRoutines), 50);

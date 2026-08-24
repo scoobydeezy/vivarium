@@ -81,7 +81,8 @@ namespace Vivarium.Domain.Characters
             long defaultRateNumerator,
             long defaultRateDenominator = 1,
             IReadOnlyList<long> behaviouralThresholds = null,
-            NeedRestRoutineDefinition restRoutine = null)
+            NeedRestRoutineDefinition restRoutine = null,
+            NeedSatisfactionRoutineDefinition satisfactionRoutine = null)
         {
             if (!id.IsSet)
             {
@@ -96,6 +97,7 @@ namespace Vivarium.Domain.Characters
             DefaultRateDenominator = defaultRateDenominator;
             BehaviouralThresholds = behaviouralThresholds ?? new long[0];
             RestRoutine = restRoutine;
+            SatisfactionRoutine = satisfactionRoutine;
         }
 
         public AuthoredId Id { get; }
@@ -119,6 +121,9 @@ namespace Vivarium.Domain.Characters
 
         /// <summary>Optional content-backed recovery routine, used by reserve Needs such as Energy.</summary>
         public NeedRestRoutineDefinition RestRoutine { get; }
+
+        /// <summary>Optional ordinary Activity that applies an instantaneous satisfying offset.</summary>
+        public NeedSatisfactionRoutineDefinition SatisfactionRoutine { get; }
 
         public override string ToString() => Id.ToString();
     }

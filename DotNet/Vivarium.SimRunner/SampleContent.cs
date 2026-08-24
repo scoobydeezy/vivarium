@@ -117,7 +117,18 @@ namespace Vivarium.SimRunner
                 "Homebound",
                 new[] { new DiscoveryChannel(DiscoveryChannels.Conversation, 9000) }));
 
-            builder.Add(new NeedDefinition(NeedHunger, "Hunger", 0, 10000, 12, 1, new long[] { 6000, 8000, 9500 }));
+            builder.Add(new NeedDefinition(
+                NeedHunger,
+                "Hunger",
+                0,
+                10000,
+                12,
+                1,
+                new long[] { 6000, 8000, 9500 },
+                satisfactionRoutine: new NeedSatisfactionRoutineDefinition(
+                    WellKnownActivities.Eating,
+                    6000,
+                    -5000)));
             builder.Add(new NeedDefinition(NeedSocial, "Social", 0, 10000, 4, 1, new long[] { 7000 }));
             builder.Add(new NeedDefinition(
                 WellKnownNeeds.Energy,
@@ -138,6 +149,7 @@ namespace Vivarium.SimRunner
             builder.Add(new ActivityDefinition(ActivitySleeping, "Sleeping", SimDuration.FromHours(8), false));
             builder.Add(new ActivityDefinition(ActivityDining, "Dining", SimDuration.FromMinutes(90), false));
             builder.Add(new ActivityDefinition(ActivityHelpingAtBakery, "Helping at the bakery", SimDuration.FromMinutes(90), false));
+            builder.Add(new ActivityDefinition(WellKnownActivities.Eating, "Eating", SimDuration.FromMinutes(30), false));
             builder.Add(new ActivityDefinition(WellKnownActivities.Waiting, "Waiting", SimDuration.FromHours(1), false));
             builder.Add(new ActivityDefinition(WellKnownActivities.Traveling, "Traveling", SimDuration.FromMinutes(10), false, false, true));
 
@@ -181,7 +193,7 @@ namespace Vivarium.SimRunner
                 SimDuration.FromMinutes(10),
                 new AuthoredId("conflict_scope.current_activity"),
                 importance: 20,
-                trigger: new NeedThresholdDecisionTrigger(NeedHunger, 6000),
+                trigger: new NeedThresholdDecisionTrigger(NeedHunger, 6000, ActivityWorking),
                 activityOutcomes: new[]
                 {
                     new DecisionActivityOutcome(OptionLeave, WellKnownActivities.Waiting, SimDuration.FromHours(1)),

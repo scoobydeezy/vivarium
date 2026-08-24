@@ -135,7 +135,8 @@ namespace Vivarium.Domain.Activities
                 payload.DestinationLocationId,
                 duration,
                 0,
-                travel.SourceCommitmentId);
+                travel.SourceCommitmentId,
+                payload.ContinuationCommittedParameters);
 
             if (commitment != null)
             {

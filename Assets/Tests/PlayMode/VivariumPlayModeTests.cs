@@ -391,6 +391,69 @@ namespace Vivarium.Unity.Tests
                 .From(observer).Memories.Count, Is.EqualTo(1));
         }
 
+        [UnityTest]
+        public IEnumerator Ordinary_hunger_travels_to_authored_eating_affordance_and_replans()
+        {
+            var eatingId = WellKnownActivities.Eating;
+            Assert.That(_bootstrapper.Host.Catalog.Activities.ContainsKey(eatingId), Is.True);
+            NeedDefinition hungerDefinition = _bootstrapper.Host.Catalog.Needs[HungerNeedId];
+            Assert.That(hungerDefinition.SatisfactionRoutine, Is.Not.Null);
+
+            LocationNode room = null;
+            LocationNode workshop = null;
+            foreach (LocationNode location in _bootstrapper.Host.World.Locations.Nodes.All)
+            {
+                if (location.DisplayName == "Demo Room") room = location;
+                if (location.DisplayName == "Demo Workshop") workshop = location;
+            }
+            Assert.That(room, Is.Not.Null);
+            Assert.That(workshop, Is.Not.Null);
+            Assert.That(room.Affords(eatingId), Is.True);
+            Assert.That(workshop.Affords(eatingId), Is.False);
+
+            var priya = new Character(
+                _bootstrapper.Host.World.RuntimeIds.Characters.Next(),
+                "Priya Eating Test",
+                _bootstrapper.Host.World.Clock.Now);
+            _bootstrapper.Host.World.Characters.Add(priya.Id, priya);
+            var hunger = new NeedState(
+                HungerNeedId,
+                AnalyticalProgression.Linear(
+                    5990,
+                    _bootstrapper.Host.World.Clock.Now,
+                    hungerDefinition.DefaultRateNumerator,
+                    hungerDefinition.DefaultRateDenominator,
+                    hungerDefinition.MinValue,
+                    hungerDefinition.MaxValue),
+                hungerDefinition.SatisfactionRoutine.ActivationThreshold);
+            priya.SetNeed(hunger);
+            _bootstrapper.Host.Needs.Rearm(_bootstrapper.Host.Simulation, priya, hunger);
+            _bootstrapper.Host.Transitions.BeginActivity(
+                _bootstrapper.Host.Simulation,
+                priya.Id,
+                WellKnownActivities.Waiting,
+                workshop.Id,
+                SimDuration.FromHours(1));
+            _bootstrapper.Host.Session.Advance(SimDuration.Zero);
+
+            _bootstrapper.Host.Session.Advance(SimDuration.FromMinutes(1));
+            ActivityInstance travel = _bootstrapper.Host.World.Activities.Get(priya.CurrentActivityId);
+            Assert.That(travel.DefinitionId, Is.EqualTo(WellKnownActivities.Traveling));
+            Assert.That(travel.SpatialContext.Transit.DestinationLocationId, Is.EqualTo(room.Id));
+
+            _bootstrapper.Host.Session.Advance(SimDuration.FromMinutes(60));
+            ActivityInstance replanned = _bootstrapper.Host.World.Activities.Get(priya.CurrentActivityId);
+            Assert.That(replanned.DefinitionId, Is.EqualTo(WellKnownActivities.Waiting));
+            Assert.That(replanned.SpatialContext.LocationId, Is.EqualTo(room.Id));
+            Assert.That(priya.TryGetNeed(HungerNeedId, out NeedState satisfied), Is.True);
+            Assert.That(satisfied.ValueAt(_bootstrapper.Host.World.Clock.Now),
+                Is.LessThan(hungerDefinition.SatisfactionRoutine.ActivationThreshold));
+            foreach (Decision decision in _bootstrapper.Host.World.Decisions.All)
+                Assert.That(decision.CharacterId == priya.Id && decision.DefinitionId == DemoDecisionId, Is.False);
+
+            yield return null;
+        }
+
         private Character FirstCharacter()
         {
             foreach (Character character in _bootstrapper.Host.World.Characters.All)

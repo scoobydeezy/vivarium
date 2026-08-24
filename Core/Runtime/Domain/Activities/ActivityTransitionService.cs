@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Vivarium.Domain.Characters;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Scheduling;
@@ -36,7 +37,8 @@ namespace Vivarium.Domain.Activities
             LocationId locationId,
             SimDuration duration,
             long performanceRatePerMinute = 0,
-            CommitmentId sourceCommitmentId = default)
+            CommitmentId sourceCommitmentId = default,
+            IReadOnlyDictionary<AuthoredId, long> committedParameters = null)
         {
             return Begin(
                 context,
@@ -48,7 +50,8 @@ namespace Vivarium.Domain.Activities
                 sourceCommitmentId,
                 ScheduledEventTypes.ActivityComplete,
                 default,
-                default);
+                default,
+                committedParameters);
         }
 
         /// <summary>
@@ -65,7 +68,8 @@ namespace Vivarium.Domain.Activities
             out ActivityInstance travelActivity,
             CommitmentId sourceCommitmentId = default,
             AuthoredId continuationActivityDefinitionId = default,
-            SimDuration continuationDuration = default)
+            SimDuration continuationDuration = default,
+            IReadOnlyDictionary<AuthoredId, long> continuationCommittedParameters = null)
         {
             travelActivity = null;
             WorldState world = context.World;
@@ -99,7 +103,9 @@ namespace Vivarium.Domain.Activities
                 sourceCommitmentId,
                 ScheduledEventTypes.TravelArrival,
                 continuationActivityDefinitionId,
-                continuationDuration);
+                continuationDuration,
+                null,
+                continuationCommittedParameters);
 
             return true;
         }
@@ -155,7 +161,9 @@ namespace Vivarium.Domain.Activities
             CommitmentId sourceCommitmentId,
             AuthoredId completionEventType,
             AuthoredId continuationActivityDefinitionId,
-            SimDuration continuationDuration)
+            SimDuration continuationDuration,
+            IReadOnlyDictionary<AuthoredId, long> committedParameters = null,
+            IReadOnlyDictionary<AuthoredId, long> continuationCommittedParameters = null)
         {
             WorldState world = context.World;
             SimTime now = world.Clock.Now;
@@ -195,6 +203,11 @@ namespace Vivarium.Domain.Activities
             // Snapshot the outcome-affecting parameter this instance was constructed with, so a later
             // content reload cannot rewrite how it resolves (§42.1).
             activity.CommitParameter(PerformanceRateParameter, performanceRatePerMinute);
+            if (committedParameters != null)
+            {
+                foreach (KeyValuePair<AuthoredId, long> parameter in committedParameters)
+                    activity.CommitParameter(parameter.Key, parameter.Value);
+            }
 
             world.Activities.Add(activity.Id, activity);
             character.SetCurrentActivity(activity.Id);
@@ -209,7 +222,8 @@ namespace Vivarium.Domain.Activities
                 activity,
                 completionEventType,
                 continuationActivityDefinitionId,
-                continuationDuration);
+                continuationDuration,
+                continuationCommittedParameters);
 
             world.Publish(new ActivityStartedEvent(characterId, activity.Id, definitionId));
 
@@ -231,7 +245,8 @@ namespace Vivarium.Domain.Activities
             ActivityInstance activity,
             AuthoredId eventType,
             AuthoredId continuationActivityDefinitionId = default,
-            SimDuration continuationDuration = default)
+            SimDuration continuationDuration = default,
+            IReadOnlyDictionary<AuthoredId, long> continuationCommittedParameters = null)
         {
             WorldState world = context.World;
 
@@ -250,7 +265,8 @@ namespace Vivarium.Domain.Activities
                     activity.CharacterId,
                     activity.SpatialContext.Transit.DestinationLocationId,
                     continuationActivityDefinitionId,
-                    continuationDuration)
+                    continuationDuration,
+                    continuationCommittedParameters)
                 : new ActivityCompletionPayload(activity.Id, activity.CharacterId);
 
             ScheduledEvent scheduled = world.Scheduler.Schedule(

@@ -21,7 +21,7 @@ namespace Vivarium.Application.Persistence
         /// <summary>
         /// The current persisted shape. Bump on any structural change and add a migration (§39).
         /// </summary>
-        public const int CurrentSchemaVersion = 8;
+        public const int CurrentSchemaVersion = 9;
 
         /// <summary>Determines whether the persisted shape can be understood or migrated (§39.1).</summary>
         public int SchemaVersion = CurrentSchemaVersion;
@@ -307,6 +307,7 @@ namespace Vivarium.Application.Persistence
         public string DisplayName;
         public bool IsOccupiable;
         public int Capacity;
+        public List<string> ActivityAffordances = new List<string>();
     }
 
     public sealed class TravelConnectionData

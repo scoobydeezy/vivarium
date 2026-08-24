@@ -51,7 +51,12 @@ namespace Vivarium.SimRunner
             // --- containment hierarchy (§27) ---
             layout.World = AddLocation(world, LocationId.None, SampleContent.LocationKindWorld, "World");
             layout.Town = AddLocation(world, layout.World, SampleContent.LocationKindTown, "Eastmarket");
-            layout.Home = AddLocation(world, layout.Town, SampleContent.LocationKindBuilding, "Mina's flat");
+            layout.Home = AddLocation(
+                world,
+                layout.Town,
+                SampleContent.LocationKindBuilding,
+                "Mina's flat",
+                new[] { WellKnownActivities.Eating });
             layout.Bakery = AddLocation(world, layout.Town, SampleContent.LocationKindBuilding, "East Market Bakery");
             layout.Cafe = AddLocation(world, layout.Town, SampleContent.LocationKindBuilding, "Corner cafe");
 
@@ -61,9 +66,9 @@ namespace Vivarium.SimRunner
             world.TravelNetwork.ConnectBidirectional(layout.Cafe, layout.Bakery, SimDuration.FromMinutes(9), SampleContent.TravelModeWalking);
 
             // --- characters ---
-            layout.Mina = AddCharacter(host, "Mina Cairn", layout.Home, new[] { SampleContent.TraitAmbitious, SampleContent.TraitEnjoysBaking });
-            layout.Glen = AddCharacter(host, "Glen Ashby", layout.Home, new[] { SampleContent.TraitHomebound });
-            layout.Darius = AddCharacter(host, "Darius Vale", layout.Bakery, new[] { SampleContent.TraitAmbitious });
+            layout.Mina = AddCharacter(host, "Mina Cairn", layout.Home, new[] { SampleContent.TraitAmbitious, SampleContent.TraitEnjoysBaking }, 2000);
+            layout.Glen = AddCharacter(host, "Glen Ashby", layout.Home, new[] { SampleContent.TraitHomebound }, 2000);
+            layout.Darius = AddCharacter(host, "Darius Vale", layout.Bakery, new[] { SampleContent.TraitAmbitious }, 1000);
 
             var employer = new Group(
                 world.RuntimeIds.Groups.Next(),
@@ -166,14 +171,29 @@ namespace Vivarium.SimRunner
                 ScheduledEventTypes.CommitmentBecomesKnown,
                 payload);
 
-        private static LocationId AddLocation(WorldState world, LocationId parent, AuthoredId kind, string name)
+        private static LocationId AddLocation(
+            WorldState world,
+            LocationId parent,
+            AuthoredId kind,
+            string name,
+            IReadOnlyList<AuthoredId> activityAffordances = null)
         {
-            var node = new LocationNode(world.RuntimeIds.Locations.Next(), parent, kind, name);
+            var node = new LocationNode(
+                world.RuntimeIds.Locations.Next(),
+                parent,
+                kind,
+                name,
+                activityAffordances: activityAffordances);
             world.Locations.Add(node);
             return node.Id;
         }
 
-        private static CharacterId AddCharacter(SimulationHost host, string name, LocationId startingLocation, AuthoredId[] traits)
+        private static CharacterId AddCharacter(
+            SimulationHost host,
+            string name,
+            LocationId startingLocation,
+            AuthoredId[] traits,
+            long initialHunger = 2000)
         {
             WorldState world = host.World;
 
@@ -190,7 +210,7 @@ namespace Vivarium.SimRunner
             NeedDefinition hunger = host.Catalog.Needs[SampleContent.NeedHunger];
             var hungerState = new NeedState(
                 hunger.Id,
-                AnalyticalProgression.Linear(2000, world.Clock.Now, hunger.DefaultRateNumerator, hunger.DefaultRateDenominator, hunger.MinValue, hunger.MaxValue),
+                AnalyticalProgression.Linear(initialHunger, world.Clock.Now, hunger.DefaultRateNumerator, hunger.DefaultRateDenominator, hunger.MinValue, hunger.MaxValue),
                 hunger.BehaviouralThresholds[0]);
 
             character.SetNeed(hungerState);

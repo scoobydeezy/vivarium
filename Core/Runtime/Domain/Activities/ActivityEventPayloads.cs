@@ -127,13 +127,15 @@ namespace Vivarium.Domain.Activities
             CharacterId characterId,
             LocationId destinationLocationId,
             AuthoredId continuationActivityDefinitionId = default,
-            SimDuration continuationDuration = default)
+            SimDuration continuationDuration = default,
+            IReadOnlyDictionary<AuthoredId, long> continuationCommittedParameters = null)
         {
             ActivityInstanceId = activityInstanceId;
             CharacterId = characterId;
             DestinationLocationId = destinationLocationId;
             ContinuationActivityDefinitionId = continuationActivityDefinitionId;
             ContinuationDuration = continuationDuration;
+            ContinuationCommittedParameters = Copy(continuationCommittedParameters);
         }
 
         public ActivityInstanceId ActivityInstanceId { get; }
@@ -146,6 +148,18 @@ namespace Vivarium.Domain.Activities
         public AuthoredId ContinuationActivityDefinitionId { get; }
 
         public SimDuration ContinuationDuration { get; }
+
+        /// <summary>Definition-derived continuation values carried through Travel and save/load.</summary>
+        public IReadOnlyDictionary<AuthoredId, long> ContinuationCommittedParameters { get; }
+
+        private static IReadOnlyDictionary<AuthoredId, long> Copy(
+            IReadOnlyDictionary<AuthoredId, long> source)
+        {
+            var result = new SortedDictionary<AuthoredId, long>();
+            if (source == null) return result;
+            foreach (KeyValuePair<AuthoredId, long> pair in source) result.Add(pair.Key, pair.Value);
+            return result;
+        }
     }
 
     /// <summary>

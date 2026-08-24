@@ -15,15 +15,22 @@ namespace Vivarium.Domain.Decisions
     /// <summary>Content rule for generating one Decision when a Need reaches a meaningful threshold.</summary>
     public sealed class NeedThresholdDecisionTrigger
     {
-        public NeedThresholdDecisionTrigger(AuthoredId needId, long threshold)
+        public NeedThresholdDecisionTrigger(
+            AuthoredId needId,
+            long threshold,
+            AuthoredId requiredActivityDefinitionId = default)
         {
             NeedId = needId;
             Threshold = threshold;
+            RequiredActivityDefinitionId = requiredActivityDefinitionId;
         }
 
         public AuthoredId NeedId { get; }
 
         public long Threshold { get; }
+
+        /// <summary>Optional Activity context in which this threshold becomes a Decision.</summary>
+        public AuthoredId RequiredActivityDefinitionId { get; }
     }
 
     /// <summary>An authored initial influence; its character subject is bound when the Decision is created.</summary>
@@ -93,7 +100,8 @@ namespace Vivarium.Domain.Decisions
                 DecisionDefinition definition = pair.Value;
                 if (definition.Trigger != null &&
                     definition.Trigger.NeedId == domainEvent.NeedId &&
-                    domainEvent.Value >= definition.Trigger.Threshold)
+                    domainEvent.Value >= definition.Trigger.Threshold &&
+                    MatchesRequiredActivity(world, domainEvent.CharacterId, definition.Trigger))
                 {
                     matching.Add(definition);
                 }
@@ -105,6 +113,14 @@ namespace Vivarium.Domain.Decisions
                 TryGenerate(matching[i], domainEvent.CharacterId, domainEvent.Value, world);
             }
         }
+
+        private static bool MatchesRequiredActivity(
+            WorldState world,
+            CharacterId characterId,
+            NeedThresholdDecisionTrigger trigger) =>
+            !trigger.RequiredActivityDefinitionId.IsSet ||
+            (world.TryGetCurrentActivity(characterId, out ActivityInstance activity) &&
+             activity.DefinitionId == trigger.RequiredActivityDefinitionId);
 
         private void TryGenerate(
             DecisionDefinition definition,

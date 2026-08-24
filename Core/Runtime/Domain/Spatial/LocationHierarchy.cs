@@ -19,6 +19,8 @@ namespace Vivarium.Domain.Spatial
         private readonly EntityRepository<LocationId, LocationNode> _nodes = new EntityRepository<LocationId, LocationNode>("Location");
         private readonly IndexedMembership<LocationId, LocationId> _children = new IndexedMembership<LocationId, LocationId>();
         private readonly Dictionary<LocationId, LocationId[]> _ancestorCache = new Dictionary<LocationId, LocationId[]>();
+        private readonly SortedDictionary<AuthoredId, SortedSet<LocationId>> _activityAffordances =
+            new SortedDictionary<AuthoredId, SortedSet<LocationId>>();
 
         public IReadOnlyEntityRepository<LocationId, LocationNode> Nodes => _nodes;
 
@@ -43,11 +45,27 @@ namespace Vivarium.Domain.Spatial
             }
 
             _ancestorCache.Clear();
+            for (int i = 0; i < node.ActivityAffordances.Count; i++)
+            {
+                AuthoredId activityId = node.ActivityAffordances[i];
+                if (!_activityAffordances.TryGetValue(activityId, out SortedSet<LocationId> locations))
+                {
+                    locations = new SortedSet<LocationId>();
+                    _activityAffordances.Add(activityId, locations);
+                }
+                locations.Add(node.Id);
+            }
         }
 
         public bool TryGet(LocationId id, out LocationNode node) => _nodes.TryGet(id, out node);
 
         public LocationNode Get(LocationId id) => _nodes.Get(id);
+
+        /// <summary>Locations explicitly affording an Activity, ascending by stable runtime id.</summary>
+        public IReadOnlyCollection<LocationId> Affording(AuthoredId activityDefinitionId) =>
+            _activityAffordances.TryGetValue(activityDefinitionId, out SortedSet<LocationId> locations)
+                ? locations
+                : (IReadOnlyCollection<LocationId>)new LocationId[0];
 
         /// <summary>Direct children, ascending.</summary>
         public IReadOnlyCollection<LocationId> ChildrenOf(LocationId id) => _children.MembersOf(id);

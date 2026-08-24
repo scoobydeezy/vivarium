@@ -125,6 +125,15 @@ Working implementations:
   threshold, wake into fallback planning, and continue identically through save/load and
   `OfflineCatchUp`. Optional travel continuation intent is snapshotted in the scheduled arrival payload;
   schema v7 preserves older arrivals as having no invented continuation.
+- **Ordinary Hunger / Eating routine** — an authored increasing-pressure Need may supply an ordinary
+  satisfaction Activity, activation threshold, and instantaneous completion offset. Immutable locations
+  own explicit Activity affordances indexed by Activity; the routine deterministically chooses the
+  nearest reachable occupiable location, travels there when necessary, completes Eating, applies its
+  snapshotted meal offset through `NeedProgressionService`, and returns to Waiting. It only starts from
+  fallback Waiting, so uninterrupted Work is not silently treated as a meal break. Need-threshold
+  Decision triggers may require an Activity context, keeping Mina's leave-work dilemma specific to
+  Working while free characters eat without a Decision. In-flight Travel carries generic snapshotted
+  continuation parameters through save/load and content drift.
 - **Decisions** — living influence sets with stable influence identity, dependency-indexed
   reevaluation, deterministic dice resolution, bounded held decisions, one authority for intervention
   rules, one content-backed Need-threshold generation path with an Activity consequence, and targeted
@@ -244,7 +253,9 @@ Working implementations:
   idempotency indexes are not save caches: settled durable consequences are authoritative, while pending
   policy snapshots are carried by their scheduled payload. Schema v7 adds optional travel-arrival
   continuation fields; v6 payloads migrate with the prior no-continuation behavior. Schema v8 adds
-  Employment identities, their snapshotted obligation patterns, and the Employment allocator.
+  Employment identities, their snapshotted obligation patterns, and the Employment allocator. Schema
+  v9 adds authoritative location Activity affordances; optional continuation parameters reuse the
+  existing scheduled-payload collections and older Travel arrivals decode with none.
 - **Scale regression gate** — the normal suite repeats a 250-character/six-hour workload and requires
   identical authoritative hashes and deterministic work counts under structural per-character ceilings.
   An opt-in 1,000-character/one-day tier enforces initial wall-clock and heap budgets while the CLI
@@ -277,17 +288,18 @@ Intentionally thin, pending game-design decisions:
   behavior remain unimplemented.
 - **Save serialization format.** Explicitly deferred (§57). `ISaveGameSerializer` is defined;
   `InMemorySaveGameStore` exercises mapping without committing to an encoding.
-- **Needs → behaviour breadth.** Threshold crossings can generate one Decision type and Energy now
-  drives one direct Sleep/recovery routine. Ordinary Eating, competing routine priority, and other
-  behavioral reactions remain unimplemented.
-- **Unity authoring/presentation.** `ContentPackAsset` converts authored Needs, Activities, Employment
-  definitions and obligation patterns, Decisions
+- **Needs → behaviour breadth.** Threshold crossings can generate one Decision type, Energy drives a
+  Sleep/recovery routine, and Hunger drives ordinary affordance-gated Eating. Competing routine
+  priority, Recreation/Social satisfaction, and other behavioral reactions remain unimplemented.
+- **Unity authoring/presentation.** `ContentPackAsset` converts authored Needs (including rest and
+  satisfaction routines), Activities, Employment definitions and obligation patterns, Decisions
   (including typed compiled reasoning, social triggers, and directional outcomes), appraisal calibration,
   social evidence/pressure, and interventions into the validated Domain catalog. Demo characters receive deterministic social
   profiles. The smoke scene creates Mina and Glen's Bakery Employments, whose shared shift Commitments
   interact while travelling, Mina arrives beside a disliked working colleague and gains Work pressure,
-  then a real hunger crossing generates the compiled, explainable leave-work Decision. After that beat,
-  dinner becomes known and conflicts with Mina's Employment-derived closing duty.
+  then a real hunger crossing generates the compiled, explainable leave-work Decision. Leaving Work now
+  naturally travels toward the Room's Eating affordance; the Workshop has none. After that beat, dinner
+  becomes known and conflicts with Mina's Employment-derived closing duty.
   `WorldPresenter` surfaces the resulting knowledge-filtered projection and sends
   Hold, Release, and intervention Commands. A bounded newest-first Decision history projection promotes
   appearance, successful intervention, and resolution events into explanatory recent History and is
@@ -330,6 +342,7 @@ The test suite is organised around the §58 invariants rather than around classe
 | Save/load round-trip, including active travel and revisions | `PersistenceTests` |
 | Need pressure generates a Decision and Activity consequence | `PersistenceTests` |
 | Energy travels home, sleeps, wakes, and replans identically live/offline/after reload | `SleepRoutineTests` |
+| Hunger selects only an explicit reachable Eating affordance, consumes, and replans identically live/offline/after reload and content drift | `EatingRoutineTests`, `GoldenScenarioTests`, `VivariumPlayModeTests` |
 | Generated Decision resolves identically after save/reload | `PersistenceTests` |
 | Work pressure counts only while context is present | `WorkContextTests` |
 | Living influence reevaluates with stable identity and reloads | `WorkContextTests` |

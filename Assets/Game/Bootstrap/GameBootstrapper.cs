@@ -144,7 +144,9 @@ namespace Vivarium.Unity.Bootstrap
         {
             _demoLocations.Clear();
             _demoCharacters.Clear();
-            LocationId room = SeedDemoLocation("Demo Room");
+            LocationId room = SeedDemoLocation(
+                "Demo Room",
+                new[] { WellKnownActivities.Eating });
             LocationId cafe = SeedDemoLocation("Demo Cafe");
             LocationId workshop = SeedDemoLocation("Demo Workshop");
 
@@ -192,13 +194,16 @@ namespace Vivarium.Unity.Bootstrap
             _host.Session.Advance(SimDuration.Zero);
         }
 
-        private LocationId SeedDemoLocation(string locationName)
+        private LocationId SeedDemoLocation(
+            string locationName,
+            IReadOnlyList<AuthoredId> activityAffordances = null)
         {
             var location = new LocationNode(
                 _host.World.RuntimeIds.Locations.Next(),
                 LocationId.None,
                 new AuthoredId("location_kind.building"),
-                locationName);
+                locationName,
+                activityAffordances: activityAffordances);
             _host.World.Locations.Add(location);
             _demoLocations.Add(location.Id);
             return location.Id;

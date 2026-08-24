@@ -289,6 +289,13 @@ namespace Vivarium.SimRunner
             hash = StableHash.Combine(hash, world.Knowledge.Count);
             hash = StableHash.Combine(hash, world.Employments.Count);
 
+            foreach (Domain.Spatial.LocationNode location in world.Locations.Nodes.All)
+            {
+                hash = StableHash.Combine(hash, location.Id.Value);
+                for (int i = 0; i < location.ActivityAffordances.Count; i++)
+                    hash = StableHash.Combine(hash, location.ActivityAffordances[i]);
+            }
+
             foreach (Decision decision in world.Decisions.All)
             {
                 hash = StableHash.Combine(hash, decision.Id.Value);

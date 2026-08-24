@@ -248,7 +248,9 @@ namespace Vivarium.Unity.Authoring
             public long ratePerMinuteNumerator;
             public long ratePerMinuteDenominator;
             public long[] behaviouralThresholds;
+            public int[] behaviouralThresholdValues;
             public RestRoutineEntry restRoutine;
+            public SatisfactionRoutineEntry satisfactionRoutine;
 
             public Domain.Characters.NeedDefinition ToDefinition() => new Domain.Characters.NeedDefinition(
                 new AuthoredId(authoredId),
@@ -257,8 +259,20 @@ namespace Vivarium.Unity.Authoring
                 maxValue,
                 ratePerMinuteNumerator,
                 ratePerMinuteDenominator <= 0 ? 1 : ratePerMinuteDenominator,
-                behaviouralThresholds ?? new long[0],
-                restRoutine.IsConfigured ? restRoutine.ToDefinition() : null);
+                ToBehaviouralThresholds(),
+                restRoutine.IsConfigured ? restRoutine.ToDefinition() : null,
+                satisfactionRoutine.IsConfigured ? satisfactionRoutine.ToDefinition() : null);
+
+            private long[] ToBehaviouralThresholds()
+            {
+                if (behaviouralThresholdValues == null || behaviouralThresholdValues.Length == 0)
+                    return behaviouralThresholds ?? new long[0];
+
+                var result = new long[behaviouralThresholdValues.Length];
+                for (var index = 0; index < behaviouralThresholdValues.Length; index++)
+                    result[index] = behaviouralThresholdValues[index];
+                return result;
+            }
         }
 
         [System.Serializable]
@@ -280,6 +294,21 @@ namespace Vivarium.Unity.Authoring
                 recoveredThreshold,
                 recoveryRateNumerator,
                 recoveryRateDenominator <= 0 ? 1 : recoveryRateDenominator);
+        }
+
+        [System.Serializable]
+        public struct SatisfactionRoutineEntry
+        {
+            public string activityDefinitionId;
+            public long activationThreshold;
+            public long satisfactionOffset;
+
+            public bool IsConfigured => !string.IsNullOrWhiteSpace(activityDefinitionId);
+
+            public NeedSatisfactionRoutineDefinition ToDefinition() => new NeedSatisfactionRoutineDefinition(
+                new AuthoredId(activityDefinitionId),
+                activationThreshold,
+                satisfactionOffset);
         }
 
         [System.Serializable]
@@ -412,11 +441,15 @@ namespace Vivarium.Unity.Authoring
         {
             public string needId;
             public long threshold;
+            public string requiredActivityDefinitionId;
 
             public bool IsConfigured => !string.IsNullOrWhiteSpace(needId);
 
             public NeedThresholdDecisionTrigger ToDefinition() =>
-                new NeedThresholdDecisionTrigger(new AuthoredId(needId), threshold);
+                new NeedThresholdDecisionTrigger(
+                    new AuthoredId(needId),
+                    threshold,
+                    new AuthoredId(requiredActivityDefinitionId));
         }
 
         [System.Serializable]

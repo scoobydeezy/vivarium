@@ -8,6 +8,7 @@ using Vivarium.Domain.Employment;
 using Vivarium.Domain.Relationships;
 using Vivarium.Domain.Scheduling;
 using Vivarium.Domain.Simulation;
+using Vivarium.Domain.Spatial;
 using Vivarium.Domain.Time;
 using Vivarium.Infrastructure.Bootstrap;
 
@@ -169,6 +170,13 @@ namespace Vivarium.SimRunner
                 hash = StableHash.Combine(hash, activity.DefinitionId.StableHashCode);
                 hash = StableHash.Combine(hash, (int)activity.Status);
                 hash = StableHash.Combine(hash, activity.SpatialContext.DirectOccupancy.Value);
+            }
+
+            foreach (LocationNode location in world.Locations.Nodes.All)
+            {
+                hash = StableHash.Combine(hash, location.Id.Value);
+                for (int i = 0; i < location.ActivityAffordances.Count; i++)
+                    hash = StableHash.Combine(hash, location.ActivityAffordances[i].StableHashCode);
             }
 
             foreach (Decision decision in world.Decisions.All)

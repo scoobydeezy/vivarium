@@ -191,23 +191,42 @@ namespace Vivarium.Application.Persistence
         public ScheduledEventPayloadData Encode(IScheduledEventPayload payload)
         {
             var typed = (TravelArrivalPayload)payload;
+            var strings = new string[1 + typed.ContinuationCommittedParameters.Count];
+            var numbers = new long[4 + typed.ContinuationCommittedParameters.Count];
+            strings[0] = typed.ContinuationActivityDefinitionId.Value;
+            numbers[0] = typed.ActivityInstanceId.Value;
+            numbers[1] = typed.CharacterId.Value;
+            numbers[2] = typed.DestinationLocationId.Value;
+            numbers[3] = typed.ContinuationDuration.TotalMinutes;
+            int index = 0;
+            foreach (KeyValuePair<AuthoredId, long> parameter in typed.ContinuationCommittedParameters)
+            {
+                strings[1 + index] = parameter.Key.Value;
+                numbers[4 + index] = parameter.Value;
+                index++;
+            }
             return PayloadData.Of(
-                new[] { typed.ContinuationActivityDefinitionId.Value },
-                new long[]
-                {
-                    typed.ActivityInstanceId.Value,
-                    typed.CharacterId.Value,
-                    typed.DestinationLocationId.Value,
-                    typed.ContinuationDuration.TotalMinutes,
-                });
+                strings,
+                numbers);
         }
 
-        public IScheduledEventPayload Decode(ScheduledEventPayloadData data) => new TravelArrivalPayload(
-            new ActivityInstanceId((int)PayloadData.Number(data, 0)),
-            new CharacterId((int)PayloadData.Number(data, 1)),
-            new LocationId((int)PayloadData.Number(data, 2)),
-            new AuthoredId(PayloadData.String(data, 0)),
-            SimDuration.FromMinutes(PayloadData.Number(data, 3)));
+        public IScheduledEventPayload Decode(ScheduledEventPayloadData data)
+        {
+            var parameters = new SortedDictionary<AuthoredId, long>();
+            int parameterCount = Math.Min(
+                Math.Max(0, data.Strings.Count - 1),
+                Math.Max(0, data.Numbers.Count - 4));
+            for (int i = 0; i < parameterCount; i++)
+                parameters.Add(new AuthoredId(PayloadData.String(data, 1 + i)), PayloadData.Number(data, 4 + i));
+
+            return new TravelArrivalPayload(
+                new ActivityInstanceId((int)PayloadData.Number(data, 0)),
+                new CharacterId((int)PayloadData.Number(data, 1)),
+                new LocationId((int)PayloadData.Number(data, 2)),
+                new AuthoredId(PayloadData.String(data, 0)),
+                SimDuration.FromMinutes(PayloadData.Number(data, 3)),
+                parameters);
+        }
     }
 
     /// <summary>Codec for <see cref="NeedThresholdPayload"/>.</summary>

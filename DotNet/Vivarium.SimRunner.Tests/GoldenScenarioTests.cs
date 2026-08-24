@@ -118,8 +118,8 @@ namespace Vivarium.SimRunner.Tests
             Assert.Equal(new AuthoredId("binding.leave_work.work_context"), frozenPressure.Value.Reason.BindingId);
             Assert.Equal(0, frozenPressure.Value.Reason.Evaluation.Signals[0].Mean);
             Assert.True(world.TryGetCurrentActivity(fixture.Layout.Mina, out ActivityInstance consequence));
-            Assert.Equal(WellKnownActivities.Waiting, consequence.DefinitionId);
-            Assert.Equal(fixture.Layout.Bakery, consequence.SpatialContext.LocationId);
+            Assert.Equal(WellKnownActivities.Traveling, consequence.DefinitionId);
+            Assert.Equal(fixture.Layout.Home, consequence.SpatialContext.Transit.DestinationLocationId);
 
             // The shared segment was derived state: neither character remains indexed there after arrival.
             Assert.DoesNotContain(fixture.Layout.Mina, world.Spatial.TravelersOn(sharedSegment));
@@ -184,10 +184,9 @@ namespace Vivarium.SimRunner.Tests
             WorldState world = fixture.Host.World;
             Decision minaDecision = FindDecision(world, fixture.Layout.Mina);
             Decision glenDecision = FindDecision(world, fixture.Layout.Glen);
-            Decision dariusDecision = FindDecision(world, fixture.Layout.Darius);
             Assert.True(fixture.Host.Session.Execute(new HoldDecisionCommand(minaDecision.Id)).IsSuccess);
             Assert.False(world.Attention.IsHeld(glenDecision.Id));
-            Assert.False(world.Attention.IsHeld(dariusDecision.Id));
+            Assert.Null(FindDecision(world, fixture.Layout.Darius));
 
             RearmNextHungerThreshold(fixture.Host, fixture.Layout.Mina);
             RearmNextHungerThreshold(fixture.Host, fixture.Layout.Glen);
@@ -238,7 +237,6 @@ namespace Vivarium.SimRunner.Tests
             Assert.Equal(uninterrupted, AuthoritativeSignature(restored.World));
             Assert.Equal(DecisionStatus.Resolved, restored.World.Decisions.Get(minaDecision.Id).Status);
             Assert.Equal(DecisionStatus.Resolved, restored.World.Decisions.Get(glenDecision.Id).Status);
-            Assert.Equal(DecisionStatus.Resolved, restored.World.Decisions.Get(dariusDecision.Id).Status);
             Assert.DoesNotContain(fixture.Layout.Mina, restored.World.Spatial.Travelers);
             Assert.DoesNotContain(fixture.Layout.Glen, restored.World.Spatial.Travelers);
             Assert.Contains(fixture.Layout.Mina, restored.World.Spatial.DirectOccupantsOf(fixture.Layout.Home));
@@ -451,6 +449,12 @@ namespace Vivarium.SimRunner.Tests
                     .Append(',').Append(activity.DefinitionId.Value).Append(',').Append((int)activity.Status)
                     .Append(',').Append(activity.StartedAt.TotalMinutes).Append(',').Append((int)activity.SpatialContext.Kind)
                     .Append(',').Append(activity.SpatialContext.DirectOccupancy.Value);
+            }
+            foreach (LocationNode location in world.Locations.Nodes.All)
+            {
+                text.Append("|location:").Append(location.Id.Value);
+                for (int i = 0; i < location.ActivityAffordances.Count; i++)
+                    text.Append(",affords:").Append(location.ActivityAffordances[i].Value);
             }
             foreach (Commitment commitment in world.Commitments.All)
             {

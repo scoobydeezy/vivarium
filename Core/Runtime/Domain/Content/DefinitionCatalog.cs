@@ -231,6 +231,21 @@ namespace Vivarium.Domain.Content
                         !ContainsThreshold(need.BehaviouralThresholds, rest.RecoveredThreshold))
                         errors.Add($"need '{need.Id}' rest thresholds must both be declared behavioural thresholds");
                 }
+
+                NeedSatisfactionRoutineDefinition satisfaction = need.SatisfactionRoutine;
+                if (satisfaction != null)
+                {
+                    if (!catalog.Activities.ContainsKey(satisfaction.ActivityDefinitionId))
+                        errors.Add($"need '{need.Id}' satisfaction routine references unknown activity '{satisfaction.ActivityDefinitionId}'");
+                    if (need.DefaultRateNumerator <= 0)
+                        errors.Add($"need '{need.Id}' satisfaction routine requires a positive ordinary rate");
+                    if (satisfaction.ActivationThreshold < need.MinValue || satisfaction.ActivationThreshold > need.MaxValue)
+                        errors.Add($"need '{need.Id}' satisfaction activation threshold falls outside its range");
+                    if (!ContainsThreshold(need.BehaviouralThresholds, satisfaction.ActivationThreshold))
+                        errors.Add($"need '{need.Id}' satisfaction activation threshold must be a declared behavioural threshold");
+                    if (need.MaxValue + satisfaction.SatisfactionOffset >= satisfaction.ActivationThreshold)
+                        errors.Add($"need '{need.Id}' satisfaction offset must rearm the routine below its activation threshold even from maximum");
+                }
             }
 
             foreach (KeyValuePair<AuthoredId, DecisionDefinition> pair in catalog.Decisions)
@@ -255,6 +270,9 @@ namespace Vivarium.Domain.Content
                 {
                     errors.Add($"decision '{decision.Id}' trigger references unknown need '{decision.Trigger.NeedId}'");
                 }
+                if (decision.Trigger != null && decision.Trigger.RequiredActivityDefinitionId.IsSet &&
+                    !catalog.Activities.ContainsKey(decision.Trigger.RequiredActivityDefinitionId))
+                    errors.Add($"decision '{decision.Id}' trigger references unknown required activity '{decision.Trigger.RequiredActivityDefinitionId}'");
 
                 for (int i = 0; i < decision.InfluenceTemplates.Count; i++)
                 {

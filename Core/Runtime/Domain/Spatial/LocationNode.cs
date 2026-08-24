@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Vivarium.Domain.Common;
 
 namespace Vivarium.Domain.Spatial
@@ -23,7 +24,8 @@ namespace Vivarium.Domain.Spatial
             AuthoredId locationKindId,
             string displayName,
             bool isOccupiable = true,
-            int capacity = 0)
+            int capacity = 0,
+            IReadOnlyList<AuthoredId> activityAffordances = null)
         {
             if (!id.IsSet)
             {
@@ -36,6 +38,7 @@ namespace Vivarium.Domain.Spatial
             DisplayName = displayName;
             IsOccupiable = isOccupiable;
             Capacity = capacity;
+            ActivityAffordances = CopyAffordances(activityAffordances);
         }
 
         public LocationId Id { get; }
@@ -57,9 +60,34 @@ namespace Vivarium.Domain.Spatial
         /// <summary>Soft occupancy limit; 0 means unlimited. Content decides whether it is enforced.</summary>
         public int Capacity { get; }
 
+        /// <summary>Activities this exact location makes ordinarily available.</summary>
+        public IReadOnlyList<AuthoredId> ActivityAffordances { get; }
+
+        public bool Affords(AuthoredId activityDefinitionId)
+        {
+            for (int i = 0; i < ActivityAffordances.Count; i++)
+                if (ActivityAffordances[i] == activityDefinitionId) return true;
+            return false;
+        }
+
         public bool IsRoot => !ParentLocationId.IsSet;
 
         public override string ToString() => $"{DisplayName} ({Id})";
+
+        private static AuthoredId[] CopyAffordances(IReadOnlyList<AuthoredId> source)
+        {
+            if (source == null || source.Count == 0) return new AuthoredId[0];
+            var result = new AuthoredId[source.Count];
+            var seen = new HashSet<AuthoredId>();
+            for (int i = 0; i < source.Count; i++)
+            {
+                if (!source[i].IsSet) throw new ArgumentException("Activity affordances need stable authored ids.", nameof(source));
+                if (!seen.Add(source[i])) throw new ArgumentException($"Activity affordance '{source[i]}' is duplicated.", nameof(source));
+                result[i] = source[i];
+            }
+            Array.Sort(result);
+            return result;
+        }
     }
 
     /// <summary>Immutable content description of a location kind (§27).</summary>

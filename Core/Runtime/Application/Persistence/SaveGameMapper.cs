@@ -276,6 +276,9 @@ namespace Vivarium.Application.Persistence
                     IsOccupiable = node.IsOccupiable,
                     Capacity = node.Capacity,
                 });
+                LocationData location = data.Locations[data.Locations.Count - 1];
+                for (int a = 0; a < node.ActivityAffordances.Count; a++)
+                    location.ActivityAffordances.Add(node.ActivityAffordances[a].Value);
             }
 
             foreach (LocationNode node in world.Locations.Nodes.All)
@@ -304,13 +307,17 @@ namespace Vivarium.Application.Persistence
             for (int i = 0; i < data.Locations.Count; i++)
             {
                 LocationData location = data.Locations[i];
+                var affordances = new AuthoredId[location.ActivityAffordances.Count];
+                for (int a = 0; a < affordances.Length; a++)
+                    affordances[a] = new AuthoredId(location.ActivityAffordances[a]);
                 world.Locations.Add(new LocationNode(
                     new LocationId(location.Id),
                     new LocationId(location.ParentLocationId),
                     new AuthoredId(location.LocationKindId),
                     location.DisplayName,
                     location.IsOccupiable,
-                    location.Capacity));
+                    location.Capacity,
+                    affordances));
             }
 
             for (int i = 0; i < data.TravelConnections.Count; i++)

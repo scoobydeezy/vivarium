@@ -72,5 +72,8 @@ namespace Vivarium.Domain.Activities
 
         /// <summary>The production sleep Activity used by Energy recovery routines.</summary>
         public static readonly AuthoredId Sleeping = new AuthoredId("activity.sleeping");
+
+        /// <summary>The production meal Activity used by ordinary Hunger routines.</summary>
+        public static readonly AuthoredId Eating = new AuthoredId("activity.eating");
     }
 }
