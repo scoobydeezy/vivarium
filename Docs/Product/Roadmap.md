@@ -31,21 +31,27 @@ multiple habitats, and reciprocal autonomy.
 [`Player Agency Brief`](PlayerAgencyBrief.md) define the small world, meaningful character Decisions,
 supported player actions, and required Unity surfaces.
 
-The immediate next slice is:
+The immediate next work is the narrow Decision Importance foundation required by the following routine
+slice:
 
-> **Discretionary Recreation → Tabletop Games / Reading selected from Interests and availability.**
+> **Derived Decision Importance → Discretionary Recreation admission and automatic selection.**
 
 Observable completion test:
 
-> A free character selects a real available Recreation affordance consistent with their Interests,
-> travels when needed, completes it, and replans identically across uninterrupted and save/load runs.
+> A free character evaluates real available Recreation affordances from Interests and availability; an
+> ordinary instance selects, travels, completes, and replans automatically, while an unusually important
+> instance is promoted into the same compiled Decision pipeline, identically across uninterrupted and
+> save/load runs.
 
 The Ordinary Hunger slice is complete: an authored satisfaction routine now turns analytical Hunger
 into Eating only at an explicit, reachable location Activity affordance. It carries snapshotted meal
 effects through Travel, applies consumption on completion, and resumes fallback planning identically
 live, offline, and across save/load. Work-context eligibility preserves Mina's Need-vs-obligation
-Decision rather than inventing a Bakery meal break. Discretionary Recreation is the earliest remaining
-missing link in the Phase 1 daily-routine loop.
+Decision rather than inventing a Bakery meal break. The focused
+[`Decision Importance brief`](../Design/DecisionImportance.md) places one small derived-importance
+foundation ahead of Recreation so discretionary alternatives do not introduce a second, routine-only
+choice model. Recreation remains the earliest missing link in the Phase 1 daily-routine loop and the
+first proof of per-instance Decision admission.
 
 ## Ordered phases
 
@@ -81,7 +87,8 @@ slice:
 1. Energy → Sleeping → waking → replanning. **Complete.**
 2. Employment v0 → workplace authority and recurring shift/closing-duty Commitments. **Complete.**
 3. Ordinary Hunger → Eating governed by location and Activity affordances. **Complete.**
-4. Discretionary Recreation → Tabletop Games / Reading selected from Interests and availability. **Next.**
+4. Derived Decision Importance foundation → Recreation admission and automatic Tabletop Games / Reading
+   selection from Interests and availability. **Next.**
 5. Ordinary Socializing through bounded shared-context selection.
 
 This is sequencing guidance, not permission to implement all five as one subsystem project.

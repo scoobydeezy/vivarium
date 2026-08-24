@@ -134,9 +134,13 @@ the camera, pause simulation, or automatically Hold Decisions.
 
 **Auto-Hold** is a durable per-character Attention policy. In Live mode **and in player fast-forward**
 (`Architecture/Reference.md` §21.1 — the player is still present in both, only offline is genuine
-absence), a newly created Decision is automatically Held only when it is `HoldEligible` and has
-importance **20 or greater** (the importance scale and this exact cutoff are open MVP parameters — see
-§14). The player can still manually Hold any eligible lower-importance Decision they inspect.
+absence), a newly created Decision is automatically Held only when it is `HoldEligible` and its
+`Importance` clears the Auto-Hold cutoff. `Importance` is derived from the Decision's own evaluated
+Signal magnitude, not an authored constant (`Architecture/Reference.md` §18.2, `DecisionReasoning.md`
+§39.2); the earlier placeholder "20 or greater" described a raw designer-set scale that no longer applies
+now that the mechanism is magnitude-derived, and is retired rather than corrected, since the real cutoff
+has to be set against that new scale, not the old one (open MVP parameter — see §14). The player can
+still manually Hold any eligible lower-importance Decision they inspect.
 
 Mina begins the MPS with Auto-Hold enabled. Every other character begins in Normal. Auto-Hold uses the
 same bounded global/per-character capacity and deterministic overflow rules as manual Hold (the actual
@@ -162,9 +166,12 @@ Attention policy governs whether a *newly created* Decision gets proactively Hel
 notifications fire for this character going forward. It does not reach back and change a Decision that
 is already Held. If Mina (Auto-Hold) has a Decision Held and the player switches her to Quiet, that
 Decision stays Held exactly as it was — Quiet only suppresses notification for anything from that point
-on. The only way to give up an existing Hold is the Release action (§2). This mirrors the general
-architecture's separation between a character-level Attention policy and per-Decision Hold state
-(`Architecture/Reference.md` §20): they are different axes, and one does not implicitly reset the other.
+on. Outside ordinary resolution and deterministic held-capacity overflow, the only way to give up an
+existing Hold is the Release action (§2). Importance reevaluation may change which Held Decision loses a
+slot when later overflow occurs, but crossing the Auto-Hold floor alone never retroactively Holds or
+releases anything. This mirrors the general architecture's separation between a character-level Attention
+policy and per-Decision Hold state (`Architecture/Reference.md` §20): they are different axes, and one does
+not implicitly reset the other.
 
 ### Pausing is a time control, not a fourth Attention policy
 
@@ -400,20 +407,53 @@ Expand these only when a later playable failure proves they are necessary.
 
 ## 14. Open MVP parameters
 
-Two numeric parameters this brief depends on are named here but not yet assigned values anywhere in the
+Numeric parameters this brief depends on are named here but not yet assigned values anywhere in the
 documentation, and must be locked before Phase 3 (Roadmap.md) implementation can complete:
 
-- **The Decision importance scale.** §4's Auto-Hold cutoff ("importance 20 or greater") and this brief's
-  Decision-feed/overflow-ordering language all use "importance" as a numeric sort/threshold key, matching
-  its use in `Architecture/Reference.md` §20's overflow-ordering example and `ImplementationStatus.md`'s
-  reference to Unity presenting "the highest-importance active Decision." No document defines the scale
-  itself — bounds, derivation, or whether 20 is high or low on it. `DecisionReasoning.md` is the natural
-  owner of that definition; this brief's "20" is not verifiable against anything written until it exists.
+- **The Decision importance scale.** `Architecture/Reference.md` §18.2 and `DecisionReasoning.md` §39.2
+  (2026-08-24) now fix the *mechanism*: `Importance` is derived from a Decision's own evaluated Signal
+  magnitude, recomputed on reevaluation, not an authored constant. What they deliberately do not fix is
+  the actual cutoff number(s) — the Auto-Hold threshold (§4) and the overflow-ordering comparison
+  (`Architecture/Reference.md` §20) both read from this same derived value, and both need a real number
+  set against the magnitude scale `Evaluation/SignalField` actually produces. The retired "20 or greater"
+  placeholder was written against a raw authored-integer scale that no longer exists, so it is not a
+  starting estimate for the new cutoff — treat this as unset, not as "was 20, now needs adjusting."
+  **Current state (2026-08-24):** none of the three shipped Decision generators — Need-threshold
+  (`DecisionGeneration.cs`), social-interaction (`SocialDecisionGeneration.cs`), or commitment-conflict
+  (`CommitmentConflictDecision.cs`) — derive this yet. Each just forwards its `DecisionDefinition`'s
+  static, authored `Importance` (default `0`) straight into the generated `Decision`, unchanged by
+  reevaluation. That's not a bug today — Auto-Hold and overflow eviction, the only consumers of
+  `Importance`, are both still unimplemented (`ImplementationStatus.md`'s "MVP agency contract" bullet
+  names Normal/Auto-Hold/Quiet policy semantics as not yet built) — but it means the derivation has no
+  code yet and is a real dependency of Phase 3, not a small tune-up of something already working.
+- **The feed thresholds.** [`DecisionImportance.md`](../Design/DecisionImportance.md) defines separate
+  Normal and prioritized feed floors on the same derived scale. Watched/Followed Decisions may qualify at
+  the no-higher prioritized floor; Quiet suppresses proactive surfacing regardless of magnitude. Both
+  numeric values remain unset until representative Decision distributions can be measured.
+- **The Decision admission floor.** New alongside the above (`Architecture/Reference.md` §18.2,
+  `DecisionReasoning.md` §39.2, corrected 2026-08-24): whether a candidate choice is promoted into a full
+  reasoning Decision is gated by the same per-instance evaluated Signal magnitude `Importance` uses —
+  checked cheaply during a routine's ordinary candidate scoring, per character, per circumstance — not by
+  a static per-Decision-type count. (An earlier version of this parameter gated admission on the number
+  of `SignalRequirements` a Decision *type* declares, checked once regardless of character; that was
+  wrong, because it meant an entire category of choice — a board game night, an outfit — could never
+  become a Decision for anyone, when in practice it should be able to for the right character in the
+  right circumstance.) Below the floor, a choice resolves through the ordinary routine path
+  (`Architecture/Reference.md` §29) instead of generating a Decision — this is what keeps population-scale
+  ordinary choices off the Decision pipeline by default without permanently exiling any category of choice
+  from ever mattering. The floor itself is unset; it should be picked from real playtesting evidence
+  (what evaluated magnitude the leave-work Decision actually produces is a natural first data point)
+  rather than guessed in the abstract. This floor applies only when a generator has a truthful automatic
+  fallback. Structural generators such as commitment conflict always admit their Decision once the
+  conflict exists; derived Importance still controls their surfacing, Auto-Hold, and overflow priority.
 - **Held-decision capacity numbers.** `Architecture/Reference.md` §20 defines `DecisionHoldPolicy` with a
   `maximum global held decisions` and `maximum held decisions per character` field, explicitly left
   unassigned ("exact names are not frozen"). §4's Auto-Hold description leans on "the same bounded
   global/per-character capacity... as manual Hold" as a known quantity; it is actually an open product
   decision, not a locked one.
 
-Neither parameter changes this brief's mechanics — only its numbers — so resolving them is expected to be
-a small, self-contained follow-up rather than a redesign.
+None of these parameters change this brief's mechanics—only their numbers—so later tuning should be a
+small, self-contained follow-up rather than a redesign. The admission, prioritized-feed, normal-feed, and
+Auto-Hold floors should be calibrated together because they read the same evaluated-magnitude scale at
+different moments. Their required ordering and initial derivation are owned by
+[`DecisionImportance.md`](../Design/DecisionImportance.md).

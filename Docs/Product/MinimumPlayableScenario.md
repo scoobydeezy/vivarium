@@ -428,9 +428,10 @@ Mina is the MPS's primary interactive character.
 
 Her Attention policy should cause qualifying important Decisions to enter **Held** state awaiting player attention.
 
-For MVP content, qualifying means the Decision is `HoldEligible` with importance 20 or greater. Mina
-begins with the durable Auto-Hold policy selected. Follow remains an independent player toggle, and the
-player may switch Mina among Normal, Auto-Hold, and Quiet.
+For MVP content, qualifying means the Decision is `HoldEligible` and its derived Importance clears the
+configured Auto-Hold floor ([`DecisionImportance.md`](../Design/DecisionImportance.md)). The numeric floor
+remains intentionally tunable. Mina begins with the durable Auto-Hold policy selected. Follow remains an
+independent player toggle, and the player may switch Mina among Normal, Auto-Hold, and Quiet.
 
 The other characters do not use this automatic Hold behavior.
 

@@ -1125,6 +1125,7 @@ Decision
 ├── DefinitionId
 ├── CreatedAt
 ├── ResolveAt
+├── Importance
 ├── Status
 ├── Options[]
 ├── Influences[]
@@ -1282,6 +1283,54 @@ ceiling can have its `ResolveAt` deferred indefinitely by repeated Holds, bounde
 capacity — a system introducing a new Decision type should explicitly decide whether it needs a ceiling
 rather than leaving the question unanswered by omission.
 
+## 18.2 Importance is derived, not freely authored — and is a separate question from whether a Decision should exist at all
+
+`Importance` (§17) is not a designer-set constant on a `DecisionDefinition`. It is derived, per generated
+Decision instance, from the magnitude of that Decision's own evaluated Signals — the same `Mean`/`Variance`
+evidence `Evaluation/SignalField` already produces while reasoning is evaluated — and it is recomputed
+whenever the Decision's living influence set reevaluates (§17.2), the same way `ResolveAt` is derived
+rather than fixed (§18.1). A Decision resting on one high-magnitude Signal must be able to outrank one
+resting on several trivial ones; counting Options, Influences, or bound Considerations is not a substitute
+for weighing what they actually carry. `Design/DecisionImportance.md` owns the exact initial derivation,
+while `DecisionReasoning.md` §39.2 owns its relationship to compiled reasoning; this reference only fixes
+that it must be derived, not authored.
+
+This is deliberately a different question from **whether a fallback-capable candidate choice should
+become a compiled reasoning Decision at all.** Promoting every Need-driven or context-driven choice—what
+to eat, what to wear—into the full Decision pipeline (persisted instance, dice resolution, frozen explanation snapshots,
+Knowledge-filtered projection) does not scale to the population sizes this reference budgets for (§49–§52)
+and contradicts the standing invariant that automatic resolution must always be available without waiting
+on the player (invariant 45's Activity-resolution rule). But that admission question must be answered by
+the **same per-instance evaluated magnitude** described above, not by a second, different mechanism —
+see the correction below.
+
+**Correction (2026-08-24):** this section originally gated admission on a *static, per-Decision-type*
+proxy — the number of `SignalRequirements` a type's authored Considerations declare, checked once at
+content-load time, before any character was ever evaluated. That is wrong for the same reason a fixed
+per-type `Importance` constant would be wrong: it cannot express that the same category of choice — a
+board game night, an outfit — can be trivial for one character and genuinely significant for another,
+depending on their Interests, circumstances, and what else is true about them right now. A type-level
+structural count can never see that difference, by construction.
+
+There is one mechanism, not two. A fallback-capable candidate choice's own cheap, deterministic
+scoring—the same kind of weighted Signal evaluation `Evaluation/SignalField` performs, computed as an ordinary part of choosing
+among candidates on the ordinary routine path (§29) — already produces a magnitude for free. Most
+instances, for most characters, that magnitude stays low, and the choice resolves automatically as an
+ordinary routine outcome: no persisted Decision, no dice, no explanation snapshot. When that same cheap
+score clears an admission floor for a specific character in a specific circumstance, promote that instance
+into a full compiled reasoning Decision instead, where this section's derivation and Auto-Hold both apply
+normally from there. The floor is a threshold on the same evaluated-magnitude scale `Importance` already
+uses, not a separate structural count — so a fallback-capable choice category is never permanently
+classified as "too minor to matter"; only a specific instance, for a specific character, is.
+
+Admission gating does not apply to a generator whose satisfied predicate creates an unavoidable structural
+choice. A real commitment conflict, for example, cannot resolve through an equivalent ordinary routine
+fallback: one incompatible plan must be relinquished. Such a generator always admits the Decision and
+uses derived Importance only for Attention, ordering, and held-capacity policy. Admission, feed, and
+Auto-Hold floors are open numeric parameters on that one scale; held-capacity overflow has no Importance
+cutoff and instead orders contending Holds by their live derived values (§20).
+`Product/PlayerAgencyBrief.md` §14 owns the unset product numbers; this section fixes the mechanism.
+
 ---
 
 # 19. Player Intervention
@@ -1404,6 +1453,11 @@ lowest importance
 → oldest creation time
 → lowest DecisionId
 ```
+
+`importance` here is the derived value defined in §18.2, not a freely authored constant.
+Reevaluation may therefore change relative eviction priority among already-Held Decisions, but it does
+not evict anything until a later Hold actually exceeds capacity, and crossing the Auto-Hold floor alone
+does not retroactively Hold or release a Decision.
 
 When capacity is exceeded, an appropriate held decision auto-resolves and is reported in the recap/history.
 
@@ -3410,6 +3464,14 @@ These are the rules future code must preserve.
 122. An in-progress Activity may be targeted for revalidation through the same dependency-indexed Domain
      Event mechanism that reevaluates active Decisions (§17.2, §29.8); Travel is not a special case among
      Activities for this purpose.
+123. A Decision's Importance is derived from the magnitude of its own evaluated Signals at generation and
+     reevaluation time (§18.2), not authored as a fixed constant per Decision type or instance.
+124. Promotion of a fallback-capable candidate choice into a full compiled reasoning Decision is gated by
+     that same per-instance evaluated magnitude, cheaply pre-checked during ordinary routine candidate
+     scoring (§18.2, §29)—never by a static per-Decision-type proxy. No fallback-capable choice category
+     may be permanently classified as too minor to ever generate a Decision; only a specific instance can
+     be. A structural generator with no truthful ordinary fallback, such as commitment conflict, always
+     admits its Decision once its own generation predicate is satisfied.
 
 ---
 

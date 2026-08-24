@@ -1738,6 +1738,49 @@ explicitly. Commitment-conflict is the one currently-locked hard-ceiling case; a
 defaulting to "no ceiling" is a legitimate choice, but it must be a choice, not an omission discovered
 later as a stuck-Decision bug.
 
+### 39.2 "How important is this?" and "should this fallback-capable candidate be a Decision?" use the same derived answer
+
+These sound like they need two mechanisms, but they don't — and treating them as two is a specific,
+correctable mistake worth naming so it doesn't get re-introduced later.
+
+**Correction (2026-08-24):** this subsection originally proposed answering "should this be a Decision at
+all" statically, once per Decision type, from the union of `SignalRequirements[]` (§9) its bound
+Considerations declare — checked before any character was ever evaluated. That is wrong. A structural,
+per-type count cannot express that the same category of choice is trivial for one character and genuinely
+significant for another depending on their Interests, circumstances, and relationships — which is exactly
+what this whole Importance mechanism exists to capture. Gating admission on type-level structure while
+gating Importance on per-instance evaluation contradicted itself: it let a board-game choice matter
+differently to different characters only *after* a static rule had already decided the entire category
+never gets to be a Decision for anyone.
+
+**How important is this fallback-capable candidate choice, and is it worth becoming a Decision at all**
+is one question, answered per instance, from the same evaluation a routine already performs to choose among candidates —
+not from a designer-set integer on the `DecisionDefinition`, and not from counting how many Signals a
+type declares. `Importance` is derived from the magnitude of the choice's own evaluated Signals (the
+`Mean`/`Variance` evidence `Evaluation/SignalField` already produces, §4–§6). Most instances, for most
+characters, that magnitude stays low: the choice resolves automatically as an ordinary routine outcome
+(`Architecture/Reference.md` §29) — no persisted Decision, no dice, no explanation snapshot, the same way
+ordinary Hunger/Eating and Energy/Sleep are satisfied today without ever generating a Decision. When the
+same cheap evaluation clears an admission floor for a specific character in a specific circumstance,
+*that instance* is promoted into a full compiled reasoning Decision instead, and from there its Importance
+keeps being recomputed whenever the living influence set reevaluates (§29), the same way `ResolveAt` is
+derived rather than fixed (§39.1). A choice resting on one high-magnitude Signal must be able to clear
+that floor even though a structural count of Options, Influences, or bound Considerations would call it
+thin — precisely because Considerations vary enormously in how much a single one can matter
+(`Architecture/Reference.md` §17, §18.2). No fallback-capable choice category is ever permanently
+classified as too minor to matter; only a specific instance, for a specific character, is.
+
+This admission question does not exist for a structural generator with no truthful automatic fallback.
+Once a real commitment conflict is detected, for example, the character must choose which incompatible
+plan to preserve; low magnitude cannot make the conflict disappear. Such generators always create the
+Decision and still derive Importance from their evaluated reasons for Attention and capacity policy.
+
+[`DecisionImportance.md`](DecisionImportance.md) owns the exact initial aggregation rule, candidate
+preflight contract, implementation sequence, and named gates. The admission floor and the
+Importance-magnitude cutoffs used by feed policy, Auto-Hold, and overflow ordering remain open numeric
+parameters on that one evaluated-magnitude scale; `Product/PlayerAgencyBrief.md` §14 owns their eventual
+product values. This subsection fixes the reasoning relationship rather than duplicating those details.
+
 ## Decision Reasoning
 
 Answers:
@@ -2298,6 +2341,14 @@ Reconsider the design if:
 23. Evaluation snapshots inherit the Decision's retention/compaction lifecycle.
 24. Content hot reload cannot retroactively change in-flight or historical reasoning semantics.
 25. The Decision Reasoning system remains pure C#, headless, scalable, and independent of Unity presentation.
+26. A Decision's Importance is derived from the magnitude of its own evaluated Signals, not authored as a
+    fixed constant per Decision type or instance.
+27. Promotion of a fallback-capable candidate choice into a full compiled reasoning Decision is gated by
+    that same per-instance evaluated magnitude, cheaply pre-checked during ordinary routine candidate
+    scoring—never by a static per-Decision-type proxy. No fallback-capable choice category may be
+    permanently classified as too minor to ever generate a Decision; only a specific instance can be.
+    Structural generators with no truthful ordinary fallback always admit a Decision once their own
+    predicate is satisfied.
 
 ---
 
