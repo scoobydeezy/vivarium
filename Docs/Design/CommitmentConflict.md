@@ -1,8 +1,12 @@
 # Vivarium — Commitment-Conflict Decision Brief
 
-**Status:** Addendum — locks the design for the second vertical-slice Decision
-**Depends on:** Management-Sim-Architecture-Brief.md (core simulation), Vivarium Social Model Brief (Knowledge/Appraisal), Considerations/Decision-Reasoning discussion (SignalField, parameter-bound Considerations)
+**Status:** Accepted design reference; v0 vertical slice implemented
+**Depends on:** [`../Architecture/Reference.md`](../Architecture/Reference.md),
+[`SocialModel.md`](SocialModel.md), and [`DecisionReasoning.md`](DecisionReasoning.md)
 **Scope:** This document does not re-derive the core architecture. It records what's been decided specifically for the commitment-conflict Decision, including two items resolved in this round: joint (not pairwise) feasibility, and Decision Dissolution as a formal outcome.
+
+Current evidence and explicitly thin behavior are tracked in
+[`../ImplementationStatus.md`](../ImplementationStatus.md).
 
 ---
 

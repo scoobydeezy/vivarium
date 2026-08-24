@@ -1,9 +1,14 @@
 # Vivarium Decision Reasoning & Considerations Brief
 
-**Status:** Design brief / implementation-ready candidate  
+**Status:** Accepted design reference; implementation checkpoints complete  
 **Project:** Vivarium  
 **Scope:** Decision influence construction — the deterministic bridge from simulation truth, Knowledge, social appraisal, needs, values, history, context, and practical facts into a small set of explainable option-relative reasons and dice.  
-**Related documents:** Vivarium Architecture Brief; Vivarium Social Model Brief.
+**Related documents:** [`../Architecture/Reference.md`](../Architecture/Reference.md) and
+[`SocialModel.md`](SocialModel.md).
+
+Current implementation evidence and remaining thin seams are tracked in
+[`../ImplementationStatus.md`](../ImplementationStatus.md). The staged plan below is retained as design
+rationale, not current roadmap priority.
 
 ---
 

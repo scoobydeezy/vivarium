@@ -1,0 +1,427 @@
+# Archived Implementation Checkpoint — 2026-08-23
+
+> **Historical document.** This file preserves the former combined delivery guide and roadmap
+> checkpoint. It is not an active source of instructions, implementation status, or product priority.
+> Use [`../IMPLEMENTATION_GUIDELINES.md`](../IMPLEMENTATION_GUIDELINES.md),
+> [`../ImplementationStatus.md`](../ImplementationStatus.md), and
+> [`../Product/Roadmap.md`](../Product/Roadmap.md) instead.
+
+This document turns the frozen architecture and the milestone proposal into an execution policy. It
+answers: **given the code that exists now, what should be implemented next?**
+
+It is not a second architecture specification. [`../../README.md`](../../README.md) remains the authority
+for system design and invariants; [`../Architecture.md`](../Architecture.md) records the repository-specific
+realisation.
+
+## Source precedence
+
+Use the sources this way:
+
+| Source | Role | Authority |
+| --- | --- | --- |
+| `README.md` | Required boundaries, invariants, acceptance criteria, deferred decisions | Highest |
+| `Docs/Architecture.md` | Current repository shape, implemented capabilities, known thin seams | Must remain consistent with README |
+| Milestone proposal | Dependency order, integration-test cadence, Golden Scenario | Planning input; never overrides README |
+| Code and tests | Evidence of what actually exists | Verify before selecting work |
+
+The proposal describes the desired dependency order, not the present repository state. Do not infer
+that Vivarium is at Milestone 0 merely because the proposal begins there.
+
+## Delivery principle
+
+> Do not build a system until the system beneath it can create a reason for it to exist.
+
+Also do not keep building foundations after they already support the next behavior. Prefer a narrow
+vertical slice that begins with a simulated circumstance and ends with an observable, deterministic,
+persistent consequence.
+
+Every completed slice should leave all of these true where relevant:
+
+1. It runs without Unity.
+2. The same initial state, versions, seed, and ordered commands produce the same result.
+3. Scheduled and Domain Event work settles to quiescence before projections are published.
+4. Save/reload preserves all authoritative state needed to continue identically.
+5. Truth, player Knowledge, and Presentation remain distinct.
+6. Unity consumes commands and read models; it does not become an alternate simulation owner.
+7. The behavior has acceptance-level coverage, not only isolated class tests.
+
+## How to select the next implementation step
+
+At the start of a task:
+
+1. **Respect active work.** Inspect `git status` and current task context. Finish the explicitly
+   requested or already-active slice before taking an unrelated roadmap item. Never overwrite another
+   change merely because the roadmap ranks something else higher.
+2. **Re-establish the baseline.** Read the status section in `Docs/Architecture.md`, inspect the
+   relevant production code and tests, and run the narrow relevant test project when practical.
+3. **Find the earliest missing Golden Scenario link.** Choose the first missing causal link whose
+   prerequisites already exist. A thin implementation does not count as complete if no simulated
+   circumstance exercises it.
+4. **Define one observable outcome.** Express the slice as “when X happens in authoritative state, Y
+   follows and appears in Z projection/history,” not “add services for Y.”
+5. **List affected invariants.** Use README §58 and the acceptance criteria in §56. If the slice
+   pressures an invariant without coverage, add that coverage.
+6. **Trace cross-cutting obligations.** New state may require typed identity, revisions, scheduler
+   payloads and handlers, payload codecs, save DTOs/mapping, index rebuilding, projections, content
+   validation, bootstrap registration, and diagnostics. Include only applicable pieces, but check all
+   of them deliberately.
+7. **Set a stop condition.** The slice is done when its scenario passes headlessly and the appropriate
+   determinism/save-load checks pass. Avoid opportunistic expansion into later milestones.
+
+If several items are equally ready, prefer the one that closes more of README §56, exercises more
+existing seams, and makes the Golden Scenario more playable. Prefer product behavior over another
+generic abstraction.
+
+## Current roadmap checkpoint
+
+Last reconciled against the repository on **2026-08-23**. Reverify this section against code and tests
+before acting on it.
+
+### Foundation already present
+
+The repository is beyond the proposal's Milestone 0. It already contains the simulation kernel,
+analytical progression, Activities/travel/occupancy, commitments and bounded planning, Needs and
+relationships, living Decisions and deterministic resolution, Knowledge/observation, command/query
+boundaries, versioned persistence mapping, Unity authoring/presentation seams, and a headless
+SimRunner. `Docs/Architecture.md` contains the precise supported list and invariant-test map.
+
+Do not rebuild those systems from scratch. Extend them only when the selected behavior exposes a
+specific missing capability.
+
+### Completed checkpoint — circumstances generate and complete a real Decision
+
+Completed on **2026-08-22** for one deliberately narrow content path: a Need threshold publishes a
+Domain Event, content generates a living Decision, deterministic resolution selects an option, and an
+Activity outcome runs through the authoritative transition service. Save-before-resolution/reload
+equivalence is covered.
+
+Future Decision content should preserve the established shape:
+
+- generate the Decision through an explicitly ordered Domain Event reaction, rather than direct runner
+  construction;
+- build true influences from current authoritative state and register targeted dependencies;
+- preserve existing Attention/Hold, Knowledge filtering, intervention, and deterministic resolution;
+- apply consequences through authoritative services rather than mutating repositories ad hoc;
+- publish the resulting projection/history only after quiescence; and
+- prove deterministic replay plus save-before-resolution/reload equivalence.
+
+Do not generalize the trigger/outcome model further until a second concrete Decision demonstrates the
+shared shape.
+
+### Completed checkpoint — interaction as a subordinate occurrence
+
+Completed on **2026-08-22** for location-arrival and indexed directed travel-segment contexts: bounded deterministic selection produces at
+most one interaction, leaves both primary Activities intact, changes a Relationship, records recent
+history, and creates observation-driven Knowledge only for characters supported by canonical
+`WatchState`. A 2,000-character shared-context test covers the bounded outcome, and save/reload rebuilds
+travel candidate indexes from active Traveling Activities.
+
+### Priority 1 — expand the Golden Scenario end to end
+
+Connect routine planning, shared travel, Work context, Needs, the generated Decision, Knowledge reveal,
+intervention, consequences, travel, save, and reload into one growing headless scenario. Maintain it as
+an acceptance test or SimRunner scenario; do not rely on a prose demo alone.
+
+Work-context pressure is now connected: a negatively related colleague's presence applies an
+interval-accurate Activity modifier, and departure reevaluates the generated Decision through its
+targeted dependency while preserving influence identity across save/load.
+
+The headless demo, determinism check, save/load check, and dedicated `Vivarium.SimRunner.Tests`
+acceptance project now use the generated leave-work choice. The
+scenario exercises routine travel, shared-segment interaction, Work pressure, Watch/Hold, a
+Knowledge-driven label reveal, targeted reevaluation, stable-identity intervention, deterministic
+resolution, an Activity consequence, and reload equivalence without runner-side Decision construction.
+
+Checkpointed assertions cover the entire causal chain. Offline coverage now proves a held generated
+Decision resolves under `OfflineCatchUp`, durable Follow and ephemeral visibility restore according to
+policy, and the resulting Decision and Activity match the uninterrupted branch.
+
+### Completed checkpoint — persistence and offline hardening
+
+Extend serialization coverage as each earlier slice adds state. Once the Golden Scenario is connected,
+stress offline catch-up with active travel, held and automatic Decisions, scheduled Need thresholds,
+Activities, Commitments, and interactions. Choose a concrete save encoding only when product/platform
+requirements resolve the format that README §57 deliberately defers.
+
+Completed on **2026-08-22** with both focused held-Decision coverage and a mixed-state checkpoint
+containing active travel, held and automatic generated Decisions, multiple pending Need crossings, and
+active Commitments. Offline catch-up compares allocator counters, scheduler order, analytical Needs,
+Activities, Commitments, Decisions and rolls, Relationships, and rebuilt spatial indexes between
+uninterrupted and restored branches. Concrete save encoding remains explicitly deferred by README §57.
+
+### Priority 2 — authoring and playable presentation
+
+Author real definitions through the validated ScriptableObject-to-Domain catalog path and expose the
+Golden Scenario through character, Activity, Decision, Watch/Hold, intervention, Knowledge, and event
+feed surfaces. Presentation work may proceed earlier when explicitly requested, but it must consume
+the same commands, validation rules, and quiescent read models as the headless path.
+
+The first playable authoring slice was completed on **2026-08-22**. The Unity content pack now authors
+the leave-work Decision's Need trigger, options, initial influence visibility, Activity outcome, and
+intervention. The smoke bootstrap no longer constructs a Decision directly: it settles Mina's authored
+hunger crossing and presents the generated Decision through the existing knowledge-filtered read model
+and Hold, Release, and intervention Commands. Unity assemblies and the PlayMode test assembly compile;
+the batch PlayMode suite passes all 10 tests after its assertions were made explicit about selecting the
+Need Decision in a world that can also contain social Decisions.
+
+The causal event-feed slice was completed on **2026-08-22**. Decision appearance and successful player
+intervention are promoted from ordered Domain Events into bounded recent History; resolution already
+used that ledger. A knowledge-safe Application projector filters those records, returns at most five in
+newest-first order, and Unity refreshes the feed beside the Decision encounter only at quiescent
+boundaries. Rejected commands do not create history and presentation never reads the transient event
+queue.
+
+The playable progression slice was completed on **2026-08-22**. The Unity smoke world begins without a
+Decision. At 07:02 Mina and Glen follow scheduled Work Commitments onto the same directed travel
+segment and interact; at 07:32 Mina arrives beside a negatively related working colleague and receives
+the interval-accurate Work-pressure modifier; at 07:34 her authored hunger threshold generates the
+leave-work Decision. The Decision's Work-pressure dependency is authored, and its handlers are restored
+whenever Unity recomposes a loaded host. The pre-Decision panel
+shows a clean inactive state. PlayMode coverage asserts each causal checkpoint.
+
+The compiled-reasoning dogfood slice was completed on **2026-08-23**. The Unity content pack, headless
+sample, and Application fixture now define leave-work through three compiled bindings: Need urgency for
+leaving, reliability for staying, and current-Activity work context for leaving. The Activity-modifier
+Signal provider registers the existing targeted Work-pressure dependency, so departure updates the same
+reason from d10 to d6 and replays any intervention without a content-specific reevaluator. The old direct
+influence templates and `ActivityContextInfluenceReevaluator` were removed. Golden Scenario coverage
+retains the compiled program, live Signal evidence, stable reason identity, and frozen resolution evidence.
+
+Priority 2's minimum playable loop is now connected. The next implementation gate is Priority 3:
+convert the SimRunner's existing synthetic population mode into a repeatable scale and determinism
+regression with explicit measured budgets before adding management breadth.
+
+### Priority 3 — scale gate before management breadth
+
+Turn the SimRunner's synthetic population mode into repeatable performance and determinism regression
+coverage. Establish measured budgets before architectural optimization. Substantial economy,
+construction, advanced pathfinding, procedural populations, polished animation, and large content
+libraries wait until the Golden Scenario works and the scale gate passes.
+
+Completed on **2026-08-22**. The always-on regression tier runs 250 characters for six simulated hours
+twice, requires the same authoritative hash and exact work/Activity/event counts, and enforces ceilings
+of 100 work items, 8 Activities, and 3 pending events per character. This tier deliberately does not
+assert wall time or heap usage.
+
+The measured tier runs 1,000 characters for one simulated day and is enforced when
+`VIVARIUM_ENFORCE_PERFORMANCE_BUDGETS=1`. Its initial budgets are 2 seconds to build, 15 seconds to run,
+128 MB managed heap, 320 work items, 30 Activities, and 2 pending events per character. The pre-social
+baseline on the development machine was 97 ms build, 6,938 ms run, 28 MB, 141,894 work items, 24,994
+Activities, 1,002 pending events, and authoritative hash `A332FAE357E085CD`. The CLI reports these
+metrics for arbitrary population/day inputs and only enforces measured limits for the standard tier
+when the environment flag is enabled.
+
+The production social pass adds participant evidence plus at most two indexed witnesses per interaction.
+Its 1,000-character/one-day Release measurement on the same development machine is 189 ms build,
+10,669 ms run, 82 MB, 286,595 work items, 24,994 Activities, 1,014 pending events, and hash
+`DA36FBBC20D6042E`. The structural work ceiling was revised to describe this deliberately bounded new
+pipeline; the original wall-clock and heap gates still pass.
+
+The architecture gate has passed for beginning one deliberately narrow management vertical slice.
+Select that slice from concrete product intent; do not infer a broad economy, construction, or job
+model merely because performance coverage now exists.
+
+### Completed checkpoint — production relationship model
+
+Product direction on **2026-08-22** selected `SocialModelBrief.md` as the production relationship
+model and explicitly un-deferred NPC-held beliefs and relationship formulas. The former undirected
+affinity testbed is being replaced by observer-scoped uncertain belief, sparse directional appraisal
+fields, multiple calibrated lenses, directional history/familiarity, and explainable social pressure.
+
+The brief's production foundation is implemented end to end. Indexed interactions create bounded
+character-held evidence; covariance-aware sparse appraisal combines distinct lenses, directional history,
+familiarity, values/interests, affect, and independent context with a causal trace. Calibrated results feed
+interaction relevance, Decisions, and Activity pressure. Belief changes target living influence
+reevaluation, and resolution changes only the deciding character's directional channel. Save schema v2
+persists personality, fields, beliefs/covariance, values/interests, affect, directional channels,
+familiarity, and memories; v1 affinity migrates into two initially equal directions. Runtime no longer
+stores a universal relationship score. Reputation remains bounded observer Knowledge, and culture remains
+the explicitly named future dependency from the brief.
+
+### Completed checkpoint — Decision reasoning and Considerations
+
+Product direction on **2026-08-23** selected `DecisionReasoningBrief.md` as the bridge from simulation
+state and actor Knowledge to deterministic true Influences and player-facing reasons. Delivery is split
+into two runnable checkpoints rather than independent infrastructure projects.
+
+Checkpoint A is complete. Social Appraisal now consumes a generic deterministic fixed-point
+`SignalField` evaluator that preserves its former expected scores and contribution trace while adding
+latent and bounded-output variance. The existing social interaction Decision now runs through an
+`InterpersonalComfort` Consideration and a non-stacking semantic ReasonChannel before producing its
+stable Influence. Parity was established against the former direct social influence factory, which has
+been removed. Influences and retained rolls carry persisted polarity; the current replaceable resolution
+policy adds supporting rolls and subtracts opposing rolls, and interventions preserve polarity. Save
+schema v3 migrates schema-v2 Influences as supporting legacy reasons.
+
+Checkpoint B is complete and remains runnable. It adds typed Decision/Option
+parameters, compiled Consideration bindings, explicit known/uncertain/unknown/not-applicable Signal
+semantics, minimal providers for Decision context, Values, target availability, directional relationship
+channels, travel burden, and current-Activity modifiers, plus deterministic evaluation across target and
+targetless/self Options.
+Compiled programs are deep-snapshotted onto in-flight Decisions and save schema v4 persists that program
+and authoritative typed context; schema-v3 direct-influence Decisions migrate without fabricated reasons.
+Candidate Reasons and routing indexes remain derived and are not persisted.
+
+Stable semantic reconciliation is also implemented. A compiled reason is keyed by binding, Option, and
+ReasonChannel; changing inputs update its existing Influence, absence retracts it, and later
+reappearance reinstates the same id. Applied interventions now snapshot their mechanical kind and
+replacement die where applicable, then replay deterministically over a reevaluated base magnitude.
+This protects both player expenditure and signed polarity across live world changes and save/load.
+
+The derived dependency index now routes to `(DecisionId, BindingId, OptionId)`. A change reevaluates and
+reconciles only the addressed bindings/Options, while unrelated routes remain registered. Routes are not
+saved: load-time composition reruns the persisted reasoning program through the minimal provider registry
+to rebuild them. The implemented-state five-Option scenario also passes through a runtime-bound generation
+service that creates the Decision, evaluates reasons, registers routes, schedules resolution, publishes
+creation, and resolves through the ordinary signed policy.
+
+Resolution now freezes compact historical evidence into each retained roll: semantic reason identity,
+subject, polarity, die/roll, expected score, output variance, Signal inputs with applicability and source
+revision, and compact field contributions. Lazy query projection reads this evidence rather than current
+World state, so later drift cannot rewrite why an outcome happened. Resolution history is linked to its
+Decision, promoted to persisted Significant history, and the retention service prunes the linked history,
+resolved Decision, and evidence together.
+
+Unity authoring now covers typed Option context, parameter schemas and binding sources, provider requests,
+linear/pairwise/ideal Signal fields, ReasonChannels, scales, labels, and visibility. Its pre-play lint and
+the Domain catalog reject unknown providers, unbound or mistyped parameters, impossible Option bindings,
+unrequested Signals, invalid literals, unsupported dice, and simultaneous legacy-social/compiled paths.
+The acceptance matrix passes 138 headless tests, identical repeated SimRunner hashes
+`748901B9264B1B83`, save/load hash equivalence, and a warning-free build of the Unity PlayMode assembly.
+The PlayMode suite contains 11 tests, including both authored-program conversion/lint coverage and live
+catalog assertions that the generated leave-work Decision owns three compiled bindings and no templates.
+
+The next vertical slice requires concrete product intent. Continue using implemented social, value,
+relationship, Activity, location/travel, availability, urgency, and self-option state; do not introduce a
+general Skill model merely to broaden Decision content.
+
+### Completed checkpoint — commitment-conflict Decision
+
+Product direction on **2026-08-23** selected `CommitmentConflictDecisionBrief.md` for the second
+Decision vertical slice. The implementation replaces pairwise overlap Options with authoritative
+`CommitmentResolutionPlan` payloads and a true whole-set feasibility search. The v0 content remains
+deliberately narrow—two Commitments and two Preserve/Relinquish plans—but the plan and feasibility types
+are n-way-shaped and the tests include a three-Commitment set whose pairs are feasible while the whole
+set is not.
+
+Schedule revisions trigger evaluation; planner passes do not poll or duplicate Decisions. Active
+conflicts retain a canonical participant key plus an episode revision, while the deduplication index is
+rebuilt after load. Feasibility and desirability remain separate. Compiled bindings evaluate preserved
+and relinquished Commitments as distinct subjects within each plan, and ReasonChannel consolidation no
+longer merges different targets merely because their semantic channel matches.
+
+`LatestResolutionAt` is an authoritative derived hard deadline backed by a revision-dependent scheduled
+event and payload codec. A Hold cannot cross it, including offline execution. If a schedule revision
+invalidates the candidate set first, the Decision transitions to `Dissolved`, cancels its deadline,
+releases held capacity, emits the interventions subject to unconditional refund, skips consequences, and
+records an Ephemeral recap. Resolution itself only marks sacrificed Commitments `Relinquished`; a
+separate commitment-domain reaction invokes routine planning for preserved intent.
+
+Save schema v5 persists plan payloads, conflict episode identity, deadline state, interventions, and
+scheduled work. It does not persist the conflict or reasoning indexes. Focused coverage proves whole-set
+feasibility, plan identity and deduplication, distinct per-target reasons, hard-deadline Hold behavior,
+dissolution/refund recap, commitment-only consequences, index rebuild, and deterministic save/load
+resolution. The full headless solution passes **146 tests**. Actual Defer behavior, changing-road
+revalidation, n-way clustering policy, intervention resource balances, and dissolve/regenerate cooldowns
+remain explicitly deferred.
+
+The Golden Scenario integration now follows the completed leave-work encounter with two meaningful
+obligations becoming known at an authored simulation instant: dinner with Glen and helping Darius close
+the bakery. The reveal itself is persistent scheduled input, and save/load before it produces the same
+Commitments, conflict Decision, resolution, and consequence as uninterrupted execution. The v0 detector
+selects the first infeasible pair in canonical Commitment-ID order while ignoring unrelated future
+routine intent; broader n-way clustering remains deferred. Player-facing projections name each concrete
+Keep/Give-up plan and distinguish the feasibility cutoff as a hard deadline. Unity authors the same
+Decision, activities, and obligations and covers the full appearance/presentation path in PlayMode.
+
+### Completed checkpoint — Commitment outcomes and accountability
+
+Product direction on **2026-08-23** selected `CommitmentOutcomesAccountabilityBrief.md` as the feedback
+slice that makes the commitment-conflict Decision causally matter. `CommitmentLifecycleService` now owns
+all runtime Commitment status mutation. Terminal transitions validate the four locked Outcome/Cause
+pairings, allocate one immutable outcome identity, and publish one canonical event; window expiration is
+real scheduled work at `LatestStart + 1 minute`, and external cancellation is explicitly non-blaming.
+
+Commitments snapshot Character/non-Character-capable stakeholder references and an authored
+most-specific-wins accountability policy. Save schema v6 persists those authoritative snapshots on both
+materialized Commitments and pending reveal payloads, along with the outcome allocator and weak outcome
+provenance on durable artifacts. Legacy v5 state receives a no-op policy rather than retroactively
+inventing consequences. The outcome ledger is session-retained Ephemeral historical authority (and is
+therefore deliberately absent after a save boundary once its durable consequences have settled); its
+idempotency set and all routing/index projections are non-persisted implementation state.
+
+At handler order 100, the canonical consequence path maps simulation truth into stakeholder attribution,
+records character Knowledge, applies authored evidence through the existing joint social-belief update,
+and optionally creates one directional memory/history artifact and salient channel deltas. No
+consequence code reads authoritative cause directly. Routine fulfillment is evidence-only: it changes
+the live Reliance appraisal without accumulating Trust or memory. Relinquishment/missed/explicit breach
+content may add Trust/Resentment and a Significant memory; external cancellation never blames the actor.
+Every durable consequence carries `SourceOutcomeId` plus denormalized explanatory data, so outcome
+pruning cannot erase its meaning.
+
+The Golden Scenario now includes authored Dependability evidence and a Reliance-based later Decision.
+From the same deterministic initial world, Glen receives a strictly weaker Influence for relying on Mina
+after she relinquishes dinner than after she fulfills it. Saving before the conflict reveal, loading, and
+replaying produces the exact same later Influence. Focused lifecycle, pairing, policy-precedence,
+expiration, snapshot, and provenance tests bring the headless suite to **152 tests**. Institutional
+stakeholder effects, disclosure-driven attribution correction, broader cause taxonomy, global
+reputation, and actual Defer semantics remain deliberately deferred.
+The headless determinism and save/load modes both produce `B3591F428A8BC06C`.
+
+## Implementation checklist
+
+Use the applicable checks, not boilerplate for its own sake.
+
+### Domain and Application
+
+- Does this create truth, change truth, reveal truth, or merely present it?
+- Is external mutation represented by a Command and processed in `CommandSequence` order?
+- Are runtime IDs typed, monotonic, persisted, and never reused?
+- Is order-sensitive iteration explicit and deterministic?
+- Is authoritative math integral/fixed-point where practical?
+- Does continuous state use `AnalyticalProgression` with meaningful crossings scheduled?
+- Are revision dependencies aspect-scoped and backed by semantic validation?
+- Are active Decision dependencies registered for targeted reevaluation rather than globally polled?
+- Do same-instant reactions have explicit handler/phase order and settle to quiescence?
+
+### Scheduling and persistence
+
+For every new scheduled event, provide data-only payload, handler, stable event type, bootstrap
+registration, execution-time validation, and a payload codec. Persist required allocator counters,
+revisions, active runtime state, and scheduler state. Rebuild derived indexes in
+`WorldState.RebuildDerivedIndexes`; do not persist reconstructible indexes.
+
+### Content and Unity
+
+Use stable authored IDs for content and RNG purpose/scope identifiers. Validate content before play.
+Snapshot definition-derived values needed by in-flight entities. Keep Unity objects representational,
+translate input into Commands, and render read models instead of mutable Domain entities.
+
+### Verification
+
+During implementation, run the narrow affected project/tests. Before completing Core changes, run:
+
+```text
+dotnet test DotNet/Vivarium.slnx
+```
+
+For scenario-affecting changes, also run the relevant SimRunner modes documented in
+`Docs/Architecture.md`. A feature that adds authoritative state is incomplete until its persistence and
+determinism obligations are either tested or explicitly shown not to apply.
+
+## Golden Scenario
+
+The roadmap converges on this causal chain:
+
+```text
+Commitment → planned Travel → shared-context Interaction → Work
+→ contextual pressure + Need threshold → living Decision
+→ Watch/Hold → Knowledge discovery → intervention → deterministic resolution
+→ consequence changes Activity/Commitment → new obligations create a hard-deadline plan Decision
+→ outcome accountability changes stakeholder belief/history → later Reliance Decision changes
+→ preserved intent continues through Activity/Travel → save/reload equivalence
+```
+
+Use ugly, small content and roughly 8–12 characters until this chain is interesting and trustworthy.
+Only then broaden the management game. The product question at the gate is not whether another system
+can be scaffolded; it is whether the player cares what Mina decides.

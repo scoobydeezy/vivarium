@@ -1,17 +1,31 @@
 # Vivarium Agent Instructions
 
-Before planning or changing this repository, read these sources in order:
+## Required context
 
-1. [`README.md`](README.md) — frozen architectural truth. Its principles, boundaries, invariants,
-   acceptance criteria, and explicitly deferred decisions are authoritative.
-2. [`Docs/Architecture.md`](Docs/Architecture.md) — how that architecture is realised by the current
-   repository and which capabilities are implemented or intentionally thin.
-3. [`Docs/IMPLEMENTATION_GUIDELINES.md`](Docs/IMPLEMENTATION_GUIDELINES.md) — delivery order,
-   selection rules for the next vertical slice, and the current roadmap.
+Before planning or changing the repository, read in order:
 
-If these documents disagree, `README.md` wins. Do not silently resolve a genuine contradiction:
-record it in the implementation plan and either choose the architecture-compliant interpretation or
-ask for a product decision when the README explicitly defers it.
+1. [`README.md`](README.md) — concise architectural contract and source precedence.
+2. [`Docs/Architecture.md`](Docs/Architecture.md) — repository boundaries, build commands, and
+   implementation shape.
+3. The task-specific sources selected below.
+
+Use progressive disclosure; do not preload every brief.
+
+| Task | Additional required source |
+| --- | --- |
+| Selecting or assessing next product work | [`Docs/Product/Roadmap.md`](Docs/Product/Roadmap.md) |
+| Implementing an authoritative vertical slice | [`Docs/IMPLEMENTATION_GUIDELINES.md`](Docs/IMPLEMENTATION_GUIDELINES.md) and the relevant sections of [`Docs/Architecture/Reference.md`](Docs/Architecture/Reference.md) |
+| Verifying whether something exists | [`Docs/ImplementationStatus.md`](Docs/ImplementationStatus.md), then production code and tests |
+| Changing the small-world/MVP scenario | [`Docs/Product/MinimumPlayableScenario.md`](Docs/Product/MinimumPlayableScenario.md) |
+| Changing social modeling | [`Docs/Design/SocialModel.md`](Docs/Design/SocialModel.md) |
+| Changing Decision reasoning | [`Docs/Design/DecisionReasoning.md`](Docs/Design/DecisionReasoning.md) |
+| Changing commitment conflict or accountability | The applicable brief under [`Docs/Design/`](Docs/Design/) |
+
+The full documentation map is [`Docs/README.md`](Docs/README.md).
+
+If sources disagree, follow the precedence in `README.md`. Do not silently resolve a genuine
+contradiction: record it in the implementation plan and choose the architecture-compliant
+interpretation, or request a product decision when the architecture explicitly defers it.
 
 ## Working rules
 
@@ -26,6 +40,6 @@ ask for a product decision when the README explicitly defers it.
   persistent state, include replay and save/load coverage as applicable.
 - Run the narrowest relevant tests while iterating, then run `dotnet test DotNet/Vivarium.slnx` before
   considering Core work complete.
-- Update `Docs/Architecture.md` and the roadmap checkpoint in
-  `Docs/IMPLEMENTATION_GUIDELINES.md` when a slice materially changes what exists or what is next.
-
+- When a slice materially changes what exists, update `Docs/ImplementationStatus.md`. When it changes
+  what is next, update `Docs/Product/Roadmap.md`. Update architecture or focused design sources only
+  when their owned decisions change.

@@ -1,8 +1,13 @@
 # Vivarium — Commitment Outcomes / Accountability Brief
 
-**Status:** Addendum — locks the design for the third vertical-slice Decision-adjacent system
-**Depends on:** Management-Sim-Architecture-Brief.md, Vivarium Social Model Brief, Vivarium-Commitment-Conflict-Decision-Brief.md, Considerations/Decision-Reasoning discussion
+**Status:** Accepted design reference; v0 vertical slice implemented
+**Depends on:** [`../Architecture/Reference.md`](../Architecture/Reference.md),
+[`SocialModel.md`](SocialModel.md), [`CommitmentConflict.md`](CommitmentConflict.md), and
+[`DecisionReasoning.md`](DecisionReasoning.md)
 **Scope:** This is not a new Decision. It's the feedback mechanism that makes commitment outcomes causally matter — the thing that turns "Mina made a choice" into "the world remembers she made it." This document records what's been locked across three rounds of review; it does not re-derive dependencies.
+
+Current evidence and explicitly thin behavior are tracked in
+[`../ImplementationStatus.md`](../ImplementationStatus.md).
 
 ---
 

@@ -1,8 +1,12 @@
 # Vivarium Social Model Brief
 
-**Status:** Matrix-first design brief / implementation research plan  
+**Status:** Accepted design reference; production foundation implemented  
 **Project:** Vivarium  
 **Purpose:** Define a coherent, explainable, scalable social model built around a shared latent personality space, observer-specific belief distributions, and directional matrix-based appraisal fields. Prove the production model incrementally rather than building a temporary social-scoring system that will later be replaced.
+
+Current implementation evidence and remaining thin seams are tracked in
+[`../ImplementationStatus.md`](../ImplementationStatus.md). The staged plan below is retained as design
+rationale, not current roadmap priority.
 
 ---
 
