@@ -1,8 +1,9 @@
 # Vivarium
 
-Vivarium is a deterministic management simulation about autonomous characters whose routines,
-relationships, knowledge, and circumstances generate meaningful choices. The player observes and
-influences those choices without directly commanding their outcomes.
+Vivarium is a deterministic management simulation about knowing autonomous people the player cannot
+control. Their routines, relationships, Knowledge, history, and circumstances generate meaningful
+choices. The player controls much of the world around them and may influence—or physically frustrate—
+an outcome without rewriting what a person wanted.
 
 > **The simulation is the game. Unity hosts and presents it.**
 
@@ -32,8 +33,11 @@ These rules are the highest-level source of truth for the repository:
     headless regression gates—not global pair scans or per-character/per-frame ticking.
 12. New behavior is delivered as the smallest end-to-end slice that advances the playable scenario,
     including determinism and persistence coverage where applicable.
+13. Autonomous intent and physical outcome are distinct. Player interference may change what happens,
+    but it never retroactively changes what a person chose or believed; the interference remains part
+    of observable, attributable history.
 
-The complete frozen contract, including all 108 invariants, acceptance criteria, and explicitly
+The complete contract, including all 120 invariants, acceptance criteria, and explicitly
 deferred decisions, is preserved in
 [`Docs/Architecture/Reference.md`](Docs/Architecture/Reference.md). That reference is normative. This
 README is its routing layer and concise summary; it does not narrow or replace the detailed rules.
@@ -52,16 +56,18 @@ Read only as far as the task requires:
 | Detailed current capability and test evidence | [`Docs/ImplementationStatus.md`](Docs/ImplementationStatus.md) |
 | How to select and deliver a vertical slice | [`Docs/IMPLEMENTATION_GUIDELINES.md`](Docs/IMPLEMENTATION_GUIDELINES.md) |
 | Current product priority and ordered roadmap | [`Docs/Product/Roadmap.md`](Docs/Product/Roadmap.md) |
+| Product identity and long-range mechanical north star | [`Docs/Product/CoreIdentity.md`](Docs/Product/CoreIdentity.md) |
 | The 8–12-character acceptance world | [`Docs/Product/MinimumPlayableScenario.md`](Docs/Product/MinimumPlayableScenario.md) |
 | Topic-specific locked design decisions | [`Docs/README.md`](Docs/README.md) |
 
 ## Source precedence
 
 1. This architectural contract and its detailed normative reference.
-2. Focused design briefs for their declared topic, provided they remain architecture-compliant.
-3. The current product roadmap for sequencing and priority.
-4. Implementation guidelines for delivery discipline.
-5. Status documentation as a checkpoint; code and tests remain the evidence of what exists.
+2. Core Identity for product intent, provided it remains architecture-compliant.
+3. Focused design briefs for their declared topic.
+4. The current product roadmap for sequencing and priority.
+5. Implementation guidelines for delivery discipline.
+6. Status documentation as a checkpoint; code and tests remain the evidence of what exists.
 
 An explicitly deferred decision requires product direction. Do not silently turn a proposal, example,
 or roadmap recommendation into architectural truth.
@@ -86,5 +92,10 @@ When deciding where code belongs, ask:
 Then ask:
 
 > Does this create truth, change truth, reveal truth, or merely present truth?
+
+For player power, ask one more:
+
+> Did the player change a person's reasons, change the world, or physically prevent an intended
+> action—and does history preserve the difference?
 
 Those questions should resolve most boundary decisions without loading the full reference.

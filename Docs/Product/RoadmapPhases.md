@@ -1,12 +1,16 @@
 # Vivarium Roadmap — Detailed Phase Reference
 
 **Status:** Detailed phase requirements and acceptance reference  
-**Last reconciled:** 2026-08-24 (MPS review + relationship-memory attrition roadmap incorporated)  
+**Last reconciled:** 2026-08-24 (MPS, Player Agency, and Core Identity incorporated)
 **Scope:** From the current proven Golden Scenario to a minimum viable playable simulation with approximately 8–12 characters (target: about 10) living complete routines, with all meaningful character Decisions and all supported player choices surfaced through playable presentation.
 
 > Current priority and next-task authority live in [`Roadmap.md`](Roadmap.md). This detailed reference
 > preserves the full phase rationale, inventories, completion tests, and post-MVP memory direction
 > without forcing agents to load them for routine task selection.
+
+[`CoreIdentity.md`](CoreIdentity.md) owns the long-range product north star. Phases 9–14 below translate
+its newly locked experiential obligations into design and implementation gates without treating the
+north-star prose as a finished technical specification.
 
 ## 1. Role of This Document
 
@@ -149,20 +153,29 @@ The architecture or focused briefs already establish the shape, but product brea
 - Save DTOs/mapping and in-memory save behavior are proven.
 - A concrete save serialization/storage format remains unselected.
 
-### 3.3 Conceptualized but not yet defined enough to implement cleanly
+### 3.3 Conceptualized but not yet implemented cleanly
 
-These areas exist in the architecture or product vocabulary, but a focused product decision is required before implementation.
+These areas now have enough product direction for their ordered MVP slices, but production behavior is
+still incomplete. Later details remain deferred unless a slice exposes a real need.
 
-- **The exact MVP Need set and semantics.** `README.md` intentionally defers exact Needs.
-- **The complete routine model for the 10-character scenario.** We have primitives, not a locked daily-life content contract.
+- **The exact MVP Need set and semantics.** The MPS locks Hunger, Energy, Social, and Recreation for
+  this scenario; their production routine semantics remain to be implemented slice by slice.
+- **The complete routine model for the 10-character scenario.** The MPS locks the daily-life content
+  contract, but production routine behavior remains incomplete.
 - **Employment v0.** `Employment` exists architecturally and Work Commitments exist in scenarios, but the production source of jobs/shifts/attendance/accountability has not been specified. The MPS now additionally requires Employment v0 to establish queryable workplace authority/hierarchy and to materialize more than one authored obligation pattern (for example, a regular shift and a distinct closing duty) through the same production mechanism.
 - **Hobbies / discretionary activity v0.** Interests exist socially and Activities exist mechanically, but the durable relationship between a character, concrete recreational Activity affordances, recurring participation, and planner choice is not locked. The MPS should begin with a tiny concrete vocabulary rather than an abstract “hobby” placeholder.
 - **Free-time arbitration.** It is not yet decided which low-stakes routine selections are planner behavior and which are meaningful Decisions worth surfacing.
-- **Player intervention economy.** Refund rules exist, but currency/resource acquisition, cost, regeneration, caps, and spending strategy do not.
-- **First real player world-management action.** The architecture allows the player to alter circumstances, but no minimum production management lever has been selected. The MPS reserves a location-availability/open-state seam so the Player Agency Brief can select a real lever without retrofitting the canvas.
-- **MVP UX structure.** The needed information exists in pieces, but navigation, prioritization, and how the player follows approximately ten lives are not defined.
+- **Player intervention economy.** The Player Agency Brief locks a three-Nudge cap, eight-hour
+  regeneration, one-Nudge costs, and dissolution refunds; authoritative resource state is not yet
+  implemented.
+- **First real player world-management action.** The Player Agency Brief selects authoritative Commons
+  Open/Closed availability for one Nudge; the state, Command, targeted reaction, and projection are not
+  yet implemented.
+- **MVP UX structure.** The Player Agency Brief locks the required navigation and surfaces; most remain
+  to be implemented beyond the narrow prototype.
 - **Concrete save format.** The port exists; the format/product requirements do not.
-- **Interactive Activity product design.** The command/result seam exists; actual activity, scoring, and resume/fallback behavior do not.
+- **Interactive Activity product design.** Explicitly deferred from MVP; the command/result seam stays
+  available for later content.
 - **Relationship-memory consolidation / attrition.** Salient `RelationshipMemory` already exists and the Social Model already anticipates lifecycle-managed `Active → Recent → Significant → Legacy / compacted` history, but the behavioral rule that decides which memories remain individually important versus which become fuzzy/background history is not yet implemented. The current product direction is:
   - individual memories carry a long-term **importance/reinforcement** measure separate from their current contextual relevance/accessibility;
   - memories become more important when they are retrieved into authoritative reasoning and materially contribute, with stronger contributions reinforcing them more; the exact reinforcement trigger (for example, only contribution to a winning/successful roll versus any materially expressed contribution) must be locked before implementation rather than guessed in code;
@@ -170,12 +183,31 @@ These areas exist in the architecture or product vocabulary, but a focused produ
   - repeatedly important memories remain individually identifiable and individually weighted;
   - consolidation preserves the learned relationship effect while preventing the original detailed memory and its background summary from double-counting the same event.
   This should extend the existing Relationship/History retention model, not create a parallel generic “memory decay” subsystem.
+- **Chosen intent versus forced physical outcome.** Decisions and Commitments preserve important forms
+  of choice/planning intent, but there is no general action-attempt or external-prevention provenance.
+  A focused interference brief must lock the smallest production shape before the player can pick up,
+  redirect, isolate, transfer, or otherwise physically overrule a character.
+- **Beliefs about the Observer.** Character-held Knowledge exists, but the Observer/AGI is not yet a
+  durable belief subject. Player actions do not create witness-bounded evidence, competing attribution,
+  or later reasoning about the Observer.
+- **Personal specificity and performed social state.** Interests, values, Activities, relationships,
+  and memories exist, but favorite places/objects, characteristic habits, visible approach/avoidance,
+  and relationship-dependent option generation are not yet a coherent gameplay slice.
+- **AGI and Habitat foundation.** Core Identity defines AGI philosophy as founding pressure and a
+  Habitat as the person-bearing unit of long progression. Neither has authoritative identity, content,
+  persistence, or composition semantics yet.
+- **Culture and person-first macro behavior.** Norms, status ideals, institutions, collective
+  narratives, collective action, and renewable social pressures have product direction but need focused
+  designs. They must grow from bounded individual Knowledge/reasons rather than scalar Culture or
+  revolt meters.
+- **Multiple habitats and reciprocal autonomy.** Forced transfer, exile, voluntary migration,
+  inter-habitat contact, human inquiry into the Observer, and organized attempts to limit or escape it
+  are later mechanical phases, not current infrastructure projects.
 
 ### 3.4 Not yet meaningfully ideated in the source docs
 
 These are genuine later product questions, not blockers for the 10-character MVP unless the MVP brief explicitly pulls one forward.
 
-- Long-term progression / campaign structure.
 - Win, loss, or scenario-completion conditions.
 - Broad economy and resource production.
 - Construction/building systems.
@@ -194,7 +226,7 @@ These should remain deferred rather than being scaffolded “just in case.”
 
 The current roadmap reached a deliberate product gate. The next work should begin with two small design briefs rather than speculative code.
 
-### Gate 1 — Minimum Playable Scenario Brief
+### Gate 1 — Minimum Playable Scenario Brief (complete)
 
 Lock the actual 8–12-character test world (target: about 10; coverage is authoritative, not the exact headcount).
 
@@ -210,7 +242,7 @@ The brief must define:
 - recurring routine/Commitment sources;
 - a smallest-real Employment/structured-obligation contract that produces workplace authority plus at least two obligation patterns when the scenario requires them (for example, regular shift and closing duty);
 - at least one concrete hobby/discretionary pattern;
-- at least one location availability/open-state reserved for the Player Agency brief;
+- authoritative Commons availability/open-state used by the Player Agency brief;
 - expected social opportunities;
 - which circumstances are meaningful Decisions rather than automatic planner choices;
 - a two-to-three simulated-day acceptance script;
@@ -230,7 +262,7 @@ This is a recommendation, not yet an architectural lock.
 
 Again: product proposal, not current source truth. Add a fifth Need only if the scenario needs it to create a qualitatively different behavior.
 
-### Gate 2 — Player Agency Brief
+### Gate 2 — Player Agency Brief (complete)
 
 Lock what “playable” means for the MVP.
 
@@ -245,9 +277,9 @@ At minimum, decide whether the MVP player can:
 - optionally submit an interactive Activity result;
 - alter at least one world circumstance through a genuine management command.
 
-**Recommendation:** choose one small, production-shaped environmental lever rather than building an economy or construction system. The MPS reserves an authoritative location-availability/open-state seam (the Commons is the current leading candidate) because it can change schedules, travel, discretionary Activities, social opportunity, Needs, and Decisions without directly commanding a character.
-
-The brief must also define the intervention resource economy if interventions are part of normal play rather than debug/demo behavior.
+The locked [`Player Agency Brief`](PlayerAgencyBrief.md) selects Commons Open/Closed availability,
+normal MVP intervention through the Nudge resource, no interactive Activity, and a bounded
+Knowledge-filtered recap.
 
 ---
 
@@ -261,15 +293,14 @@ Do not start a later phase merely because its classes are easier to imagine.
 
 ### Phase 0 — Lock the Minimum Playable Scenario
 
-**Status:** IN PROGRESS
+**Status:** COMPLETE
 
-[`MinimumPlayableScenario.md`](MinimumPlayableScenario.md) has a reviewed first draft. The remaining
-Phase 0 deliverable is the Player Agency Brief, followed by a joint reconciliation pass so both briefs
-define one playable world.
+[`MinimumPlayableScenario.md`](MinimumPlayableScenario.md) and
+[`PlayerAgencyBrief.md`](PlayerAgencyBrief.md) are jointly reconciled and define one playable world.
 
 **Done when:** we can describe one complete simulated day for every test character, enumerate every meaningful character Decision that may arise, and enumerate every player action that must be exposed in Unity.
 
-No Core implementation should be selected until this gate is sufficiently concrete to identify the earliest missing causal link.
+The selected first Phase 1 causal link is Energy → Sleep → Wake → replanning.
 
 ---
 
@@ -370,7 +401,7 @@ Each new Decision must prove:
 
 #### 3A. Intervention economy
 
-Implement the product decision from the Player Agency Brief:
+Implement the locked Nudge economy from the Player Agency Brief:
 
 - authoritative resource state;
 - gain/regeneration rules;
@@ -378,23 +409,27 @@ Implement the product decision from the Player Agency Brief:
 - spend/refund lifecycle;
 - Hold/Dissolution integration;
 - save/load and offline behavior;
-- projections explaining availability and cost.
+- projections explaining availability and cost;
+- the two open parameters this slice cannot ship without: the Decision importance scale and the
+  held-decision capacity numbers (both named but unassigned — see
+  [`PlayerAgencyBrief.md`](PlayerAgencyBrief.md) §14).
 
 The existing unconditional refund rule for Dissolved Decisions remains authoritative.
 
 #### 3B. First environmental management action
 
-Implement one real “alter circumstances” command selected by the brief.
+Implement authoritative Commons Open/Closed availability and its one-Nudge management Command.
 
 It must cause ordinary simulation fallout rather than directly targeting a character outcome.
 
-Example shape if business/location hours are selected:
+Required causal shape:
 
 `Player changes availability → schedule/location revision → planner/feasibility reevaluation → Activity/Commitment/Decision fallout → visible history/notification`.
 
-#### 3C. Optional real interactive Activity
+#### 3C. Interactive Activity (deferred from MVP)
 
-Only if the MVP includes one. Reuse the existing `SubmitActivityPerformanceCommand` seam and normal Activity consequence pipeline. Do not create a parallel mini-game simulation state in Domain.
+The Player Agency Brief explicitly defers interactive Activities. Preserve the existing
+`SubmitActivityPerformanceCommand` seam; do not build an MVP mini-game or parallel simulation state.
 
 **Phase 3 done when:** every player action counted as part of the MVP is a real command with real consequences and can be fully exercised headlessly before Unity presentation.
 
@@ -609,20 +644,184 @@ The implementation is incomplete until it proves:
 
 ---
 
+### Phase 9 — The Poke: Intent, Interference, and Observer Evidence
+
+**Goal:** implement Core Identity's smallest defining physical-interference loop without corrupting
+character autonomy.
+
+Before code, create a focused `InterferenceAndObserverBrief.md` that locks:
+
+- the minimum distinction between chosen intent, attempted action, blocked/overridden execution, and
+  physical outcome;
+- one small physical interference Command (the canonical test is returning a departing character to
+  their prior location, not a general god-tool framework);
+- causal provenance, witness selection, Knowledge, attribution, and history;
+- the Observer/AGI as a fact subject without recursive omniscient theory of mind;
+- repeated-attempt/replanning policy and bounded reaction;
+- persistence, offline behavior, and deterministic settlement;
+- the specific revisions this brief forces on already-locked design briefs that own affected runtime
+  state: a fifth `CommitmentOutcome` `AuthoritativeCause` and its `KnownAttribution` mapping
+  ([`../Design/CommitmentAccountability.md`](../Design/CommitmentAccountability.md) §4.1), whether an
+  interference-caused commitment-conflict Dissolution needs a distinct `Reason`/attribution
+  ([`../Design/CommitmentConflict.md`](../Design/CommitmentConflict.md) §10.5), and how a resolved
+  Decision's frozen historical explanation coexists with a later-diverging physical outcome
+  ([`../Design/DecisionReasoning.md`](../Design/DecisionReasoning.md) §32.1).
+
+Required causal test:
+
+```text
+Mina chooses and begins to leave Work
+        ↓
+player physically interferes
+        ↓
+Mina is returned; her original choice remains historical truth
+        ↓
+Mina and bounded witnesses receive only observable evidence
+        ↓
+their attributions/beliefs may differ
+        ↓
+a later Activity or Decision changes for an explainable semantic reason
+```
+
+No universal obedience, fear, Observer-opinion, or morality meter is introduced.
+
+**Phase 9 done when:** the same autonomous choice produces distinguishable uninterrupted and
+interfered histories; the interfered branch preserves intent, creates observer-scoped evidence, changes
+later behavior through ordinary reasoning, and replays identically across save/load.
+
+---
+
+### Phase 10 — Performed Personhood and Relationship Possibility
+
+**Goal:** make specific people and relationships visible in ordinary behavior before adding macro
+society.
+
+Create a focused `PersonalSpecificityBrief.md` before implementation. It should select a deliberately
+small production vocabulary for characteristic habits, favorite places/objects or routines, and
+relationship-dependent behavioral opportunities. Reuse Interests, Values, Activities, Knowledge,
+history, and compiled Decision reasoning rather than creating a parallel personality-script system.
+
+Required proofs include:
+
+- at least two similar characters choosing visibly different routines for durable, explainable reasons;
+- a relationship causing an action/Option to become plausible or unavailable, not merely changing a
+  die on an already-identical option set;
+- social state performed through seeking, avoiding, lingering, helping, protecting, or withdrawing;
+- changed circumstances naturally altering the performed behavior;
+- bounded persistence and deterministic replay.
+
+**Phase 10 done when:** the player can notice a person or relationship through behavior, ask “why did
+they do that?”, and reach the same authoritative reasons used by the simulation.
+
+---
+
+### Phase 11 — Habitat and AGI Foundation
+
+**Goal:** establish the minimum durable world identity required for Core Identity's longer progression
+without yet building multiple societies.
+
+Draft an `AgiAndHabitatBrief.md` that locks Habitat identity/containment, one selected AGI's authored
+philosophy and capabilities, new-game composition, and founding-pressure seams. AGI philosophy may
+shape available resources, opportunities, rules, and starting population pressure; it must not assign a
+finished `CultureType` or direct character values.
+
+The first implementation remains one Habitat. Existing locations, travel, population, history, and
+player Commands become explicitly Habitat-scoped only where the upcoming multi-Habitat work requires
+it. Avoid speculative distributed-world infrastructure.
+
+**Phase 11 done when:** a save identifies one Habitat and AGI, authored philosophy produces transparent
+world conditions, and two founding configurations can cause later individual behavior to differ through
+ordinary simulation rather than preset culture modifiers.
+
+---
+
+### Phase 12 — Community, Culture, and Institutions
+
+**Goal:** allow a long-lived Habitat to develop shared expectations and organization while keeping
+people as the causal owners.
+
+The Social Model already names Culture as a required future brief. Draft `CultureAndInstitutionsBrief.md`
+to lock the smallest useful forms of:
+
+- norms (“what people believe one should do”);
+- status ideals (“what earns admiration”);
+- collective narratives grounded in retained/shared history;
+- persistent groups/institutions with membership, roles, and bounded authority;
+- evidence/dissemination and disagreement between individuals;
+- group-supported Decision generation and action.
+
+Culture is derived from sparse individual Knowledge, values, relationships, memories, group membership,
+and repeated behavior. It is never a universal truth table, a personality rewrite, or one scalar per
+Habitat. Institutions may create circumstances and role obligations; they do not puppet members.
+
+**Phase 12 done when:** one group-level norm or institution emerges or changes from individual causal
+state, affects different people differently, and produces a collective-looking outcome traceable to the
+bounded individuals who believed, recruited, refused, or acted.
+
+---
+
+### Phase 13 — Multiple Habitats, Transfer, and Migration
+
+**Goal:** add a second independently historical society and preserve the distinction between forced
+placement and chosen movement.
+
+Draft `MultiHabitatMobilityBrief.md` before implementation. It must lock:
+
+- Habitat identity, containment, clocks/rules boundaries, and cross-Habitat references;
+- forced player transfer/exile as physical interference;
+- voluntary migration as a character Decision;
+- portable versus Habitat-bound state, including Activities, Commitments, memberships, and scheduled
+  work;
+- preservation of character identity, Knowledge, memories, relationships, culture assumptions, and
+  history;
+- witness/attribution and consequences for people who remain behind;
+- deterministic transfer ordering and save/load.
+
+No transfer may silently delete/recreate a character, and no voluntary migration may be implemented as
+the player selecting a destination for them.
+
+**Phase 13 done when:** the same person can be forcibly transferred or voluntarily migrate in separate
+branches, carries the correct authoritative history into Habitat Two, and produces different beliefs,
+relationships, and later choices for causal reasons.
+
+---
+
+### Phase 14 — Contact, Reciprocal Observation, and Collective Autonomy
+
+**Goal:** let societies compare histories and let humans increasingly model, test, and organize around
+the Observer while the simulation continues to produce new pressure.
+
+Draft `ReciprocalSocietyBrief.md` to select one narrow end-to-end contact chain rather than building a
+grand-strategy layer. The first chain should combine bounded communication/travel, belief transfer with
+uncertainty, different Habitat histories, an Observer hypothesis, and a small collective action.
+
+Later breadth may include trade, alliances, conflict, resistance, or escape, but every macro outcome
+must remain traceable to individual evidence, trust, recruitment, opportunity, and Decisions. Renewable
+circumstances—resource change, technology, transport, migration, institutions, external contact, and
+the consequences of prior interference—create pressure; an opaque story director does not choose
+outcomes.
+
+**Phase 14 done when:** characters from two Habitats exchange imperfect beliefs, at least one human
+tests or reasons about the Observer, and a bounded group undertakes or rejects a collective action for
+inspectable individual reasons. No universal diplomacy, revolt, or morality scalar owns the result.
+
+---
+
 ## 6. Explicitly Deferred Until After the MVP Gate
 
 Unless a minimum-scenario design proves one is necessary, do **not** implement:
 
 - broad economy;
 - construction;
-- generalized organizations/institutional simulation;
 - actual `Defer` semantics;
 - broad n-way commitment clustering;
 - global reputation propagation;
 - relationship-memory consolidation/attrition (planned as Phase 8 immediately after the MVP hardening gate; do not pull it into the 48-hour MPS solely to demonstrate aging);
 - advanced pathfinding/multi-leg transport;
 - secondary primary Activities/multitasking (subordinate interactions during a primary Activity remain in scope and are already architecturally supported);
-- procedural life-history/culture breadth beyond what current social generation already supports;
+- Core Identity phases 9–14 (physical interference, Observer belief, Habitat/AGI, Culture,
+  institutions, multiple Habitats, contact, and collective autonomy) before the MVP hardening gate or
+  without their required focused brief;
 - large content libraries;
 - final art direction/polish;
 - networking;
@@ -668,23 +867,17 @@ A slice is complete only when all applicable statements are true:
 
 ## 8. Immediate Next Task
 
-**Next task: draft and lock `PlayerAgencyBrief.md`, then reconcile it jointly with the reviewed
-[`MinimumPlayableScenario.md`](MinimumPlayableScenario.md).**
+**Next slice: Energy → Sleeping → waking → replanning.**
 
-Do not start another generic Core subsystem while Phase 0 remains open.
+Completion test:
 
-The Player Agency brief must decide, concretely:
+> When authoritative Energy reaches its behavioral threshold, a character plans and begins Sleep at
+> an appropriate location, recovers analytically, wakes, and resumes planning; uninterrupted,
+> save/load, and OfflineCatchUp runs reach the same next-day world.
 
-1. Which character/location inspection surfaces are part of MVP play?
-2. How Follow/Watch/Quiet and Mina's automatic Hold policy are exposed to the player.
-3. Whether intervention is normal MVP play, and if so the resource economy, costs, regeneration, cap, refund presentation, and save/offline behavior.
-4. Which one environmental circumstance the player can alter through a real management command.
-5. Whether the reserved location-availability/open-state seam is that lever (the Commons is the current leading candidate).
-6. Which Unity surfaces are required to understand and use every supported player action.
-7. Whether one interactive Activity is in MVP scope or remains deferred.
-8. What happens when important Decisions occur off-screen, on unwatched characters, or during OfflineCatchUp.
-
-After that brief is drafted, reconcile both Phase 0 documents so the MPS canvas actually exercises every selected player action and the Player Agency brief does not assume world state the MPS never defines. Only then select the earliest missing Phase 1 causal link.
+The Need progression, Activity transition, scheduling, persistence, and headless projection
+prerequisites exist. Current code has only a sample Sleeping definition and no Energy-driven production
+behavior, making this the earliest incomplete MPS causal link.
 
 ---
 
@@ -694,22 +887,29 @@ After that brief is drafted, reconcile both Phase 0 documents so the MPS canvas 
 |---|---|---:|---|
 | Deterministic simulation kernel | Complete | Critical | Maintain |
 | Activities / travel / occupancy | Complete foundation | Critical | Expand through routine slices |
-| Needs infrastructure | Complete foundation, narrow behavior | Critical | Lock Need set; add full-routine behavior |
+| Needs infrastructure | Complete foundation, narrow behavior | Critical | Implement Energy/Sleep/Wake first |
 | Commitments / planning | Complete foundation | Critical | Add real recurring obligation source |
 | Decision engine/reasoning | Complete foundation | Critical | Add only scenario-driven Decision types |
 | Social model/interactions | Complete foundation | Critical | Use in full routine; avoid new social architecture |
 | Relationship-memory attrition/consolidation | Concept locked at roadmap level; scoring/threshold details unresolved | Post-MVP longevity | Draft focused brief after MVP gate, then implement Phase 8 |
+| Intent vs forced outcome | Architectural invariant locked; no general attempt/interference model | Core Identity | Draft interference/Observer brief for Phase 9 |
+| Observer as belief subject | Knowledge-holder primitive exists; Observer-target evidence absent | Core Identity | Phase 9 after interference design |
+| Personal specificity / performed social state | Foundations exist; coherent behavior slice absent | Core Identity | Phase 10 |
+| AGI / Habitat identity | Product direction only | Core Identity | Focused brief and Phase 11 |
+| Culture / institutions | Named future Social dependency; product direction only | Core Identity | Focused brief and Phase 12 |
+| Forced transfer / voluntary migration | Product direction only | Core Identity | Focused brief and Phase 13 |
+| Inter-habitat contact / reciprocal autonomy | Product direction only | Core Identity | Focused brief and Phase 14 |
 | Commitment conflict/accountability | Complete v0 | Important | Reuse; defer broader semantics |
 | Player Knowledge/Attention | Complete foundation | Critical | Surface broadly in UI |
-| Intervention mechanics | Mechanically proven | Critical | Define/implement resource economy |
-| Player environmental management | Reserved seam, lever not selected | Critical | Player Agency Brief; Commons availability is leading candidate |
+| Intervention mechanics | Mechanically proven; Nudge economy locked | Critical | Implement in Phase 3 |
+| Player environmental management | Commons lever locked, not implemented | Critical | Implement in Phase 3 |
 | Employment | Conceptual/architectural only | Critical for reviewed MPS | Lock/implement authority + obligation-pattern v0 |
 | Hobbies/discretionary routine | Conceptual only | Critical | Start with concrete Tabletop Games + Reading Activities |
-| Sleep/Energy loop | Missing from playable routine | Critical | First likely routine vertical slice |
+| Sleep/Energy loop | Missing from playable routine | Critical | Immediate next vertical slice |
 | 8–12-character multi-day scenario | Missing | Critical | Build after routine links exist |
 | Unity general UI | Narrow prototype only | Critical | Build after headless loop is trustworthy |
 | Concrete save format | Deferred | Required for MVP completion | Select after world loop stabilizes |
-| Interactive Activity | Seam only | Optional | Pull in only if Player Agency Brief requires it |
+| Interactive Activity | Seam only; deferred from MVP | Optional | Preserve seam |
 | Economy/construction | Unideated/deferred | Not required | Post-MVP |
 | Advanced pathfinding | Deferred | Not required | Post-MVP unless scenario proves otherwise |
 
@@ -726,3 +926,7 @@ The small-world MVP is successful when the player can look at any one of roughly
 > Where are they? What are they doing? Why are they doing it? What are they planning next? Who matters to them? What do they believe? What choice are they facing? What can I do about it? What happened because of the last choice?
 
 If those answers all come from the same deterministic, persistent, scalable systems that would support 1,000 characters, the MVP has done its job.
+
+After that gate, Core Identity supplies the longer question: can the player physically overrule those
+people without the simulation rewriting their will, and can individual histories grow into societies
+that eventually understand, judge, compare, and resist the Observer for their own reasons?

@@ -21,7 +21,9 @@ Do not read every design brief by default.
 | [`IMPLEMENTATION_GUIDELINES.md`](IMPLEMENTATION_GUIDELINES.md) | Delivery discipline and completion checks | Implementing a vertical slice |
 | [`Product/Roadmap.md`](Product/Roadmap.md) | Current priority and ordered product sequence | Selecting or evaluating next work |
 | [`Product/RoadmapPhases.md`](Product/RoadmapPhases.md) | Detailed phase rationale and acceptance matrices | Implementing or reviewing a specific roadmap phase |
+| [`Product/CoreIdentity.md`](Product/CoreIdentity.md) | Product identity and long-range mechanical obligations | Evaluating player power, interference, Observer beliefs, culture, habitats, or macro progression |
 | [`Product/MinimumPlayableScenario.md`](Product/MinimumPlayableScenario.md) | Small-world acceptance contract | Work affecting the MVP world, routines, cast, or scenario |
+| [`Product/PlayerAgencyBrief.md`](Product/PlayerAgencyBrief.md) | Locked MVP player verbs, intervention economy, management lever, and UI contract | Work affecting player Attention, agency, recap, or MVP Unity surfaces |
 
 ## Focused design references
 
@@ -52,7 +54,10 @@ priority or agent instructions.
 - Repository realization or capability changes update `Architecture.md` and, when material,
   `ImplementationStatus.md`.
 - Product sequencing changes update `Product/Roadmap.md` only.
+- Product-identity changes update `Product/CoreIdentity.md` and then flow into architecture/roadmap
+  owners where they create mechanical obligations.
 - Scenario changes update `Product/MinimumPlayableScenario.md`.
+- MVP player-agency decisions update `Product/PlayerAgencyBrief.md`.
 - Delivery-process changes update `IMPLEMENTATION_GUIDELINES.md`.
 - A focused design brief changes only when its topic-level product decision changes.
 

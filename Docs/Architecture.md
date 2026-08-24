@@ -102,6 +102,9 @@ dotnet test DotNet/Vivarium.SimRunner.Tests --filter StandardMeasuredBudget
   semantic validation, revision dependencies where applicable, and a payload codec.
 - A new authoritative state family needs identity/versioning, persistence mapping, reconstruction of
   derived indexes, determinism coverage, and save/load coverage as applicable.
+- A player action that physically prevents or overrides a character's intended execution must preserve
+  the original choice/intent, record distinct causal provenance, and enter character Knowledge only
+  through observable evidence and attribution.
 
 For current implemented and intentionally thin capabilities, consult
 [`ImplementationStatus.md`](ImplementationStatus.md). For delivery rules, consult

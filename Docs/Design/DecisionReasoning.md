@@ -1449,6 +1449,24 @@ distinct from:
 temporarily influencing the Decision mechanic
 ```
 
+## 32.1 Interference is a named future dependency
+
+The distinction above only covers *Influence*: player power exercised on the reasoning that still
+resolves through the character's own choice. [`../Product/CoreIdentity.md`](../Product/CoreIdentity.md)
+§4 names a second, separate category — *Interference* — where the player instead physically prevents or
+overrides the chosen Option's execution after the Decision has already resolved (Mina resolves "leave
+work," then the Observer returns her to the Bakery before she gets there). This brief does not yet
+describe what happens to that Decision's frozen historical explanation (§34) when the world subsequently
+contradicts it: the explanation should keep describing the reasons Mina actually chose to leave, per
+[`../Architecture/Reference.md`](../Architecture/Reference.md) invariant 110 ("interference ... never
+retroactively rewrites a character's Decision, intent, belief, consent, or historical reason"), while
+some separate record captures that the outcome diverged from the choice.
+
+Not built in this slice, and not the same mechanism as a §29 dynamic reevaluation — reevaluation changes
+an *unresolved* Decision's reasons before it resolves; interference acts on an *already-resolved* choice's
+execution. Scope the concrete shape into the Phase 9 `InterferenceAndObserverBrief.md`
+(see [`../Product/RoadmapPhases.md`](../Product/RoadmapPhases.md)) rather than deciding it here.
+
 ---
 
 # 33. Provenance Has Two Tiers
@@ -1690,6 +1708,35 @@ Which Options exist?
 When does it resolve?
 What conflict scope does it occupy?
 ```
+
+### 39.1 "When does it resolve?" is a required answer, not an optional one
+
+Every Decision generator must supply a real, domain-appropriate `ResolveAt` (`Architecture/Reference.md`
+§17, §18.1) — not only the commitment-conflict generator, which is currently the only one with a written
+derivation rule (a real feasibility window). A generator that skips this question leaves its Decision
+type able to sit Held indefinitely once Auto-Held, bounded only by held-decision capacity contention
+rather than by anything about the Decision itself.
+
+The derivation should come from the circumstance the Decision is actually about, the same way
+commitment-conflict's does, rather than an arbitrary fixed timer:
+
+```text
+Need-driven Decision
+    → derive from the point the underlying Need would cross from urgent into a state where
+      continued inaction has effectively answered the question itself
+
+Social-interaction Decision
+    → derive from the shared context that produced the Decision ending
+
+Commitment-conflict Decision
+    → derive from real feasibility windows (already locked, CommitmentConflict.md)
+```
+
+Whether that derived `ResolveAt` is a soft time Hold may keep deferring (bounded only by held-decision
+capacity) or a hard ceiling Hold cannot cross is a per-Decision-type decision a generator must make
+explicitly. Commitment-conflict is the one currently-locked hard-ceiling case; a new Decision type
+defaulting to "no ceiling" is a legitimate choice, but it must be a choice, not an omission discovered
+later as a stuck-Decision bug.
 
 ## Decision Reasoning
 

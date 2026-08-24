@@ -14,9 +14,11 @@ Use progressive disclosure; do not preload every brief.
 | Task | Additional required source |
 | --- | --- |
 | Selecting or assessing next product work | [`Docs/Product/Roadmap.md`](Docs/Product/Roadmap.md) |
+| Introducing or evaluating player power, Observer mechanics, habitats, culture, society, or long-range progression | [`Docs/Product/CoreIdentity.md`](Docs/Product/CoreIdentity.md) |
 | Implementing an authoritative vertical slice | [`Docs/IMPLEMENTATION_GUIDELINES.md`](Docs/IMPLEMENTATION_GUIDELINES.md) and the relevant sections of [`Docs/Architecture/Reference.md`](Docs/Architecture/Reference.md) |
 | Verifying whether something exists | [`Docs/ImplementationStatus.md`](Docs/ImplementationStatus.md), then production code and tests |
 | Changing the small-world/MVP scenario | [`Docs/Product/MinimumPlayableScenario.md`](Docs/Product/MinimumPlayableScenario.md) |
+| Changing MVP player verbs, Attention, Nudges, Commons management, recap, or agency UI | [`Docs/Product/PlayerAgencyBrief.md`](Docs/Product/PlayerAgencyBrief.md) |
 | Changing social modeling | [`Docs/Design/SocialModel.md`](Docs/Design/SocialModel.md) |
 | Changing Decision reasoning | [`Docs/Design/DecisionReasoning.md`](Docs/Design/DecisionReasoning.md) |
 | Changing commitment conflict or accountability | The applicable brief under [`Docs/Design/`](Docs/Design/) |

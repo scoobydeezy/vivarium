@@ -31,6 +31,8 @@ Apply only the relevant items, but check each deliberately.
 ### Domain and Application
 
 - Is this truth, a truth mutation, observer Knowledge, or Presentation?
+- Does this change a character's reasons, change their circumstances, or physically interfere with
+  execution? If it interferes, are autonomous intent and forced outcome preserved separately?
 - Does external mutation enter through a validated Command in `CommandSequence` order?
 - Are runtime IDs typed, monotonic, persisted, and never reused?
 - Is order-sensitive iteration explicit and deterministic?
@@ -39,6 +41,8 @@ Apply only the relevant items, but check each deliberately.
 - Are revisions aspect-scoped and backed by semantic validation?
 - Do active Decision dependencies reevaluate through targeted routes rather than polling?
 - Does same-instant work have explicit phase/handler order and settle to quiescence?
+- Can affected characters or witnesses observe the action? If so, does evidence flow through ordinary
+  Knowledge/attribution without revealing player intent or authoritative cause omnisciently?
 
 ### Scheduling and persistence
 

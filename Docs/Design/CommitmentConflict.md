@@ -153,6 +153,19 @@ When a joint-feasibility re-evaluation (§3) determines that an open (`Active` o
 
 Repeated dissolve/regenerate cycles for the same underlying conflict (e.g. rapidly oscillating travel conditions) aren't guarded against by anything specific — the same-instant cascade guard (§11.4) covers runaway behavior *within* one instant, not thrashing *across* several. Worth a cooldown/escalation policy if it ever shows up in practice; unlikely to matter for the v0 slice and not worth solving speculatively.
 
+### 10.5 Interference is a named future dependency
+
+§10.2's trigger list already includes a conflict resolving "outside the Decision" — physical player
+Interference (picking a character up, closing their route, relocating them mid-conflict; see
+[`../Product/CoreIdentity.md`](../Product/CoreIdentity.md) §4–5) is a concrete future instance of exactly
+that trigger, not a new mechanism. What isn't yet decided is whether an interference-caused dissolution
+should carry a distinct `Reason`/attribution from an ordinary infeasibility dissolution, since
+[`../Architecture/Reference.md`](../Architecture/Reference.md) §59 requires forced outcomes to remain
+distinguishable from voluntary ones in later Knowledge and history — an unconditional refund and a silent
+`InfeasibleCandidateSet` reason may not be enough once witnesses can attribute the dissolution to the
+Observer rather than to circumstance. Scope this into the Phase 9 `InterferenceAndObserverBrief.md`
+(see [`../Product/RoadmapPhases.md`](../Product/RoadmapPhases.md)) rather than deciding it inline here.
+
 ---
 
 ## 11. Vertical Slice Scope

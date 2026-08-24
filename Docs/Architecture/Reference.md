@@ -1,6 +1,6 @@
 # Management Sim — Architecture Brief
 
-**Status:** Architecture freeze
+**Status:** Architecture contract; Core Identity implications incorporated 2026-08-24
 **Scope:** Core simulation, application architecture, Unity integration, persistence, determinism, content authoring, testing, and scalability
 **Primary design principle:** **The simulation is the game. Unity hosts and presents it.**
 
@@ -1265,6 +1265,23 @@ World state changes
 
 Decision generation and resolution must not depend on Unity.
 
+## 18.1 Every Decision resolves at a derived time; Hold defers it within bounds
+
+`ResolveAt` (§17) is not a commitment-conflict-specific concept. Every Decision generator populates it
+with a domain-appropriate derivation at construction time — a Need-driven Decision might derive it from
+the point the underlying Need would cross from urgent into a state where inaction has effectively
+answered it; a social-interaction Decision might derive it from the shared context that created it
+ending; a commitment-conflict Decision derives it from real feasibility windows (§103).
+
+Holding a Decision defers its `ResolveAt` within the bounded held-decision capacity (§20), the same way
+for every Decision type. What varies by type is whether that deferral has a ceiling. Commitment-conflict
+is the one locked case where the derived deadline is an immovable ceiling that Hold and offline
+catch-up cannot cross (§103); nothing else in this reference reserves that property to commitment-conflict
+alone, but nothing else has yet defined an equivalent ceiling either. A Decision type without a defined
+ceiling can have its `ResolveAt` deferred indefinitely by repeated Holds, bounded only by held-decision
+capacity — a system introducing a new Decision type should explicitly decide whether it needs a ceiling
+rather than leaving the question unanswered by omission.
+
 ---
 
 # 19. Player Intervention
@@ -1426,6 +1443,16 @@ Offline progression is therefore not merely:
 It is a formally represented simulation context.
 
 The elapsed duration for `OfflineCatchUp` is calculated by the Application/Infrastructure layer from a persisted offline-progression anchor (§38) and `IRealWorldClock`; the Domain never reads wall-clock time directly.
+
+### 21.1 PlayerFastForward defaults to Live behavior for player-availability-sensitive systems
+
+Unless a system-specific brief states otherwise, `PlayerFastForward` defaults to the same
+player-availability-sensitive behavior as `Live` — Attention/Hold engagement and notification
+eligibility included — because the player remains present and able to exit fast-forward at any moment.
+`OfflineCatchUp` is the only mode representing genuine player absence, and is the only one where new Hold
+and immediate notification are withheld by default. Presentation may still coalesce, batch, or soften how
+notifications are delivered during `PlayerFastForward` purely for pacing reasons; that is a Presentation
+choice and does not change which authoritative events occur.
 
 ---
 
@@ -1995,6 +2022,30 @@ The boss's twenty-minute presence therefore matters for twenty minutes rather th
 This uses the same analytical-progression pattern as needs and travel: whenever a context change alters an Activity's authoritative progression rate or outcome parameters, materialize progress at the change time, bump the relevant Activity/aspect revision, apply the new parameters, and recompute any behaviorally meaningful completion/threshold schedule.
 
 Short subordinate interactions may coexist with a primary Activity (for example, Mina can remain `Working` while conversing with Glen). Those interactions may modify the primary Activity's contextual performance without becoming a second competing primary Activity.
+
+## 29.8 In-progress Activities may be targeted for revalidation when relevant world state changes
+
+§17.2 already establishes that an active Decision is living runtime state: relevant world changes reach
+it through dependency-indexed Domain Event reactions rather than by polling every open Decision. An
+in-progress `ActivityInstance` may need the same treatment, and Travel is not a special case among
+Activities for this purpose.
+
+Concretely: if a character is Traveling toward a destination *because* of an Activity/plan whose
+precondition depends on some world state (an affordance, an availability flag, an open/closed toggle),
+and that state changes before the Activity begins there, the change should reach the in-progress Travel
+through the same targeted dependency mechanism that already reevaluates Decisions — not only be checked
+once, later, when the Travel Activity completes and the next transition's precondition is validated
+(§29.5). Reactive replanning while still Traveling is preferable to letting the character complete an
+already-pointless trip and discover the precondition failed on arrival.
+
+This does not mean every in-progress Activity reacts the same way once revalidated. The consequence of a
+failed revalidation — reroute, fall back to an alternate Option, or (for an Activity already actively
+under way, not merely en route) simply finish under its already-committed snapshot — is ordinary
+planner/Activity consequence policy, decided per Activity type and circumstance, the same way Commitment
+outcome consequences are resolved through an authored policy rather than one universal rule (see the
+Default → ByOutcome → ByRole → SpecificOverrides fallback in `Docs/Design/CommitmentAccountability.md`).
+The invariant this section adds is only that the revalidation *opportunity* exists generally, through one
+shared mechanism, rather than being invented ad hoc per feature.
 
 ---
 
@@ -3190,6 +3241,13 @@ exact Activity/Commitment planning horizon
 secondary/multitasking Activity representation
 actual mini-game framework, scoring, UI, and resume/discard policy
 whether FactKey subjects need their own durability treatment when the entities they reference are compacted into Legacy history
+exact physical-interference Command set and interaction affordances
+the concrete representation of chosen intent, attempted action, blocked execution, and forced outcome
+the evidence/attribution model by which characters form beliefs about the Observer
+AGI selection, philosophy content, and founding-pressure rules
+Culture, institution, collective-narrative, and group-action representations
+Habitat identity, transfer, exile, voluntary migration, and inter-habitat contact mechanics
+the renewable circumstance ecology that produces long-running social pressure
 
 ```
 
@@ -3310,9 +3368,132 @@ These are the rules future code must preserve.
 107. Active conflict and dependency routing indexes are reconstructible projections; plan payloads, conflict episode identity, deadline state, interventions, and historical resolution evidence are authoritative save state.
 108. Non-stacking ReasonChannel consolidation may merge repeated readings of the same bound subject, but never merges distinct targets or Commitments within one Option.
 
+> **Invariants 109–120 are reserved architectural seams, not current obligations.** They extend the
+> contract for Core Identity's post-MVP interference, Observer-belief, AGI/Habitat, Culture, and
+> multi-Habitat mechanics (§59; Roadmap Phases 9–14), none of which are implemented yet — see
+> `ImplementationStatus.md`'s "Intentionally thin" section. They constrain how those *future* systems must
+> be built so early work doesn't foreclose them; they do not retroactively require code written before a
+> system's owning phase ships to already satisfy them. The numbering continues below for reference
+> stability.
+
+109. An autonomous choice, intended action, attempted execution, physical outcome, and later attribution
+     are distinct facts when the world can prevent a character from doing what they chose.
+110. Player physical interference enters through validated Commands and changes world state or execution;
+     it never retroactively rewrites a character's Decision, intent, belief, consent, or historical reason.
+111. Authoritative history retains enough causal provenance to distinguish voluntary completion,
+     inability, external prevention, and forced relocation wherever that distinction can affect later
+     Knowledge, relationships, or behavior.
+112. Player/Observer actions that characters can perceive become ordinary observable evidence. Witnesses
+     and attributions remain bounded, observer-scoped, uncertain, and potentially wrong.
+113. The Observer may become a subject of character Knowledge and reasoning without granting characters
+     omniscient access to player intent or authoritative cause.
+114. Player influence over a Decision and player interference with its physical execution are separate
+     mechanics, Commands, histories, and presentation concepts.
+115. AGI philosophy creates authored founding pressures and capabilities; it never assigns a finished
+     Culture directly.
+116. Culture, institutions, collective narratives, and collective action must remain grounded in
+     individual Knowledge, values, relationships, memories, memberships, and Decisions rather than one
+     universal culture, morality, or revolt scalar.
+117. Habitat membership and forced transfer preserve character identity, Knowledge, history,
+     relationships, and other portable authoritative state; relocation is not deletion or recreation.
+118. Voluntary migration is an autonomous Decision and remains distinct from player-forced transfer,
+     exile, or physical placement.
+119. Relationships, beliefs, norms, and history may change which actions and Decision Options become
+     plausible or available, not only the magnitude of existing Influences.
+120. Macro simulation remains person-first: organizations, politics, conflict, and social movements must
+     be causally traceable to bounded groups of individuals and their reasons, while the consequences of
+     player conduct replace a universal morality score.
+121. Every Decision carries an authoritative `ResolveAt` derived by its own generator (§18.1); Hold defers
+     it within bounded capacity, and only a Decision type that itself derives an immovable ceiling (for
+     example commitment-conflict's hard deadline, §103) may have that ceiling survive Hold and offline
+     catch-up.
+122. An in-progress Activity may be targeted for revalidation through the same dependency-indexed Domain
+     Event mechanism that reevaluates active Decisions (§17.2, §29.8); Travel is not a special case among
+     Activities for this purpose.
+
 ---
 
-# 59. Architectural North Star
+# 59. Autonomous Intent, Physical Outcomes, and Observer History
+
+Core Identity expands the player from observer/influencer into a potential physical actor in the
+world. The architecture must therefore preserve a distinction that ordinary Activity execution can
+often leave implicit:
+
+```text
+what the character chose or intended
+        ↓
+what they attempted
+        ↓
+what the world permitted
+        ↓
+what physically happened
+        ↓
+what each observer believes happened and why
+```
+
+These do not require five heavyweight entities for every routine transition. The concrete data shape
+is deferred until the first interference slice. The invariant is that a system must not collapse them
+when player or world interference makes their difference behaviorally meaningful.
+
+Examples:
+
+```text
+Mina chooses to leave work.
+The player physically returns her to the Bakery.
+
+Truth:
+    Mina chose and attempted to leave.
+    Observer interference prevented execution.
+
+Possible Knowledge:
+    Glen only knows Mina never arrived.
+    Priya saw the interference.
+    Mina believes the Observer punishes leaving work.
+```
+
+Player-facing power therefore has two separate authoritative routes:
+
+```text
+Influence
+    changes the mechanical weight of a reason inside an unresolved Decision
+    while the character still resolves the choice
+
+Interference
+    changes world state or prevents/overrides physical execution after or outside choice
+    without changing the historical choice itself
+```
+
+Both enter through Commands. Both settle through ordinary deterministic Domain reactions. Only
+interference requires physical-outcome provenance, witnesses, attribution, and possible Observer-facing
+belief evidence.
+
+The generalized Knowledge architecture may eventually allow the Observer/AGI to be a fact subject as
+well as the player being a Knowledge holder. This does not imply recursive unlimited theory of mind.
+Characters receive bounded evidence about observable actions and form sparse, uncertain beliefs just as
+they do about other socially relevant subjects.
+
+The same person-first rule governs later macro systems:
+
+```text
+AGI philosophy + player conduct
+        → founding pressures and experienced events
+        → individual evidence, beliefs, values, memories, and relationships
+        → norms, memberships, institutions, and collective narratives
+        → bounded individual/group Decisions
+        → emergent culture and collective action
+```
+
+An AGI selection cannot assign `CultureType`. A `RevoltMeter` cannot replace recruitment, trust,
+shared belief, opportunity, and individual choice. A transfer cannot recreate a character without their
+history. A voluntary migration Decision cannot be represented as the same operation as forced transfer.
+
+These mechanics remain post-MVP roadmap work. Their architectural seams are frozen now so early
+management features do not make autonomous intent, Observer evidence, or person-first macro simulation
+impossible later.
+
+---
+
+# 60. Architectural North Star
 
 When deciding where new code belongs, ask:
 
@@ -3347,13 +3528,16 @@ DICE
 express uncertainty
 
 PLAYER
-observes and influences
+observes, influences, shapes, and may interfere
 
 KNOWLEDGE
 changes what the player understands
 
 CONSEQUENCES
 change the world
+
+HISTORY
+preserves what was chosen, attempted, permitted, and believed
 
 ```
 

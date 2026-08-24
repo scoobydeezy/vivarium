@@ -3,7 +3,8 @@
 **Status:** Current product sequence and next-task authority  
 **Last reconciled:** 2026-08-24
 
-This document answers: **given the implemented simulation, what should be built next?** Detailed phase
+This document answers: **given the implemented simulation, what should be built next?** The product
+north star is [`CoreIdentity.md`](CoreIdentity.md). Detailed phase
 requirements and acceptance assertions live in [`RoadmapPhases.md`](RoadmapPhases.md). Capability
 evidence lives in [`../ImplementationStatus.md`](../ImplementationStatus.md). Neither replaces the
 architectural contract.
@@ -18,54 +19,62 @@ inspect what they know, and alter circumstances without directly choosing charac
 All behavior must use production-shaped, deterministic, persistent systems shared by the headless and
 Unity paths. Small content is encouraged; disposable parallel architecture is not.
 
+The MVP proves the individual-scale foundation of Core Identity: knowing autonomous people, shaping
+circumstances, applying bounded influence, and seeing history change later reasons. Later phases expand
+that same foundation into physical interference, human beliefs about the Observer, emergent society,
+multiple habitats, and reciprocal autonomy.
+
 ## Current gate
 
-**Phase 0 is in progress.** The reviewed
-[`Minimum Playable Scenario`](MinimumPlayableScenario.md) defines the small world, cast, routine
-coverage, and causal acceptance beats.
+**Phase 0 is complete and Phase 1 is in progress.** The jointly locked
+[`Minimum Playable Scenario`](MinimumPlayableScenario.md) and
+[`Player Agency Brief`](PlayerAgencyBrief.md) define the small world, meaningful character Decisions,
+supported player actions, and required Unity surfaces.
 
-The immediate next task is:
+The immediate next slice is:
 
-> **Draft and lock `PlayerAgencyBrief.md`, then reconcile it with the Minimum Playable Scenario.**
+> **Energy → Sleeping → waking → replanning.**
 
-Do not select another generic Core subsystem before this gate is resolved unless explicitly directed.
-The joint briefs must identify every meaningful character Decision, every supported player action, and
-the Unity surface required to understand and perform those actions.
+Observable completion test:
 
-The Player Agency brief must decide:
+> When a character's authoritative Energy reaches its behavioral threshold, they plan and begin Sleep
+> at an appropriate location, recover analytically, wake, and resume planning; uninterrupted,
+> save/load, and OfflineCatchUp runs reach the same next-day world.
 
-1. Character and location inspection surfaces included in MVP play.
-2. How Follow, Watch, Quiet, and Mina's automatic Hold policy are exposed.
-3. Whether intervention is normal play and, if so, its resource costs, regeneration, cap, refunds,
-   persistence, and offline behavior.
-4. The first environmental management command. Commons availability/open-state is the leading reserved
-   seam, but remains a product decision.
-5. Whether one interactive Activity is in MVP scope.
-6. Presentation and recap behavior for off-screen, unwatched, and offline Decisions.
-
-After reconciliation, select the earliest missing Phase 1 causal link proven necessary by the scenario.
+The current code contains only a sample Sleeping Activity definition. It has no Energy Need or
+production sleep/wake/replanning behavior, so this is the earliest missing MPS causal link whose kernel
+prerequisites already exist.
 
 ## Ordered phases
 
 | Phase | Outcome | Status |
 | --- | --- | --- |
-| 0. Lock playable intent | MPS and Player Agency briefs define one coherent playable world | In progress |
-| 1. Close the daily routine loop | Energy/Sleep/Wake, Employment obligations, ordinary Eating, discretionary Recreation, and Socializing support indefinite lives | Pending |
+| 0. Lock playable intent | MPS and Player Agency briefs define one coherent playable world | Complete |
+| 1. Close the daily routine loop | Energy/Sleep/Wake, Employment obligations, ordinary Eating, discretionary Recreation, and Socializing support indefinite lives | In progress |
 | 2. Expand meaningful choice | Scenario-required branch points use compiled Considerations and production consequences | Pending |
-| 3. Complete player agency | Intervention economy, one environmental lever, and optional interactive Activity become real Commands | Pending |
+| 3. Complete player agency | Nudge economy and Commons availability become real Commands; interactive Activity stays deferred | Pending |
 | 4. Build the small-cast world | 8–12 characters run 2–3 days through one durable headless acceptance scenario | Pending |
 | 5. Build playable Unity surfaces | Roster, character, Decision, schedule, Knowledge, world, and history views consume projections/Commands | Pending |
 | 6. Productize save/continue | Concrete storage, restart continuation, offline catch-up, migration diagnostics, and failure UX | Pending |
 | 7. MVP hardening gate | The small cast is legible, causal, replayable, persistent, and remains within scale gates | Pending |
 | 8. Relationship-memory longevity | Post-MVP consolidation retains defining memories and compacts ordinary history deterministically | Pending, post-MVP |
+| 9. The Poke | Preserve intent versus forced outcome; physical interference becomes observable history and Observer evidence | Pending, post-MVP |
+| 10. Performed personhood | Specific habits and relationships visibly change routine, opportunity, and option space | Pending, post-MVP |
+| 11. Habitat and AGI foundation | One Habitat gains durable identity; AGI philosophy creates founding pressures rather than Culture presets | Pending, post-MVP |
+| 12. Community into society | Norms, status ideals, institutions, and narratives emerge from individual state and group behavior | Pending, post-MVP |
+| 13. Multiple habitats | Forced transfer and voluntary migration remain distinct while characters carry identity and history | Pending, post-MVP |
+| 14. Contact and reciprocal autonomy | Inter-habitat contact, Observer inquiry, collective action, and renewable pressures remain person-first | Pending, post-MVP |
 
 See [`RoadmapPhases.md`](RoadmapPhases.md) for phase-level completion tests and the complete acceptance
 matrix.
 
-## Earliest likely routine links
+Phases 9–14 require focused briefs before implementation. Core Identity locks their experiential and
+architectural obligations, not their exact data models or tuning.
 
-Once Phase 0 is locked, current analysis suggests this order, subject to revalidation against code and
-the reconciled briefs:
+## Earliest routine links
+
+The locked Phase 0 review establishes this order, subject to revalidation against code after each
+slice:
 
 1. Energy → Sleeping → waking → replanning.
 2. Employment v0 → workplace authority and recurring shift/closing-duty Commitments.
@@ -93,15 +102,17 @@ Delivery mechanics and the full definition of done are in
 
 ## Explicitly deferred beyond the MVP gate
 
-Unless the MPS demonstrates a direct need, defer broad economy, construction, generalized
-institutions, actual commitment `Defer`, broad n-way conflict clustering, global reputation,
-relationship-memory attrition, advanced pathfinding, secondary primary Activities, large content
-libraries, final art direction, networking, mod support, and DOTS/ECS migration.
+Unless the MPS demonstrates a direct need, defer broad economy, construction, actual commitment
+`Defer`, broad n-way conflict clustering, global reputation, relationship-memory attrition, advanced
+pathfinding, secondary primary Activities, large content libraries, final art direction, networking,
+mod support, and DOTS/ECS migration. Core Identity mechanics in phases 9–14 are planned post-MVP work,
+not permission to scaffold them during the current routine slices.
 
 ## Stage north star
 
 The architecture has proven it can simulate choices. The next milestone must prove it can simulate
-**lives**.
+**lives**. The longer arc must preserve Core Identity's distinction between knowing, influencing, and
+physically overruling people whose wills remain their own.
 
 For any one of the small cast, the player should be able to answer:
 

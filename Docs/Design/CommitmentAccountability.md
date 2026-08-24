@@ -103,6 +103,23 @@ And the `AuthoritativeCause → KnownAttribution` mapping, stated explicitly rat
 
 `InitiatingActor`, `ResponsibleActor`, and `SourceDecisionId` remain part of `AuthoritativeCause`'s supporting data, not part of `KnownAttribution` — they inform the accountability policy's resolution logic (§7) but are never exposed to the stakeholder's belief state directly.
 
+### 4.1 Interference is a named future dependency
+
+The locked four-cause model above does not yet have a slot for the Observer physically preventing a
+character from fulfilling or attending a Commitment.
+[`../Product/CoreIdentity.md`](../Product/CoreIdentity.md) §4–5 and §8 define that case (`Interference`)
+as distinct from ordinary cancellation, and [`../Architecture/Reference.md`](../Architecture/Reference.md)
+§59 requires the distinction between chosen intent, attempted execution, and forced outcome to survive
+into later Knowledge and attribution. This brief's "cause taxonomy beyond the locked four values" (§14)
+is where that distinction will land: most likely a fifth `AuthoritativeCause` (for example
+`ExternalInterference`), with its own `KnownAttribution` mapping that can differ by witness — Core
+Identity's own example has Priya seeing the interference while Glen only knows Mina never arrived, which
+is a materially different Knowledge case from today's single `ExternalCancellation` "no negative
+attribution" mapping.
+
+Not built in this slice. Scope it explicitly into the Phase 9 `InterferenceAndObserverBrief.md`
+(see [`../Product/RoadmapPhases.md`](../Product/RoadmapPhases.md)) rather than rediscovering it mid-implementation.
+
 ---
 
 ## 5. Stakeholders

@@ -1173,6 +1173,11 @@ Generated fields should remain inspectable through the same explanation/provenan
 
 `Culture / social environment` is intentionally not defined by this brief.
 
+[`../Product/CoreIdentity.md`](../Product/CoreIdentity.md) now defines Culture's product role as shared
+memory, expectations, status ideals, institutions, and collective narratives that remain grounded in
+individual people. It does not resolve the representation or evaluation rules; Phase 12 of the product
+roadmap still requires the focused Culture brief named below.
+
 It is a future input to preference generation that may represent things such as:
 
 - locally reinforced ideals,

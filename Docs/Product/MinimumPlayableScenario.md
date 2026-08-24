@@ -1,16 +1,17 @@
 # Vivarium — Minimum Playable Scenario Brief
 
-**Status:** Reviewed first draft  
-**Last reconciled:** 2026-08-23  
+**Status:** Locked Phase 0 scenario contract
+**Last reconciled:** 2026-08-24
 **Purpose:** Define the smallest production-shaped Vivarium scenario that proves a small population can live complete autonomous lives, produce meaningful Decisions, react socially to consequences, continue off-screen, and expose the intended player-attention loop without relying on disposable scaffolding.
 
-**Depends on:** [`../../README.md`](../../README.md), [`../Architecture.md`](../Architecture.md),
+**Depends on:** [`../../README.md`](../../README.md), [`CoreIdentity.md`](CoreIdentity.md),
+[`../Architecture.md`](../Architecture.md),
 [`../IMPLEMENTATION_GUIDELINES.md`](../IMPLEMENTATION_GUIDELINES.md),
 [`../Design/DecisionReasoning.md`](../Design/DecisionReasoning.md),
 [`../Design/SocialModel.md`](../Design/SocialModel.md),
 [`../Design/CommitmentConflict.md`](../Design/CommitmentConflict.md),
-[`../Design/CommitmentAccountability.md`](../Design/CommitmentAccountability.md), and
-[`Roadmap.md`](Roadmap.md).
+[`../Design/CommitmentAccountability.md`](../Design/CommitmentAccountability.md),
+[`Roadmap.md`](Roadmap.md), and [`PlayerAgencyBrief.md`](PlayerAgencyBrief.md).
 
 ---
 
@@ -229,7 +230,10 @@ Primary functions:
 
 The Commons exists specifically so that social life is not synonymous with workplace interaction.
 
-The Commons also owns an authoritative **availability/open-state seam** reserved for the Player Agency Brief. The MPS requires that location availability be meaningful simulation state; the Player Agency Brief determines whether and how the player may alter it.
+The Commons owns authoritative **Open/Closed availability** and is the MVP's first environmental
+management lever. The player may spend one Nudge to change that state under the rules locked in the
+[`Player Agency Brief`](PlayerAgencyBrief.md). Closing changes real Activity availability and planning;
+it never directly commands a character or ejects an Activity already underway.
 
 ---
 
@@ -355,6 +359,10 @@ The simulation remains identical except where player Observation or explicit pla
 
 Observation and Attention may react to semantic WatchState, but they remain distinct from simulation truth.
 
+The location surface exposes the Commons' Open/Closed state and its management Command. The MPS must
+compare an open control branch with a managed branch so the player's circumstance change has an
+observable downstream consequence.
+
 ---
 
 ## 7. Scenario Population
@@ -420,6 +428,10 @@ Mina is the MPS's primary interactive character.
 
 Her Attention policy should cause qualifying important Decisions to enter **Held** state awaiting player attention.
 
+For MVP content, qualifying means the Decision is `HoldEligible` with importance 20 or greater. Mina
+begins with the durable Auto-Hold policy selected. Follow remains an independent player toggle, and the
+player may switch Mina among Normal, Auto-Hold, and Quiet.
+
 The other characters do not use this automatic Hold behavior.
 
 They resolve eligible Decisions autonomously.
@@ -453,6 +465,9 @@ Ordinary planner behavior remains autonomous.
 Only real Decisions qualify.
 
 Hard deadlines still outrank Hold. A commitment-conflict Decision cannot remain Held beyond its derived `LatestResolutionAt`.
+
+During `OfflineCatchUp`, newly created Decisions do not enter Hold. They resolve under ordinary rules
+and appear in the Knowledge-filtered recap after catch-up.
 
 ### Product Lesson
 
@@ -501,7 +516,7 @@ Include:
 
 Different characters should naturally pressure different Needs.
 
-Provisional MPS Need set:
+Locked MPS Need set:
 
 ```text
 Hunger
@@ -536,7 +551,7 @@ A new Need should not enter the MPS unless it produces an important behavior the
 
 ## 11. Minimum Activity Vocabulary
 
-Provisional MPS primary Activities:
+Locked minimum MPS primary Activities:
 
 ```text
 Sleeping
@@ -981,7 +996,9 @@ Expected chain:
 Hunger becomes behaviorally important
 → meaningful Need-vs-Work Decision
 → Mina's Attention policy Holds it
-→ player may inspect / intervene / release
+→ player inspects the known reasons
+→ player spends one Nudge on Emphasize or Temper
+→ player Releases it, or lets its ordinary/hard deadline resolve it
 → world continues around her
 ```
 
@@ -1177,9 +1194,23 @@ Next day
 → Owen's discretionary/social planning differs
 ```
 
-The exact chain is provisional.
+The exact participants remain tunable, but the locked agency comparison adds:
 
-It must emerge from real planning, Need, availability, and interaction rules.
+```text
+Control branch:
+    Commons remains Open
+    → Owen's ordinary evening plan remains available
+
+Managed branch:
+    player spends one Nudge to close Commons before planning
+    → Commons-dependent Travel / Recreation cannot begin
+    → Owen selects from the remaining real affordances
+    → later social opportunity differs
+    → player reopens Commons and the affordance returns
+```
+
+The result must emerge from real planning, Need, availability, and interaction rules. Closing the
+Commons must not directly assign Owen a replacement Activity.
 
 ### Design Intent
 
@@ -1230,26 +1261,24 @@ It proves the intended experience:
 
 ---
 
-## 28. Player Agency Reserved Hook
+## 28. Locked Player Agency Integration
 
-The MPS is only one half of Phase 0.
+The jointly reconciled [`Player Agency Brief`](PlayerAgencyBrief.md) locks the MPS player loop:
 
-`PlayerAgencyBrief.md` must still define the player's actual MVP command set and UI surfaces.
+```text
+view one location
+→ inspect / Follow characters
+→ set Normal, Auto-Hold, or Quiet attention
+→ inspect a surfaced Decision
+→ optionally Hold / Release
+→ optionally spend a Nudge to Emphasize or Temper one known reason
+→ optionally spend a Nudge to open or close Commons
+→ review Knowledge-filtered off-screen / offline recap
+```
 
-To avoid retrofitting the world afterward, this MPS reserves one explicit scenario seam:
-
-> **Commons availability/open-state is authoritative simulation state and may be selected as the first environmental management lever.**
-
-The Player Agency Brief must decide:
-
-- whether the player can alter that state;
-- what command does so;
-- what cost/rule gates it;
-- how the action is presented;
-- how schedules/planning react;
-- whether this or another lever better proves “alter circumstances, not outcomes.”
-
-Until that brief is locked, the MPS should not assume the exact player command.
+The MPS begins with three Nudges and uses the same eight-hour regeneration boundaries as production.
+The two-day acceptance run must exercise a Decision intervention and a Commons state change without
+directly choosing a character outcome. Interactive Activities are explicitly deferred from MVP.
 
 ---
 
@@ -1263,10 +1292,12 @@ Run equivalent scenario branches under several Attention conditions.
 | Viewing another location | Normal | character continues off-screen |
 | Character Followed | Normal | relevant events receive greater Attention |
 | Character unwatched | Normal | Observation/Knowledge may be reduced |
+| Character Quiet | Normal | proactive notification suppressed; history remains |
 | Mina Decision Held | World continues | Decision awaits player within Hold rules |
 | Non-Mina Decision active | World continues | autonomous resolution |
 | Hard deadline reached | World continues | Hold cannot prevent resolution |
-| OfflineCatchUp | Same physical rules | recap replaces live presentation |
+| OfflineCatchUp | Same physical rules; no new Hold | bounded recap replaces live presentation |
+| Commons Closed | Availability-dependent planning reacts | location state and causal consequence are explained |
 
 ### Design Intent
 
@@ -1334,12 +1365,16 @@ Within the first approximately two simulated days, the fixture should naturally 
 
 - player changes viewed location;
 - player inspects Mina;
+- player Follows and unfollows a character;
+- player proves Quiet changes surfacing without changing simulation;
 - Mina's important Decision becomes Held;
-- player may intervene if the Player Agency Brief keeps intervention in MVP scope;
-- player may release Hold;
+- player spends one Nudge to Emphasize or Temper a visible reason;
+- player Releases Hold in one branch;
 - ignoring the hard deadline still permits authoritative resolution;
 - other characters continue autonomously throughout;
-- reserved location availability can affect planning even before the player-management command is finalized.
+- player spends one Nudge to close the Commons and later reopens it;
+- Commons availability changes a downstream plan/Activity/social opportunity without assigning an outcome;
+- Nudge regeneration crosses at least one eight-hour boundary.
 
 ### Persistence
 
@@ -1347,8 +1382,10 @@ Within the first approximately two simulated days, the fixture should naturally 
 - save during Travel;
 - save while Mina has a Held Decision;
 - save before commitment conflict;
+- save with a non-full Nudge balance and the Commons Closed;
 - reload and reproduce exact later outcomes;
-- offline catch-up produces the same authoritative state as uninterrupted simulation.
+- offline catch-up produces the same authoritative state, Nudge regeneration, and Commons-driven
+  planning as uninterrupted simulation.
 
 ---
 
@@ -1363,6 +1400,8 @@ The MPS should absorb proven Golden Scenario beats into ordinary character life 
 | Hunger leave-work Decision | Mina's analytical Hunger progression during an uninterrupted Work obligation |
 | Knowledge reveal / reason-label change | Real Observation/Knowledge path and living Decision reevaluation |
 | Hold/intervention | Mina's Attention policy and normal Decision commands |
+| Nudge economy | Authoritative balance, deterministic eight-hour regeneration, and refund path |
+| Environmental management | Commons Open/Closed Command feeding real availability-dependent planning |
 | Dinner vs Closing conflict | Social Commitment + Employment-produced Closing Duty + real Travel feasibility |
 | Commitment hard deadline | Derived `LatestResolutionAt` from real windows/duration/travel |
 | Accountability | Real `CommitmentLifecycleService` outcome and stakeholder consequence pipeline |
@@ -1446,6 +1485,9 @@ The MPS is not ready if:
 - Employment prose such as “supervisor” or “closing duty” has no authoritative producer/query path;
 - an unstated meal-break or staffing-coverage rule is introduced solely to rescue a scenario beat;
 - location availability exists only as UI state rather than simulation truth;
+- a Commons state change directly assigns a replacement Activity or character outcome;
+- Nudge cost/refund/regeneration differs across live, save/load, or offline execution;
+- Quiet suppresses simulation or prevents later history inspection;
 - history changes but later reasoning does not;
 - save/load changes an expected causal beat;
 - changing a cause does not change its downstream outcome because the outcome was scripted;
@@ -1475,7 +1517,11 @@ The MPS should not require:
 - a large Need taxonomy;
 - staffing coverage simulation;
 - meal-break scheduling;
-- secondary primary Activities / general multitasking.
+- secondary primary Activities / general multitasking;
+- interactive Activities / mini-games;
+- direct physical character interference, forced relocation, or action overriding;
+- character beliefs about the Observer/AGI;
+- AGI selection, Habitat progression, Culture, institutions, or multiple Habitats;
 
 Scope should expand only when an observed MPS failure demonstrates a missing production capability.
 
@@ -1499,7 +1545,9 @@ The requirement is realism of causal execution.
 
 ## 36. Development Use
 
-Once this brief and the Player Agency Brief are jointly locked, implementation work should proceed by identifying the **earliest expected MPS causal beat that the current simulation cannot yet produce through production systems**.
+This brief and the Player Agency Brief are jointly locked. Implementation work should proceed by
+building the **earliest expected MPS causal beat that the current simulation cannot yet produce through
+production systems**.
 
 That becomes the next vertical slice.
 
@@ -1516,17 +1564,18 @@ The slice is complete only when:
 
 ## 37. Likely First Missing Links
 
-Based on the current repository status and this review, the likely earliest MPS gaps are:
+Based on the current repository status and the joint Phase 0 review, the implementation order is:
 
 1. **Energy → Sleeping → waking → replanning**
 2. **Employment v0 → workplace authority + recurring shift/closing-duty Commitments**
 3. **ordinary Hunger → Eating behavior governed by location/Activity affordances**
 4. **discretionary Recreation → Tabletop Games / Reading selection from Interests and availability**
 5. **ordinary Socializing behavior**
-6. **Player Agency Brief → intervention economy + first environmental management lever**
+6. **Nudge economy + Commons availability management**
 7. **Unity surfaces for following approximately ten simultaneous lives**
 
-The exact implementation order should be selected only after the Player Agency Brief is reconciled with this scenario and the current code is rechecked.
+The immediate next slice is **Energy → Sleeping → waking → replanning**. Revalidate later ordering after
+each completed causal link; do not implement all routine links as one subsystem project.
 
 ---
 

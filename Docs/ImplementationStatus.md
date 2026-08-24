@@ -235,6 +235,22 @@ Working implementations:
 
 Intentionally thin, pending game-design decisions:
 
+- **MVP agency contract.** Follow, Hold/Release, stable Influence intervention, and knowledge-filtered
+  Decision projection foundations exist. The locked Nudge balance/regeneration/refund economy,
+  Normal/Auto-Hold/Quiet policy semantics, Commons availability Command, targeted availability
+  reactions, bounded recap, and complete MVP Unity surfaces are not implemented.
+- **Intent versus forced outcome.** Decisions retain historical reasoning and Commitments distinguish
+  planning intent from Activity execution, but there is no general action-attempt provenance or player
+  physical-interference path. The simulation cannot yet record “Mina chose and attempted to leave, but
+  the Observer returned her to work” as distinct causal facts.
+- **Beliefs about the Observer.** `ObserverRef` currently identifies the player or a Character as a
+  Knowledge holder; the Observer/AGI is not yet a durable fact subject or social actor. Player actions do
+  not produce character-scoped evidence, attribution, belief, or later Decision pressure about the
+  Observer.
+- **Product-identity macro systems.** AGI philosophy, Habitat identity, Culture, norms, status ideals,
+  institutions, collective narratives, forced transfer, voluntary migration, inter-habitat contact,
+  and person-grounded collective action are product-directed but unimplemented. They remain post-MVP
+  roadmap phases and require focused briefs before code.
 - **Decision generation breadth.** Need-threshold, social-interaction, and joint commitment-infeasibility
   triggers now generate content-backed Decisions. Other circumstances remain content-driven additions.
 - **Consequences breadth.** Resolved options can change the primary Activity, a directional relationship
@@ -329,7 +345,7 @@ The test suite is organised around the §58 invariants rather than around classe
 
 ## Adding to this codebase
 
-Two questions from §59, worth asking before writing anything:
+Two questions from §60, worth asking before writing anything:
 
 1. *Would this still need to exist if the whole game were text in a console?* If yes, it belongs in
    Domain or Application. If it exists because the player needs to see, hear, click, or animate
