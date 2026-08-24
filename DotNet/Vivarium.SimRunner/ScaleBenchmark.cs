@@ -22,7 +22,8 @@ namespace Vivarium.SimRunner
             maximumManagedMegabytes: 128,
             maximumWorkPerCharacter: 320,
             maximumActivitiesPerCharacter: 30,
-            maximumPendingEventsPerCharacter: 2);
+            // Activity completion plus Hunger and Energy threshold crossings are all authoritative.
+            maximumPendingEventsPerCharacter: 3);
 
         public ScaleBudget(
             int population,

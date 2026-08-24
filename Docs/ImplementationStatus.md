@@ -120,6 +120,11 @@ Working implementations:
 - **Activities** — one authoritative primary Activity per character, travel as an Activity, occupancy
   indexes maintained on transition, time-weighted context modifiers, and a content-configurable
   disliked-colleague Work pressure reaction (§29, §30).
+- **Energy rest routine** — a content-backed reserve Need can react directly to its low threshold,
+  travel to the character's household location, enter Sleeping, recover analytically to a distinct
+  threshold, wake into fallback planning, and continue identically through save/load and
+  `OfflineCatchUp`. Optional travel continuation intent is snapshotted in the scheduled arrival payload;
+  schema v7 preserves older arrivals as having no invented continuation.
 - **Decisions** — living influence sets with stable influence identity, dependency-indexed
   reevaluation, deterministic dice resolution, bounded held decisions, one authority for intervention
   rules, one content-backed Need-threshold generation path with an Activity consequence, and targeted
@@ -227,7 +232,8 @@ Working implementations:
   Schema v6 adds the CommitmentOutcome allocator plus Commitment stakeholder/accountability snapshots
   and weak outcome provenance on Knowledge, RelationshipMemory, and History. Outcome ledgers and
   idempotency indexes are not save caches: settled durable consequences are authoritative, while pending
-  policy snapshots are carried by their scheduled payload.
+  policy snapshots are carried by their scheduled payload. Schema v7 adds optional travel-arrival
+  continuation fields; v6 payloads migrate with the prior no-continuation behavior.
 - **Scale regression gate** — the normal suite repeats a 250-character/six-hour workload and requires
   identical authoritative hashes and deterministic work counts under structural per-character ceilings.
   An opt-in 1,000-character/one-day tier enforces initial wall-clock and heap budgets while the CLI
@@ -260,8 +266,9 @@ Intentionally thin, pending game-design decisions:
   unimplemented.
 - **Save serialization format.** Explicitly deferred (§57). `ISaveGameSerializer` is defined;
   `InMemorySaveGameStore` exercises mapping without committing to an encoding.
-- **Needs → behaviour breadth.** Threshold crossings can generate one Decision type; direct routine,
-  Activity-priority, and other behavioral reactions remain unimplemented.
+- **Needs → behaviour breadth.** Threshold crossings can generate one Decision type and Energy now
+  drives one direct Sleep/recovery routine. Ordinary Eating, competing routine priority, and other
+  behavioral reactions remain unimplemented.
 - **Unity authoring/presentation.** `ContentPackAsset` converts authored Needs, Activities, Decisions
   (including typed compiled reasoning, social triggers, and directional outcomes), appraisal calibration,
   social evidence/pressure, and interventions into the validated Domain catalog. Demo characters receive deterministic social
@@ -310,6 +317,7 @@ The test suite is organised around the §58 invariants rather than around classe
 | Different knowledge yields different views of one decision | `CommandAndProjectionTests` |
 | Save/load round-trip, including active travel and revisions | `PersistenceTests` |
 | Need pressure generates a Decision and Activity consequence | `PersistenceTests` |
+| Energy travels home, sleeps, wakes, and replans identically live/offline/after reload | `SleepRoutineTests` |
 | Generated Decision resolves identically after save/reload | `PersistenceTests` |
 | Work pressure counts only while context is present | `WorkContextTests` |
 | Living influence reevaluates with stable identity and reloads | `WorkContextTests` |
@@ -339,6 +347,7 @@ The test suite is organised around the §58 invariants rather than around classe
 | Unity Decision feed refreshes after intervention at quiescence | `VivariumPlayModeTests` |
 | Unity demo progresses through shared travel, Work pressure, and generated Decision | `VivariumPlayModeTests` |
 | Version drift diagnosed, not automatically blocking | `PersistenceTests` |
+| Schema-v6 travel arrivals migrate without invented continuation intent | `PersistenceTests` |
 | Offline duration computed outside Domain | `PersistenceTests` |
 | Fixed population workload has identical hash and bounded structural work | `ScaleBenchmarkTests` |
 | Opt-in 1,000-character measured budget | `ScaleBenchmarkTests.StandardMeasuredBudgetIsOptIn` |

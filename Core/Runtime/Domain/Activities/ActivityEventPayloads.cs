@@ -122,11 +122,18 @@ namespace Vivarium.Domain.Activities
     /// <summary>A Traveling Activity reaches its destination (§29.2).</summary>
     public sealed class TravelArrivalPayload : IScheduledEventPayload
     {
-        public TravelArrivalPayload(ActivityInstanceId activityInstanceId, CharacterId characterId, LocationId destinationLocationId)
+        public TravelArrivalPayload(
+            ActivityInstanceId activityInstanceId,
+            CharacterId characterId,
+            LocationId destinationLocationId,
+            AuthoredId continuationActivityDefinitionId = default,
+            SimDuration continuationDuration = default)
         {
             ActivityInstanceId = activityInstanceId;
             CharacterId = characterId;
             DestinationLocationId = destinationLocationId;
+            ContinuationActivityDefinitionId = continuationActivityDefinitionId;
+            ContinuationDuration = continuationDuration;
         }
 
         public ActivityInstanceId ActivityInstanceId { get; }
@@ -134,6 +141,11 @@ namespace Vivarium.Domain.Activities
         public CharacterId CharacterId { get; }
 
         public LocationId DestinationLocationId { get; }
+
+        /// <summary>Optional non-Commitment routine intent that begins when travel arrives.</summary>
+        public AuthoredId ContinuationActivityDefinitionId { get; }
+
+        public SimDuration ContinuationDuration { get; }
     }
 
     /// <summary>

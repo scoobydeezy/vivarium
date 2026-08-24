@@ -46,7 +46,9 @@ namespace Vivarium.Domain.Activities
                 duration,
                 performanceRatePerMinute,
                 sourceCommitmentId,
-                ScheduledEventTypes.ActivityComplete);
+                ScheduledEventTypes.ActivityComplete,
+                default,
+                default);
         }
 
         /// <summary>
@@ -61,7 +63,9 @@ namespace Vivarium.Domain.Activities
             CharacterId characterId,
             LocationId destination,
             out ActivityInstance travelActivity,
-            CommitmentId sourceCommitmentId = default)
+            CommitmentId sourceCommitmentId = default,
+            AuthoredId continuationActivityDefinitionId = default,
+            SimDuration continuationDuration = default)
         {
             travelActivity = null;
             WorldState world = context.World;
@@ -93,7 +97,9 @@ namespace Vivarium.Domain.Activities
                 plan.TotalCost,
                 0,
                 sourceCommitmentId,
-                ScheduledEventTypes.TravelArrival);
+                ScheduledEventTypes.TravelArrival,
+                continuationActivityDefinitionId,
+                continuationDuration);
 
             return true;
         }
@@ -147,7 +153,9 @@ namespace Vivarium.Domain.Activities
             SimDuration duration,
             long performanceRatePerMinute,
             CommitmentId sourceCommitmentId,
-            AuthoredId completionEventType)
+            AuthoredId completionEventType,
+            AuthoredId continuationActivityDefinitionId,
+            SimDuration continuationDuration)
         {
             WorldState world = context.World;
             SimTime now = world.Clock.Now;
@@ -196,7 +204,12 @@ namespace Vivarium.Domain.Activities
             // revision and the outgoing Activity's event is left stale (§11.2).
             world.BumpRevision(activity.ActivityRevisionKey);
 
-            ScheduleCompletion(context, activity, completionEventType);
+            ScheduleCompletion(
+                context,
+                activity,
+                completionEventType,
+                continuationActivityDefinitionId,
+                continuationDuration);
 
             world.Publish(new ActivityStartedEvent(characterId, activity.Id, definitionId));
 
@@ -213,7 +226,12 @@ namespace Vivarium.Domain.Activities
             return activity;
         }
 
-        private static void ScheduleCompletion(SimulationContext context, ActivityInstance activity, AuthoredId eventType)
+        private static void ScheduleCompletion(
+            SimulationContext context,
+            ActivityInstance activity,
+            AuthoredId eventType,
+            AuthoredId continuationActivityDefinitionId = default,
+            SimDuration continuationDuration = default)
         {
             WorldState world = context.World;
 
@@ -227,7 +245,12 @@ namespace Vivarium.Domain.Activities
             var dependency = EventDependency.Capture(world.Revisions, activity.ActivityRevisionKey);
 
             IScheduledEventPayload payload = eventType == ScheduledEventTypes.TravelArrival
-                ? (IScheduledEventPayload)new TravelArrivalPayload(activity.Id, activity.CharacterId, activity.SpatialContext.Transit.DestinationLocationId)
+                ? (IScheduledEventPayload)new TravelArrivalPayload(
+                    activity.Id,
+                    activity.CharacterId,
+                    activity.SpatialContext.Transit.DestinationLocationId,
+                    continuationActivityDefinitionId,
+                    continuationDuration)
                 : new ActivityCompletionPayload(activity.Id, activity.CharacterId);
 
             ScheduledEvent scheduled = world.Scheduler.Schedule(

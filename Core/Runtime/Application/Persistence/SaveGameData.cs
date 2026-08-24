@@ -21,7 +21,7 @@ namespace Vivarium.Application.Persistence
         /// <summary>
         /// The current persisted shape. Bump on any structural change and add a migration (§39).
         /// </summary>
-        public const int CurrentSchemaVersion = 6;
+        public const int CurrentSchemaVersion = 7;
 
         /// <summary>Determines whether the persisted shape can be understood or migrated (§39.1).</summary>
         public int SchemaVersion = CurrentSchemaVersion;

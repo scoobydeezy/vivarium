@@ -3,6 +3,7 @@ using Vivarium.Domain.Activities;
 using Vivarium.Domain.Characters;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Decisions;
+using Vivarium.Domain.Groups;
 using Vivarium.Domain.Relationships;
 using Vivarium.Domain.Simulation;
 using Vivarium.Domain.Scheduling;
@@ -194,6 +195,22 @@ namespace Vivarium.SimRunner
 
             character.SetNeed(hungerState);
             host.Needs.Rearm(host.Simulation, character, hungerState);
+
+            NeedDefinition energy = host.Catalog.Needs[WellKnownNeeds.Energy];
+            var energyState = new NeedState(
+                energy.Id,
+                AnalyticalProgression.Linear(9000, world.Clock.Now, energy.DefaultRateNumerator, energy.DefaultRateDenominator, energy.MinValue, energy.MaxValue),
+                energy.RestRoutine.ActivationThreshold);
+            character.SetNeed(energyState);
+            host.Needs.Rearm(host.Simulation, character, energyState);
+
+            var household = new Group(
+                world.RuntimeIds.Groups.Next(),
+                GroupKinds.Household,
+                name + " household",
+                startingLocation);
+            world.Groups.Add(household.Id, household);
+            world.Memberships.Join(household.Id, character.Id);
 
             // Every active character has exactly one primary Activity from the moment they exist (§29.1).
             host.Transitions.BeginActivity(

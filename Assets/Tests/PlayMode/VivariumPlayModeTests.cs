@@ -25,6 +25,7 @@ namespace Vivarium.Unity.Tests
     {
         private static readonly AuthoredId DemoDecisionId = new AuthoredId("decision.leave_work_early");
         private static readonly AuthoredId CommitmentConflictDecisionId = new AuthoredId("decision.commitment_conflict");
+        private static readonly AuthoredId HungerNeedId = new AuthoredId("need.hunger");
         private GameBootstrapper _bootstrapper;
         private WorldPresenter _presenter;
 
@@ -134,15 +135,15 @@ namespace Vivarium.Unity.Tests
             Result opened = _bootstrapper.Host.Session.Execute(new InspectCharacterCommand(id));
             Assert.That(opened.IsSuccess, Is.True);
             Assert.That(projector.TryProject(_bootstrapper.Host.World, id, out CharacterProfileView first), Is.True);
-            Assert.That(first.KnownNeeds.Count, Is.EqualTo(1));
-            long firstHunger = long.Parse(first.KnownNeeds[0].ValueLabel);
+            Assert.That(first.KnownNeeds.Count, Is.EqualTo(character.Needs.Count));
+            long firstHunger = long.Parse(KnownNeed(first, HungerNeedId).ValueLabel);
 
             _bootstrapper.Host.Session.Advance(SimDuration.FromMinutes(60));
             _bootstrapper.Host.Session.Execute(new InspectCharacterCommand(id, false));
             _bootstrapper.Host.Session.Execute(new InspectCharacterCommand(id, true));
 
             Assert.That(projector.TryProject(_bootstrapper.Host.World, id, out CharacterProfileView refreshed), Is.True);
-            long refreshedHunger = long.Parse(refreshed.KnownNeeds[0].ValueLabel);
+            long refreshedHunger = long.Parse(KnownNeed(refreshed, HungerNeedId).ValueLabel);
             Assert.That(refreshedHunger, Is.GreaterThan(firstHunger));
             yield return null;
         }
@@ -449,6 +450,20 @@ namespace Vivarium.Unity.Tests
             }
 
             return longest;
+        }
+
+        private static KnownFactView KnownNeed(CharacterProfileView profile, AuthoredId needId)
+        {
+            for (int i = 0; i < profile.KnownNeeds.Count; i++)
+            {
+                if (profile.KnownNeeds[i].Label == needId.Value)
+                {
+                    return profile.KnownNeeds[i];
+                }
+            }
+
+            Assert.Fail($"The projected profile has no known Need labelled '{needId}'.");
+            return null;
         }
 
         private Decision DemoDecision()

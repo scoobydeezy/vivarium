@@ -192,14 +192,22 @@ namespace Vivarium.Application.Persistence
         {
             var typed = (TravelArrivalPayload)payload;
             return PayloadData.Of(
-                null,
-                new long[] { typed.ActivityInstanceId.Value, typed.CharacterId.Value, typed.DestinationLocationId.Value });
+                new[] { typed.ContinuationActivityDefinitionId.Value },
+                new long[]
+                {
+                    typed.ActivityInstanceId.Value,
+                    typed.CharacterId.Value,
+                    typed.DestinationLocationId.Value,
+                    typed.ContinuationDuration.TotalMinutes,
+                });
         }
 
         public IScheduledEventPayload Decode(ScheduledEventPayloadData data) => new TravelArrivalPayload(
             new ActivityInstanceId((int)PayloadData.Number(data, 0)),
             new CharacterId((int)PayloadData.Number(data, 1)),
-            new LocationId((int)PayloadData.Number(data, 2)));
+            new LocationId((int)PayloadData.Number(data, 2)),
+            new AuthoredId(PayloadData.String(data, 0)),
+            SimDuration.FromMinutes(PayloadData.Number(data, 3)));
     }
 
     /// <summary>Codec for <see cref="NeedThresholdPayload"/>.</summary>

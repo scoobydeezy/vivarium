@@ -69,5 +69,8 @@ namespace Vivarium.Domain.Activities
 
         /// <summary>The fallback Activity, so "exactly one primary Activity" always holds (invariant 39).</summary>
         public static readonly AuthoredId Waiting = new AuthoredId("activity.waiting");
+
+        /// <summary>The production sleep Activity used by Energy recovery routines.</summary>
+        public static readonly AuthoredId Sleeping = new AuthoredId("activity.sleeping");
     }
 }

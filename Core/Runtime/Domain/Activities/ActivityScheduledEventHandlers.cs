@@ -122,6 +122,11 @@ namespace Vivarium.Domain.Activities
                 nextDefinition = commitment.ActivityDefinitionId;
                 duration = commitment.ExpectedDuration;
             }
+            else if (payload.ContinuationActivityDefinitionId.IsSet)
+            {
+                nextDefinition = payload.ContinuationActivityDefinitionId;
+                duration = payload.ContinuationDuration;
+            }
 
             ActivityInstance next = _transitions.BeginActivity(
                 context,

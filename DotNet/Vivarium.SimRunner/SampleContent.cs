@@ -4,6 +4,7 @@ using Vivarium.Domain.Characters;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Decisions;
 using Vivarium.Domain.Evaluation;
+using Vivarium.Domain.Groups;
 using Vivarium.Domain.Knowledge;
 using Vivarium.Domain.Relationships;
 using Vivarium.Domain.Spatial;
@@ -34,7 +35,7 @@ namespace Vivarium.SimRunner
         public static readonly AuthoredId NeedSocial = new AuthoredId("need.social");
 
         public static readonly AuthoredId ActivityWorking = new AuthoredId("activity.working");
-        public static readonly AuthoredId ActivitySleeping = new AuthoredId("activity.sleeping");
+        public static readonly AuthoredId ActivitySleeping = WellKnownActivities.Sleeping;
         public static readonly AuthoredId ActivityDining = new AuthoredId("activity.dining");
         public static readonly AuthoredId ActivityHelpingAtBakery = new AuthoredId("activity.helping_at_bakery");
 
@@ -114,6 +115,20 @@ namespace Vivarium.SimRunner
 
             builder.Add(new NeedDefinition(NeedHunger, "Hunger", 0, 10000, 12, 1, new long[] { 6000, 8000, 9500 }));
             builder.Add(new NeedDefinition(NeedSocial, "Social", 0, 10000, 4, 1, new long[] { 7000 }));
+            builder.Add(new NeedDefinition(
+                WellKnownNeeds.Energy,
+                "Energy",
+                0,
+                10000,
+                -10,
+                1,
+                new long[] { 2000, 8000 },
+                new NeedRestRoutineDefinition(
+                    WellKnownActivities.Sleeping,
+                    GroupKinds.Household,
+                    2000,
+                    8000,
+                    20)));
 
             builder.Add(new ActivityDefinition(ActivityWorking, "Working", SimDuration.FromHours(6), true, true));
             builder.Add(new ActivityDefinition(ActivitySleeping, "Sleeping", SimDuration.FromHours(8), false));

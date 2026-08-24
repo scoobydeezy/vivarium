@@ -8,6 +8,8 @@ using Vivarium.Domain.Spatial;
 using Vivarium.Domain.Time;
 using Vivarium.Domain.Social;
 using Vivarium.Domain.History;
+using Vivarium.Domain.Characters;
+using Vivarium.Domain.Groups;
 
 namespace Vivarium.Unity.Authoring
 {
@@ -120,6 +122,29 @@ namespace Vivarium.Unity.Authoring
                 builder.Add(new ActivityDefinition(WellKnownActivities.Traveling, "Traveling", SimDuration.FromMinutes(10), false, false, true));
             }
 
+            if (!ContainsActivity(WellKnownActivities.Sleeping))
+            {
+                builder.Add(new ActivityDefinition(WellKnownActivities.Sleeping, "Sleeping", SimDuration.FromHours(8), false));
+            }
+
+            if (!ContainsNeed(WellKnownNeeds.Energy))
+            {
+                builder.Add(new NeedDefinition(
+                    WellKnownNeeds.Energy,
+                    "Energy",
+                    0,
+                    10000,
+                    -10,
+                    1,
+                    new long[] { 2000, 8000 },
+                    new NeedRestRoutineDefinition(
+                        WellKnownActivities.Sleeping,
+                        GroupKinds.Household,
+                        2000,
+                        8000,
+                        20)));
+            }
+
             DefinitionCatalog catalog = builder.Build();
 
             IReadOnlyList<string> errors = ContentValidator.Validate(catalog);
@@ -191,6 +216,19 @@ namespace Vivarium.Unity.Authoring
             return false;
         }
 
+        private bool ContainsNeed(AuthoredId id)
+        {
+            for (int i = 0; i < needs.Length; i++)
+            {
+                if (needs[i].authoredId == id.Value)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         [System.Serializable]
         public struct NeedEntry
         {
@@ -201,6 +239,7 @@ namespace Vivarium.Unity.Authoring
             public long ratePerMinuteNumerator;
             public long ratePerMinuteDenominator;
             public long[] behaviouralThresholds;
+            public RestRoutineEntry restRoutine;
 
             public Domain.Characters.NeedDefinition ToDefinition() => new Domain.Characters.NeedDefinition(
                 new AuthoredId(authoredId),
@@ -209,7 +248,29 @@ namespace Vivarium.Unity.Authoring
                 maxValue,
                 ratePerMinuteNumerator,
                 ratePerMinuteDenominator <= 0 ? 1 : ratePerMinuteDenominator,
-                behaviouralThresholds ?? new long[0]);
+                behaviouralThresholds ?? new long[0],
+                restRoutine.IsConfigured ? restRoutine.ToDefinition() : null);
+        }
+
+        [System.Serializable]
+        public struct RestRoutineEntry
+        {
+            public string activityDefinitionId;
+            public string locationGroupKindId;
+            public long activationThreshold;
+            public long recoveredThreshold;
+            public long recoveryRateNumerator;
+            public long recoveryRateDenominator;
+
+            public bool IsConfigured => !string.IsNullOrWhiteSpace(activityDefinitionId);
+
+            public NeedRestRoutineDefinition ToDefinition() => new NeedRestRoutineDefinition(
+                new AuthoredId(activityDefinitionId),
+                new AuthoredId(locationGroupKindId),
+                activationThreshold,
+                recoveredThreshold,
+                recoveryRateNumerator,
+                recoveryRateDenominator <= 0 ? 1 : recoveryRateDenominator);
         }
 
         [System.Serializable]

@@ -85,6 +85,25 @@ namespace Vivarium.Domain.Characters
             Rearm(context, character, need.WithThreshold(threshold));
         }
 
+        /// <summary>Changes rate and watched threshold as one authoritative rearm operation.</summary>
+        public void SetRateAndThreshold(
+            SimulationContext context,
+            Character character,
+            AuthoredId needId,
+            long ratePerMinuteNumerator,
+            long ratePerMinuteDenominator,
+            long threshold)
+        {
+            if (!character.TryGetNeed(needId, out NeedState need))
+                throw new InvalidOperationException($"{character.Id} has no need '{needId}'.");
+
+            SimTime now = context.World.Clock.Now;
+            NeedState updated = need
+                .WithProgression(need.Progression.WithRate(now, ratePerMinuteNumerator, ratePerMinuteDenominator))
+                .WithThreshold(threshold);
+            Rearm(context, character, updated);
+        }
+
         /// <summary>
         /// Cancels any pending crossing, bumps the need's revision, and schedules the next crossing.
         /// </summary>

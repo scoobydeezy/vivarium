@@ -33,17 +33,19 @@ supported player actions, and required Unity surfaces.
 
 The immediate next slice is:
 
-> **Energy → Sleeping → waking → replanning.**
+> **Employment v0 → workplace authority and recurring shift/closing-duty Commitments.**
 
 Observable completion test:
 
-> When a character's authoritative Energy reaches its behavioral threshold, they plan and begin Sleep
-> at an appropriate location, recover analytically, wake, and resume planning; uninterrupted,
-> save/load, and OfflineCatchUp runs reach the same next-day world.
+> A character's authored Employment identity produces recurring workplace obligations with derived
+> workplace authority and stakeholder roles; attendance, fulfillment, and conflict consequences arise
+> through the existing Commitment lifecycle identically across uninterrupted and save/load runs.
 
-The current code contains only a sample Sleeping Activity definition. It has no Energy Need or
-production sleep/wake/replanning behavior, so this is the earliest missing MPS causal link whose kernel
-prerequisites already exist.
+The Energy/Sleep/Wake slice is complete: production content now supplies an analytically progressing
+Energy Need and a content-backed rest routine that travels to a household location, sleeps, recovers,
+wakes, and resumes fallback planning identically live, offline, and across save/load. Employment is now
+the earliest missing MPS causal link and is required before the flagship Bakery obligations are
+production-shaped rather than scenario-authored commitments.
 
 ## Ordered phases
 
@@ -76,8 +78,8 @@ architectural obligations, not their exact data models or tuning.
 The locked Phase 0 review establishes this order, subject to revalidation against code after each
 slice:
 
-1. Energy → Sleeping → waking → replanning.
-2. Employment v0 → workplace authority and recurring shift/closing-duty Commitments.
+1. Energy → Sleeping → waking → replanning. **Complete.**
+2. Employment v0 → workplace authority and recurring shift/closing-duty Commitments. **Next.**
 3. Ordinary Hunger → Eating governed by location and Activity affordances.
 4. Discretionary Recreation → Tabletop Games / Reading selected from Interests and availability.
 5. Ordinary Socializing through bounded shared-context selection.

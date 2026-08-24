@@ -192,6 +192,36 @@ namespace Vivarium.Domain.Content
                         errors.Add($"need '{need.Id}' threshold {threshold} falls outside its range");
                     }
                 }
+
+                NeedRestRoutineDefinition rest = need.RestRoutine;
+                if (rest != null)
+                {
+                    if (!catalog.Activities.ContainsKey(rest.ActivityDefinitionId))
+                        errors.Add($"need '{need.Id}' rest routine references unknown activity '{rest.ActivityDefinitionId}'");
+                    else if (rest.RecoveryRateNumerator > 0)
+                    {
+                        long recoveryDelta = rest.RecoveredThreshold - need.MinValue;
+                        long minimumMinutes = recoveryDelta <= 0
+                            ? 0
+                            : (recoveryDelta * rest.RecoveryRateDenominator + rest.RecoveryRateNumerator - 1) /
+                                rest.RecoveryRateNumerator;
+                        if (catalog.Activities[rest.ActivityDefinitionId].DefaultDuration.TotalMinutes < minimumMinutes)
+                            errors.Add($"need '{need.Id}' recovery activity is too short to recover from its minimum value");
+                    }
+                    if (rest.ActivationThreshold < need.MinValue || rest.ActivationThreshold > need.MaxValue)
+                        errors.Add($"need '{need.Id}' rest activation threshold falls outside its range");
+                    if (rest.RecoveredThreshold < need.MinValue || rest.RecoveredThreshold > need.MaxValue)
+                        errors.Add($"need '{need.Id}' recovered threshold falls outside its range");
+                    if (need.DefaultRateNumerator >= 0)
+                        errors.Add($"need '{need.Id}' rest routine requires a negative ordinary rate");
+                    if (rest.RecoveryRateNumerator <= 0)
+                        errors.Add($"need '{need.Id}' rest routine requires a positive recovery rate");
+                    if (rest.ActivationThreshold >= rest.RecoveredThreshold)
+                        errors.Add($"need '{need.Id}' rest activation threshold must be below its recovered threshold");
+                    if (!ContainsThreshold(need.BehaviouralThresholds, rest.ActivationThreshold) ||
+                        !ContainsThreshold(need.BehaviouralThresholds, rest.RecoveredThreshold))
+                        errors.Add($"need '{need.Id}' rest thresholds must both be declared behavioural thresholds");
+                }
             }
 
             foreach (KeyValuePair<AuthoredId, DecisionDefinition> pair in catalog.Decisions)
@@ -337,6 +367,13 @@ namespace Vivarium.Domain.Content
             }
 
             return errors;
+        }
+
+        private static bool ContainsThreshold(IReadOnlyList<long> thresholds, long expected)
+        {
+            for (int i = 0; i < thresholds.Count; i++)
+                if (thresholds[i] == expected) return true;
+            return false;
         }
 
         private static void ValidateConsequences(

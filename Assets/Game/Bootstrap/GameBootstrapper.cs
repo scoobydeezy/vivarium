@@ -8,6 +8,7 @@ using Vivarium.Domain.Characters;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Content;
 using Vivarium.Domain.Decisions;
+using Vivarium.Domain.Groups;
 using Vivarium.Domain.Relationships;
 using Vivarium.Domain.Social;
 using Vivarium.Domain.Simulation;
@@ -205,6 +206,28 @@ namespace Vivarium.Unity.Bootstrap
                 DemoDecisionThresholdFor(hunger.Id, hunger.MaxValue));
             character.SetNeed(hungerState);
             _host.Needs.Rearm(_host.Simulation, character, hungerState);
+
+            NeedDefinition energy = _host.Catalog.Needs[WellKnownNeeds.Energy];
+            var energyState = new NeedState(
+                energy.Id,
+                AnalyticalProgression.Linear(
+                    9000,
+                    _host.World.Clock.Now,
+                    energy.DefaultRateNumerator,
+                    energy.DefaultRateDenominator,
+                    energy.MinValue,
+                    energy.MaxValue),
+                energy.RestRoutine.ActivationThreshold);
+            character.SetNeed(energyState);
+            _host.Needs.Rearm(_host.Simulation, character, energyState);
+
+            var household = new Group(
+                _host.World.RuntimeIds.Groups.Next(),
+                GroupKinds.Household,
+                characterName + " household",
+                locationId);
+            _host.World.Groups.Add(household.Id, household);
+            _host.World.Memberships.Join(household.Id, character.Id);
 
             _host.Transitions.BeginActivity(
                 _host.Simulation,

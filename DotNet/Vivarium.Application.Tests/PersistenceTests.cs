@@ -213,6 +213,29 @@ namespace Vivarium.Application.Tests
         }
 
         [Fact]
+        public void SchemaSixTravelArrivalMigratesWithNoInventedContinuation()
+        {
+            var save = new SaveGameData { SchemaVersion = 6 };
+            save.Scheduler.PendingEvents.Add(new ScheduledEventData
+            {
+                EventType = ScheduledEventTypes.TravelArrival.Value,
+                Payload = new ScheduledEventPayloadData
+                {
+                    Numbers = { 1, 2, 3 },
+                },
+            });
+
+            SaveCompatibilityReport report = new SaveMigrator().Migrate(save, 0, 0, 0);
+            var payload = (TravelArrivalPayload)new TravelArrivalPayloadCodec().Decode(
+                save.Scheduler.PendingEvents[0].Payload);
+
+            Assert.True(report.CanLoad);
+            Assert.Equal(SaveGameData.CurrentSchemaVersion, save.SchemaVersion);
+            Assert.False(payload.ContinuationActivityDefinitionId.IsSet);
+            Assert.Equal(SimDuration.Zero, payload.ContinuationDuration);
+        }
+
+        [Fact]
         public void TypedDecisionContextAndReasoningProgramSurviveRoundTrip()
         {
             TestWorld fixture = TestWorld.Create();

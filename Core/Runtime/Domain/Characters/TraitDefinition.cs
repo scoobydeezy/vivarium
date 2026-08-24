@@ -80,7 +80,8 @@ namespace Vivarium.Domain.Characters
             long maxValue,
             long defaultRateNumerator,
             long defaultRateDenominator = 1,
-            IReadOnlyList<long> behaviouralThresholds = null)
+            IReadOnlyList<long> behaviouralThresholds = null,
+            NeedRestRoutineDefinition restRoutine = null)
         {
             if (!id.IsSet)
             {
@@ -94,6 +95,7 @@ namespace Vivarium.Domain.Characters
             DefaultRateNumerator = defaultRateNumerator;
             DefaultRateDenominator = defaultRateDenominator;
             BehaviouralThresholds = behaviouralThresholds ?? new long[0];
+            RestRoutine = restRoutine;
         }
 
         public AuthoredId Id { get; }
@@ -115,6 +117,15 @@ namespace Vivarium.Domain.Characters
         /// </summary>
         public IReadOnlyList<long> BehaviouralThresholds { get; }
 
+        /// <summary>Optional content-backed recovery routine, used by reserve Needs such as Energy.</summary>
+        public NeedRestRoutineDefinition RestRoutine { get; }
+
         public override string ToString() => Id.ToString();
+    }
+
+    /// <summary>Stable ids for production Needs shared by headless and Unity content.</summary>
+    public static class WellKnownNeeds
+    {
+        public static readonly AuthoredId Energy = new AuthoredId("need.energy");
     }
 }
