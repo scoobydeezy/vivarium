@@ -104,7 +104,7 @@ namespace Vivarium.Domain.Decisions
                     : DecisionConflictScope.None;
                 Decision generated = _generation.Generate(world, new CompiledDecisionGenerationRequest(
                     e.CharacterId, definition.Id, definition.TimeToResolve, options, definition.ReasoningProgram,
-                    conflictScope: scope, importance: definition.Importance,
+                    conflictScope: scope,
                     absoluteResolveAt: joint.LatestResolutionAt,
                     resolveEventType: ScheduledEventTypes.AutoResolveCommitmentConflict,
                     resolveDependencies: dependencies, commitmentConflictKey: key));

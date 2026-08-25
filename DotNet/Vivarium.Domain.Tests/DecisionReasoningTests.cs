@@ -90,6 +90,23 @@ namespace Vivarium.Domain.Tests
         }
 
         [Fact]
+        public void ImportanceUsesStrongestConsolidatedExpectedScoreRatherThanCountOrVariance()
+        {
+            Decision decision = Decision(1);
+            SocialDecisionInfluenceSpec spec = Spec();
+            CandidateReason trivial = new InterpersonalComfortConsideration().Evaluate(
+                decision, Target, Evaluation(2000, AppraisalStrength.Minor, outputVariance: SignalNumeric.MaxVariance), spec);
+            CandidateReason strong = new InterpersonalComfortConsideration().Evaluate(
+                decision, new CharacterId(3), Evaluation(-7000, AppraisalStrength.Strong), spec);
+
+            IReadOnlyList<CandidateReason> reasons = new ReasonConsolidator().Consolidate(
+                new[] { trivial, trivial, trivial, strong });
+            int importance = new DecisionImportanceEvaluator().Evaluate(reasons);
+
+            Assert.Equal(7000, importance);
+        }
+
+        [Fact]
         public void CompiledProgramEvaluatesTargetAndTargetlessOptionsInOneDecision()
         {
             var world = new WorldState(41, SimTime.Epoch);
@@ -135,6 +152,7 @@ namespace Vivarium.Domain.Tests
 
             Assert.Equal(5, new CompiledDecisionReasoningService().EvaluateAndReconcile(world, decision, providers));
             Assert.Equal(5, decision.Influences.Count);
+            Assert.Equal(MaximumExpectedMagnitude(decision), decision.Importance);
             Assert.DoesNotContain(decision.DependencyKeys, dependency =>
                 dependency.ContextKind.Value.Contains("social_appraisal"));
 
@@ -204,11 +222,13 @@ namespace Vivarium.Domain.Tests
             DecisionInfluence influence = Assert.Single(decision.Influences);
             DecisionInfluenceId stableId = influence.Id;
             Assert.Equal(Die.D6, influence.BaseDie);
+            Assert.Equal(System.Math.Abs(influence.Evaluation.ExpectedScore), decision.Importance);
 
             var stepUp = new InterventionDefinition(
                 new AuthoredId("intervention.encourage"), InterventionKind.StepDieUp, 0);
             DecisionInterventionRules.Apply(decision, stepUp, stableId, 17);
             Assert.Equal(Die.D8, influence.CurrentDie);
+            Assert.Equal(System.Math.Abs(influence.Evaluation.ExpectedScore), decision.Importance);
 
             mira.Values.Set(independence, 10000);
             Assert.Equal(1, reconciler.Reconcile(decision, evaluator.Evaluate(world, decision, providers)));
@@ -216,10 +236,12 @@ namespace Vivarium.Domain.Tests
             Assert.Equal(Die.D8, influence.BaseDie);
             Assert.Equal(Die.D10, influence.CurrentDie);
             Assert.Equal(stableId, Assert.Single(decision.Interventions).TargetInfluenceId);
+            Assert.Equal(System.Math.Abs(influence.Evaluation.ExpectedScore), decision.Importance);
 
             mira.Values.Set(independence, 0);
             Assert.Equal(1, reconciler.Reconcile(decision, evaluator.Evaluate(world, decision, providers)));
             Assert.True(influence.IsRetracted);
+            Assert.Equal(0, decision.Importance);
 
             mira.Values.Set(independence, -7000);
             Assert.Equal(1, reconciler.Reconcile(decision, evaluator.Evaluate(world, decision, providers)));
@@ -229,6 +251,7 @@ namespace Vivarium.Domain.Tests
             Assert.Equal(Die.D6, influence.BaseDie);
             Assert.Equal(Die.D8, influence.CurrentDie);
             Assert.Single(decision.Influences);
+            Assert.Equal(System.Math.Abs(influence.Evaluation.ExpectedScore), decision.Importance);
         }
 
         [Fact]
@@ -471,7 +494,21 @@ namespace Vivarium.Domain.Tests
             new AuthoredId("influence.avoids"),
             InfluenceVisibility.Full);
 
-        private static CompositeSocialEvaluationResult Evaluation(long normalized, AppraisalStrength strength)
+        private static long MaximumExpectedMagnitude(Decision decision)
+        {
+            long maximum = 0;
+            for (int i = 0; i < decision.Influences.Count; i++)
+            {
+                if (decision.Influences[i].IsRetracted) continue;
+                maximum = System.Math.Max(maximum, System.Math.Abs(decision.Influences[i].Evaluation.ExpectedScore));
+            }
+            return maximum;
+        }
+
+        private static CompositeSocialEvaluationResult Evaluation(
+            long normalized,
+            AppraisalStrength strength,
+            long outputVariance = 0)
         {
             var personality = new SocialEvaluationResult(
                 Actor,
@@ -481,7 +518,7 @@ namespace Vivarium.Domain.Tests
                 normalized,
                 0,
                 normalized,
-                0,
+                outputVariance,
                 strength,
                 new SocialContribution[0]);
             return new CompositeSocialEvaluationResult(

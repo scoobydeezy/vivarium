@@ -899,6 +899,7 @@ namespace Vivarium.Domain.Decisions
     public sealed class DecisionReasonReconciler
     {
         private readonly DecisionReasoningInfluenceFactory _factory = new DecisionReasoningInfluenceFactory();
+        private readonly DecisionImportanceEvaluator _importance = new DecisionImportanceEvaluator();
 
         public int Reconcile(
             Decision decision,
@@ -926,7 +927,11 @@ namespace Vivarium.Domain.Decisions
                 }
             }
 
-            if (decision.ReasoningProgram == null) return changed;
+            if (decision.ReasoningProgram == null)
+            {
+                _importance.Recompute(decision);
+                return changed;
+            }
             SortedSet<DecisionReasoningRoute> selected = selectedRoutes == null
                 ? null
                 : new SortedSet<DecisionReasoningRoute>(selectedRoutes);
@@ -947,6 +952,7 @@ namespace Vivarium.Domain.Decisions
                     changed++;
                 }
             }
+            _importance.Recompute(decision);
             return changed;
         }
 

@@ -337,7 +337,6 @@ namespace Vivarium.Unity.Authoring
             public DecisionOptionEntry[] options;
             public int timeToResolveMinutes;
             public string conflictScopeKindId;
-            public int importance;
             public bool holdEligible;
             public DecisionDependencyEntry[] dependencies;
             public NeedThresholdTriggerEntry trigger;
@@ -379,7 +378,6 @@ namespace Vivarium.Unity.Authoring
                     domainOptions,
                     SimDuration.FromMinutes(timeToResolveMinutes),
                     new AuthoredId(conflictScopeKindId),
-                    importance,
                     holdEligible,
                     dependencyTemplates: ToDependencies(),
                     trigger: trigger.IsConfigured ? trigger.ToDefinition() : null,

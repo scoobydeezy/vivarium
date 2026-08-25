@@ -82,6 +82,7 @@ namespace Vivarium.Domain.Decisions
         private readonly InterpersonalComfortConsideration _consideration = new InterpersonalComfortConsideration();
         private readonly ReasonConsolidator _consolidator = new ReasonConsolidator();
         private readonly DecisionReasoningInfluenceFactory _influences = new DecisionReasoningInfluenceFactory();
+        private readonly DecisionImportanceEvaluator _importance = new DecisionImportanceEvaluator();
 
         public SocialInteractionDecisionGenerationHandler(DefinitionCatalog catalog)
             : base(InteractionOccurredEvent.Type)
@@ -151,8 +152,7 @@ namespace Vivarium.Domain.Decisions
                 world.Clock.Now,
                 world.Clock.Now.Plus(definition.TimeToResolve),
                 definition.Options,
-                conflict,
-                definition.Importance);
+                conflict);
             decision.SnapshotParameter(TargetParameter, targetId.Value);
             for (int i = 0; i < definition.RelationshipOutcomes.Count; i++)
             {
@@ -167,6 +167,7 @@ namespace Vivarium.Domain.Decisions
             {
                 _influences.Add(decision, reasons[0]);
             }
+            _importance.Recompute(decision);
 
             world.Decisions.Add(decision.Id, decision);
             world.DecisionDependencies.Register(decision);
@@ -234,6 +235,7 @@ namespace Vivarium.Domain.Decisions
         private readonly InterpersonalComfortConsideration _consideration = new InterpersonalComfortConsideration();
         private readonly ReasonConsolidator _consolidator = new ReasonConsolidator();
         private readonly DecisionReasoningInfluenceFactory _factory = new DecisionReasoningInfluenceFactory();
+        private readonly DecisionImportanceEvaluator _importance = new DecisionImportanceEvaluator();
 
         public SocialDecisionInfluenceReevaluator(DecisionDefinition definition, DefinitionCatalog catalog)
         {
@@ -273,17 +275,15 @@ namespace Vivarium.Domain.Decisions
             if (reasons.Count == 0)
             {
                 if (existing != null) decision.RetractInfluence(existing.Id);
+                _importance.Recompute(decision);
                 return;
             }
 
             CandidateReason reason = reasons[0];
-            Die desiredDie = reason.GameplayDie;
             if (existing != null && existing.OptionId == reason.OptionId && existing.Polarity == reason.Polarity)
             {
-                if (existing.CurrentDie != desiredDie)
-                {
-                    decision.ChangeInfluenceDie(existing.Id, desiredDie);
-                }
+                decision.UpdateReasonInfluence(existing.Id, reason);
+                _importance.Recompute(decision);
                 return;
             }
 
@@ -292,6 +292,7 @@ namespace Vivarium.Domain.Decisions
                 decision.RetractInfluence(existing.Id);
             }
             _factory.Add(decision, reason);
+            _importance.Recompute(decision);
         }
 
         private static DecisionInfluence FindActiveSocialInfluence(

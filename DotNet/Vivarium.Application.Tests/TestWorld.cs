@@ -77,8 +77,7 @@ namespace Vivarium.Application.Tests
                     new DecisionOption(OptionStay, "Stay", 1),
                 },
                 SimDuration.FromHours(8),
-                new AuthoredId("conflict_scope.employment"),
-                importance: 10));
+                new AuthoredId("conflict_scope.employment")));
 
             builder.Add(new DecisionDefinition(
                 DecisionCommitmentConflict,
@@ -89,7 +88,6 @@ namespace Vivarium.Application.Tests
                 },
                 SimDuration.FromMinutes(10),
                 new AuthoredId("conflict_scope.schedule"),
-                importance: 30,
                 reasoningProgram: CommitmentConflictReasoningProgram(),
                 commitmentConflictTrigger: new CommitmentConflictDecisionTrigger()));
 
@@ -102,7 +100,6 @@ namespace Vivarium.Application.Tests
                 },
                 SimDuration.FromMinutes(10),
                 new AuthoredId("conflict_scope.current_activity"),
-                importance: 20,
                 trigger: new NeedThresholdDecisionTrigger(NeedHunger, 8000),
                 activityOutcomes: new[]
                 {
@@ -153,7 +150,6 @@ namespace Vivarium.Application.Tests
                     },
                     SimDuration.FromMinutes(10),
                     new AuthoredId("conflict_scope.social_target"),
-                    importance: 12,
                     socialTrigger: new SocialInteractionDecisionTrigger(
                         socialPressureId,
                         AppraisalLenses.Affiliation,
@@ -423,8 +419,7 @@ namespace Vivarium.Application.Tests
                 world.Clock.Now,
                 world.Clock.Now.Plus(definition.TimeToResolve),
                 definition.Options,
-                new DecisionConflictScope(definition.ConflictScopeKind, Mina.ToRef()),
-                definition.Importance);
+                new DecisionConflictScope(definition.ConflictScopeKind, Mina.ToRef()));
 
             decision.AddInfluence(OptionAccept, new AuthoredId("cat.personal"), TraitAmbitious, Die.D10, InfluenceVisibility.Existence | InfluenceVisibility.Category | InfluenceVisibility.Magnitude, default, Mina.ToRef());
             decision.AddInfluence(OptionAccept, new AuthoredId("cat.practical"), new AuthoredId("influence.better_pay"), Die.D6, InfluenceVisibility.Full);

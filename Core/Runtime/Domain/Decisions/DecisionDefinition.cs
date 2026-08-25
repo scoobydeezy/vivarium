@@ -22,7 +22,6 @@ namespace Vivarium.Domain.Decisions
             IReadOnlyList<DecisionOption> options,
             SimDuration timeToResolve,
             AuthoredId conflictScopeKind = default,
-            int importance = 0,
             bool holdEligible = true,
             IReadOnlyList<DecisionDependencyKey> dependencyTemplates = null,
             bool hotReloadSafe = true,
@@ -48,7 +47,6 @@ namespace Vivarium.Domain.Decisions
             Options = options;
             TimeToResolve = timeToResolve;
             ConflictScopeKind = conflictScopeKind;
-            Importance = importance;
             HoldEligible = holdEligible;
             DependencyTemplates = dependencyTemplates ?? NoDependencies;
             HotReloadSafe = hotReloadSafe;
@@ -73,8 +71,6 @@ namespace Vivarium.Domain.Decisions
         /// Unset means it never blocks another decision (§17.1).
         /// </summary>
         public AuthoredId ConflictScopeKind { get; }
-
-        public int Importance { get; }
 
         /// <summary>Whether the player may hold this decision rather than let it auto-resolve (§20).</summary>
         public bool HoldEligible { get; }

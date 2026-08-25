@@ -183,6 +183,14 @@ Working implementations:
   is the first Unity-authored production consumer: hunger urgency supports leaving, reliability supports
   staying, and disliked-colleague Activity context reevaluates the same work-context reason from d10 to
   d6. Its old direct templates and content-specific reevaluator have been removed.
+- **Derived Decision Importance foundation** — each admitted Decision now derives one bounded living
+  Importance from the maximum absolute `ExpectedScore` among its active consolidated reasons. Static
+  per-Decision-type importance has been removed from Domain definitions, generator requests, headless
+  content, and Unity authoring. Full and targeted reason reconciliation recompute the value from the
+  complete current reason set; intervention-modified dice do not affect it, and resolved Decisions retain
+  their last value. The exact value round-trips in saves, while schema v10 replaces legacy authored values
+  with the strongest persisted active reason magnitude. All current generators remain admitted; the
+  Recreation slice will first apply an admission floor to a candidate with a real ordinary fallback.
 - **Frozen Decision explanations** — live compiled Influences retain their latest compact evaluation
   snapshot (signed expectation, output variance, Signal means/variance/applicability/source revisions,
   and contribution amounts). Resolution deep-copies that evidence plus semantic label/category/channel,
@@ -255,7 +263,9 @@ Working implementations:
   continuation fields; v6 payloads migrate with the prior no-continuation behavior. Schema v8 adds
   Employment identities, their snapshotted obligation patterns, and the Employment allocator. Schema
   v9 adds authoritative location Activity affordances; optional continuation parameters reuse the
-  existing scheduled-payload collections and older Travel arrivals decode with none.
+  existing scheduled-payload collections and older Travel arrivals decode with none. Schema v10 derives
+  saved Decision Importance from active persisted reason evaluations rather than retaining legacy authored
+  per-type values.
 - **Scale regression gate** — the normal suite repeats a 250-character/six-hour workload and requires
   identical authoritative hashes and deterministic work counts under structural per-character ceilings.
   An opt-in 1,000-character/one-day tier enforces initial wall-clock and heap budgets while the CLI

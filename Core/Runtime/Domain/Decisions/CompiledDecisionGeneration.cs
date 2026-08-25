@@ -19,7 +19,6 @@ namespace Vivarium.Domain.Decisions
             DecisionReasoningProgram reasoningProgram,
             IReadOnlyDictionary<AuthoredId, DecisionParameterValue> context = null,
             DecisionConflictScope conflictScope = default,
-            int importance = 0,
             SimTime? absoluteResolveAt = null,
             AuthoredId resolveEventType = default,
             IReadOnlyList<EventDependency> resolveDependencies = null,
@@ -32,7 +31,6 @@ namespace Vivarium.Domain.Decisions
             ReasoningProgram = reasoningProgram ?? throw new ArgumentNullException(nameof(reasoningProgram));
             Context = context ?? new SortedDictionary<AuthoredId, DecisionParameterValue>();
             ConflictScope = conflictScope;
-            Importance = importance;
             AbsoluteResolveAt = absoluteResolveAt;
             ResolveEventType = resolveEventType.IsSet ? resolveEventType : Activities.ScheduledEventTypes.DecisionResolve;
             ResolveDependencies = resolveDependencies;
@@ -46,7 +44,6 @@ namespace Vivarium.Domain.Decisions
         public DecisionReasoningProgram ReasoningProgram { get; }
         public IReadOnlyDictionary<AuthoredId, DecisionParameterValue> Context { get; }
         public DecisionConflictScope ConflictScope { get; }
-        public int Importance { get; }
         public SimTime? AbsoluteResolveAt { get; }
         public AuthoredId ResolveEventType { get; }
         public IReadOnlyList<EventDependency> ResolveDependencies { get; }
@@ -79,7 +76,7 @@ namespace Vivarium.Domain.Decisions
             var decision = new Decision(
                 world.RuntimeIds.Decisions.Next(), request.Actor, request.DefinitionId,
                 world.Clock.Now, request.AbsoluteResolveAt ?? world.Clock.Now.Plus(request.TimeToResolve), request.Options,
-                request.ConflictScope, request.Importance);
+                request.ConflictScope);
             if (request.CommitmentConflictKey != null)
                 decision.SetCommitmentConflict(request.CommitmentConflictKey, decision.ResolveAt);
             foreach (KeyValuePair<AuthoredId, DecisionParameterValue> parameter in request.Context)

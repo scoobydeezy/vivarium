@@ -166,7 +166,6 @@ namespace Vivarium.SimRunner
                 },
                 SimDuration.FromHours(8),
                 ConflictScopeEmployment,
-                importance: 10,
                 holdEligible: true,
                 dependencyTemplates: new[] { new DecisionDependencyKey(ContextHousingMarket) }));
 
@@ -179,7 +178,6 @@ namespace Vivarium.SimRunner
                 },
                 SimDuration.FromMinutes(10),
                 new AuthoredId("conflict_scope.schedule"),
-                importance: 30,
                 reasoningProgram: CommitmentConflictReasoningProgram(),
                 commitmentConflictTrigger: new CommitmentConflictDecisionTrigger()));
 
@@ -192,7 +190,6 @@ namespace Vivarium.SimRunner
                 },
                 SimDuration.FromMinutes(10),
                 new AuthoredId("conflict_scope.current_activity"),
-                importance: 20,
                 trigger: new NeedThresholdDecisionTrigger(NeedHunger, 6000, ActivityWorking),
                 activityOutcomes: new[]
                 {
@@ -282,7 +279,6 @@ namespace Vivarium.SimRunner
                 },
                 SimDuration.FromMinutes(10),
                 new AuthoredId("conflict_scope.social_target"),
-                importance: 12,
                 socialTrigger: new SocialInteractionDecisionTrigger(
                     SocialPressureSeekCompany,
                     AppraisalLenses.Affiliation,
@@ -307,7 +303,6 @@ namespace Vivarium.SimRunner
                 },
                 SimDuration.FromMinutes(10),
                 new AuthoredId("conflict_scope.reliance_target"),
-                importance: 14,
                 socialTrigger: new SocialInteractionDecisionTrigger(
                     SocialPressureReliance,
                     AppraisalLenses.Reliance,

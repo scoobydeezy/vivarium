@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: efa2c788149cc734eaa878ceb97ac2b0, type: 3}
   m_Name: ContentPack_Basic
   m_EditorClassIdentifier: Vivarium.Unity.Authoring::Vivarium.Unity.Authoring.ContentPackAsset
-  contentVersion: 5
+  contentVersion: 6
   traits:
   - {fileID: 11400000, guid: afe9983f40078e045a269c0c1854d889, type: 2}
   - {fileID: 11400000, guid: cf50c39fa4f24f64ca6fccdf406a2d68, type: 2}
@@ -85,7 +85,6 @@ MonoBehaviour:
         runtimeId: 0
     timeToResolveMinutes: 10
     conflictScopeKindId: conflict_scope.current_activity
-    importance: 20
     holdEligible: 1
     dependencies: []
     trigger:
@@ -268,7 +267,6 @@ MonoBehaviour:
         runtimeId: 0
     timeToResolveMinutes: 10
     conflictScopeKindId: conflict_scope.schedule
-    importance: 30
     holdEligible: 0
     dependencies: []
     influences: []
@@ -411,7 +409,6 @@ MonoBehaviour:
       orderIndex: 1
     timeToResolveMinutes: 10
     conflictScopeKindId: conflict_scope.social_target
-    importance: 12
     holdEligible: 0
     socialTrigger:
       pressureDefinitionId: social.pressure.seek_company

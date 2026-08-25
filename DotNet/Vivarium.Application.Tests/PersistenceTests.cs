@@ -213,6 +213,33 @@ namespace Vivarium.Application.Tests
         }
 
         [Fact]
+        public void SchemaNineDecisionImportanceMigratesFromStrongestActiveReason()
+        {
+            var save = new SaveGameData { SchemaVersion = 9 };
+            var decision = new DecisionData { Importance = 99 };
+            decision.Influences.Add(new DecisionInfluenceData
+            {
+                Evaluation = new DecisionReasonEvaluationData { ExpectedScore = 2300 },
+            });
+            decision.Influences.Add(new DecisionInfluenceData
+            {
+                Evaluation = new DecisionReasonEvaluationData { ExpectedScore = -7600 },
+            });
+            decision.Influences.Add(new DecisionInfluenceData
+            {
+                IsRetracted = true,
+                Evaluation = new DecisionReasonEvaluationData { ExpectedScore = 9000 },
+            });
+            save.Decisions.Add(decision);
+
+            SaveCompatibilityReport report = new SaveMigrator().Migrate(save, 0, 0, 0);
+
+            Assert.True(report.CanLoad);
+            Assert.Equal(SaveGameData.CurrentSchemaVersion, save.SchemaVersion);
+            Assert.Equal(7600, decision.Importance);
+        }
+
+        [Fact]
         public void SchemaSixTravelArrivalMigratesWithNoInventedContinuation()
         {
             var save = new SaveGameData { SchemaVersion = 6 };
@@ -521,6 +548,7 @@ namespace Vivarium.Application.Tests
             }
 
             Assert.NotNull(generated);
+            Assert.InRange(generated.Importance, 1, SignalNumeric.Scale);
             Assert.Equal(DecisionStatus.Resolved, generated.Status);
             Assert.Equal(TestWorld.OptionLeave, generated.Resolution.ChosenOptionId);
             Assert.True(generated.ResolutionHistoryEntryId.IsSet);
@@ -529,6 +557,7 @@ namespace Vivarium.Application.Tests
             Assert.Equal(Domain.History.RetentionTier.Significant, resolutionHistory.Tier);
 
             WorldState historyRestored = fixture.Host.SaveMapper.Restore(fixture.Host.Session.Save("resolved-history"));
+            Assert.Equal(generated.Importance, historyRestored.Decisions.Get(generated.Id).Importance);
             Assert.Equal(
                 generated.ResolutionHistoryEntryId,
                 historyRestored.Decisions.Get(generated.Id).ResolutionHistoryEntryId);

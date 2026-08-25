@@ -148,8 +148,7 @@ namespace Vivarium.Domain.Decisions
                 world.Clock.Now,
                 world.Clock.Now.Plus(definition.TimeToResolve),
                 definition.Options,
-                conflict,
-                definition.Importance);
+                conflict);
 
             decision.SnapshotParameter(ResolveDelayParameter, definition.TimeToResolve.TotalMinutes);
             decision.SetContextParameter(

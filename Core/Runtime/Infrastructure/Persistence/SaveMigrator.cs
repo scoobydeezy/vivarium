@@ -44,6 +44,7 @@ namespace Vivarium.Infrastructure.Persistence
             Register(new SaveV6ToV7TravelContinuationMigration());
             Register(new SaveV7ToV8EmploymentMigration());
             Register(new SaveV8ToV9ActivityAffordanceMigration());
+            Register(new SaveV9ToV10DerivedDecisionImportanceMigration());
         }
 
         public void Register(ISaveMigration migration)

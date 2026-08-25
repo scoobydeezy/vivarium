@@ -31,10 +31,10 @@ multiple habitats, and reciprocal autonomy.
 [`Player Agency Brief`](PlayerAgencyBrief.md) define the small world, meaningful character Decisions,
 supported player actions, and required Unity surfaces.
 
-The immediate next work is the narrow Decision Importance foundation required by the following routine
-slice:
+The derived Decision Importance foundation is complete. The immediate next work is the routine slice it
+was built to support:
 
-> **Derived Decision Importance → Discretionary Recreation admission and automatic selection.**
+> **Discretionary Recreation admission and automatic selection.**
 
 Observable completion test:
 
@@ -50,8 +50,9 @@ live, offline, and across save/load. Work-context eligibility preserves Mina's N
 Decision rather than inventing a Bakery meal break. The focused
 [`Decision Importance brief`](../Design/DecisionImportance.md) places one small derived-importance
 foundation ahead of Recreation so discretionary alternatives do not introduce a second, routine-only
-choice model. Recreation remains the earliest missing link in the Phase 1 daily-routine loop and the
-first proof of per-instance Decision admission.
+choice model. That foundation now derives each existing Decision's living magnitude from its strongest
+active consolidated reason. Recreation remains the earliest missing link in the Phase 1 daily-routine
+loop and the first proof of preflight per-instance Decision admission.
 
 ## Ordered phases
 
@@ -87,9 +88,10 @@ slice:
 1. Energy → Sleeping → waking → replanning. **Complete.**
 2. Employment v0 → workplace authority and recurring shift/closing-duty Commitments. **Complete.**
 3. Ordinary Hunger → Eating governed by location and Activity affordances. **Complete.**
-4. Derived Decision Importance foundation → Recreation admission and automatic Tabletop Games / Reading
-   selection from Interests and availability. **Next.**
-5. Ordinary Socializing through bounded shared-context selection.
+4. Derived Decision Importance foundation. **Complete.**
+5. Recreation admission and automatic Tabletop Games / Reading selection from Interests and
+   availability. **Next.**
+6. Ordinary Socializing through bounded shared-context selection.
 
 This is sequencing guidance, not permission to implement all five as one subsystem project.
 

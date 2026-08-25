@@ -131,8 +131,11 @@ namespace Vivarium.Domain.Decisions
         /// </summary>
         public DecisionConflictScope ConflictScope { get; }
 
-        /// <summary>Weight used by hold-overflow ordering (§20).</summary>
-        public int Importance { get; }
+        /// <summary>
+        /// Living magnitude derived from consolidated evaluated reasons. Used by Attention and
+        /// hold-overflow ordering; never authored per Decision type.
+        /// </summary>
+        public int Importance { get; private set; }
 
         /// <summary>
         /// World contexts whose changes can alter this Decision's influences (§17.2). Registered in
@@ -165,6 +168,16 @@ namespace Vivarium.Domain.Decisions
 
         /// <summary>Revision key protecting this Decision's influence set (§11.2.1).</summary>
         public RevisionKey InfluenceRevisionKey => new RevisionKey(Id.ToRef(), RevisionAspects.DecisionInfluence);
+
+        internal bool SetDerivedImportance(int importance)
+        {
+            RequireActive();
+            if (importance < 0)
+                throw new ArgumentOutOfRangeException(nameof(importance));
+            if (Importance == importance) return false;
+            Importance = importance;
+            return true;
+        }
 
         public void SnapshotParameter(AuthoredId key, long value) => _snapshottedParameters[key] = value;
 

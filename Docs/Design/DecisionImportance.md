@@ -1,6 +1,7 @@
 # Vivarium Decision Importance Brief
 
-**Status:** Draft for implementation; numeric thresholds intentionally open for tuning  
+**Status:** Accepted; Slice A implemented, numeric thresholds intentionally open for tuning
+
 **Scope:** Deriving per-instance Decision Importance, admitting meaningful candidate choices into the
 Decision pipeline, and using that value for player-facing Attention policy.  
 **Related documents:** [`DecisionReasoning.md`](DecisionReasoning.md),
@@ -166,6 +167,10 @@ changing the derivation algorithm.
 ## 7. Implementation sequence
 
 ### Slice A — derived Importance for existing Decisions
+
+**Implemented.** Existing admitted Decisions derive their living Importance from active consolidated
+reason evaluations; static per-type authoring is removed, reevaluation refreshes the value, and save
+schema v10 migrates older authored values from persisted reason evidence.
 
 1. Add a pure `DecisionImportanceEvaluator` over consolidated reason evaluations.
 2. Make active `Decision.Importance` mutable only through reason reconciliation; persist and restore it.

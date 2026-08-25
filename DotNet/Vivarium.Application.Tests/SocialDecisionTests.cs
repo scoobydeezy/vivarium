@@ -54,6 +54,7 @@ namespace Vivarium.Application.Tests
             Assert.Equal(mina.Id, decision.CharacterId);
             Assert.Single(decision.Influences);
             Assert.Equal(new AuthoredId("option.seek_company"), decision.Influences[0].OptionId);
+            Assert.Equal(System.Math.Abs(decision.Influences[0].Evaluation.ExpectedScore), decision.Importance);
             DecisionInfluenceId influenceId = decision.Influences[0].Id;
 
             fixture.Host.Simulation.World.Publish(new SocialBeliefChangedEvent(
@@ -71,6 +72,7 @@ namespace Vivarium.Application.Tests
                 null,
                 fixture.Store,
                 fixture.Clock);
+            Assert.Equal(decision.Importance, restored.World.Decisions.Get(decision.Id).Importance);
             restored.Session.Advance(SimDuration.FromMinutes(10));
 
             Decision restoredDecision = restored.World.Decisions.Get(decision.Id);
