@@ -27,6 +27,7 @@ namespace Vivarium.SimRunner
         public CharacterId Mina;
         public CharacterId Glen;
         public CharacterId Darius;
+        public CharacterId Lena;
         public GroupId Employer;
         public EmploymentId MinaEmployment;
         public EmploymentId GlenEmployment;
@@ -63,7 +64,12 @@ namespace Vivarium.SimRunner
                 layout.Town,
                 SampleContent.LocationKindBuilding,
                 "Corner cafe",
-                new[] { SampleContent.ActivityTabletopGames, SampleContent.ActivityReading });
+                new[]
+                {
+                    SampleContent.ActivityTabletopGames,
+                    SampleContent.ActivityReading,
+                    SampleContent.ActivitySocializing,
+                });
 
             // --- travel topology, separate from containment (§28) ---
             world.TravelNetwork.ConnectBidirectional(layout.Home, layout.Bakery, SimDuration.FromMinutes(12), SampleContent.TravelModeWalking);
@@ -74,7 +80,9 @@ namespace Vivarium.SimRunner
             layout.Mina = AddCharacter(host, "Mina Cairn", layout.Home, new[] { SampleContent.TraitAmbitious, SampleContent.TraitEnjoysBaking }, 2000);
             layout.Glen = AddCharacter(host, "Glen Ashby", layout.Home, new[] { SampleContent.TraitHomebound }, 2000);
             layout.Darius = AddCharacter(host, "Darius Vale", layout.Bakery, new[] { SampleContent.TraitAmbitious }, 1000);
+            layout.Lena = AddCharacter(host, "Lena Marsh", layout.Cafe, new AuthoredId[0], 1500);
             AddRecreationRoutine(host, layout.Glen, 5990, tabletopInterest: 4500, readingInterest: 2500);
+            AddSocialRoutine(host, layout.Lena, 7000);
 
             var employer = new Group(
                 world.RuntimeIds.Groups.Next(),
@@ -271,6 +279,28 @@ namespace Vivarium.SimRunner
                     recreation.MinValue,
                     recreation.MaxValue),
                 recreation.RecreationRoutine.ActivationThreshold);
+            character.SetNeed(state);
+            host.Needs.Rearm(host.Simulation, character, state);
+        }
+
+        private static void AddSocialRoutine(
+            SimulationHost host,
+            CharacterId characterId,
+            long initialSocial)
+        {
+            WorldState world = host.World;
+            Character character = world.Characters.Get(characterId);
+            NeedDefinition social = host.Catalog.Needs[WellKnownNeeds.Social];
+            var state = new NeedState(
+                social.Id,
+                AnalyticalProgression.Linear(
+                    initialSocial,
+                    world.Clock.Now,
+                    social.DefaultRateNumerator,
+                    social.DefaultRateDenominator,
+                    social.MinValue,
+                    social.MaxValue),
+                social.SocializingRoutine.ActivationThreshold);
             character.SetNeed(state);
             host.Needs.Rearm(host.Simulation, character, state);
         }

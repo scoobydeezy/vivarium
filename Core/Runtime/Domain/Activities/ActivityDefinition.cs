@@ -75,5 +75,8 @@ namespace Vivarium.Domain.Activities
 
         /// <summary>The production meal Activity used by ordinary Hunger routines.</summary>
         public static readonly AuthoredId Eating = new AuthoredId("activity.eating");
+
+        /// <summary>The production primary Activity used by ordinary Social routines.</summary>
+        public static readonly AuthoredId Socializing = new AuthoredId("activity.socializing");
     }
 }

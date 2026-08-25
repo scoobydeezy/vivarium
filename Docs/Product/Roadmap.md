@@ -26,21 +26,23 @@ multiple habitats, and reciprocal autonomy.
 
 ## Current gate
 
-**Phase 0 is complete and Phase 1 is in progress.** The jointly locked
+**Phases 0 and 1 are complete; Phase 2 is in progress.** The jointly locked
 [`Minimum Playable Scenario`](MinimumPlayableScenario.md) and
 [`Player Agency Brief`](PlayerAgencyBrief.md) define the small world, meaningful character Decisions,
 supported player actions, and required Unity surfaces.
 
-The derived Decision Importance foundation and its first candidate-admission consumer are complete. The
-immediate next work is the remaining ordinary routine link:
+The complete locked Need set now drives ordinary life through production routines: Energy rests,
+Hunger eats, Recreation selects available hobbies, and Social pressure selects bounded shared-context
+company. The immediate next work is the earliest unproven meaningful branch in Phase 2:
 
-> **Ordinary Socializing through bounded shared-context selection.**
+> **Social invitation/help versus an existing plan.**
 
 Observable completion test:
 
-> A free character selects a bounded eligible partner from real shared context, performs a concrete
-> Socializing Activity without displacing unrelated obligations, applies the established interaction
-> consequences, and returns to ordinary planning identically live, offline, and after save/load.
+> A real social invitation or request reaches a character who already has a plausible plan; the
+> circumstance generates a compiled, Knowledge-sensitive Decision whose reasons can reevaluate, whose
+> resolution changes authoritative intent or Activity consequences, and whose explanation and
+> continuation remain deterministic across save/load.
 
 The Ordinary Hunger slice is complete: an authored satisfaction routine now turns analytical Hunger
 into Eating only at an explicit, reachable location Activity affordance. It carries snapshotted meal
@@ -52,15 +54,17 @@ foundation ahead of Recreation so discretionary alternatives do not introduce a 
 choice model. Recreation now proves that architecture end to end: a runtime-ID-free preflight scores
 reachable Tabletop Games and Reading affordances from Interests, ordinary instances execute directly,
 and unusually important instances adopt the exact preflight reasons into the compiled Decision pipeline.
-Socializing is now the earliest missing link in the Phase 1 daily-routine loop.
+Ordinary Socializing now completes that loop: active Social pressure waits for an actual co-located
+counterpart at a Socializing affordance, selects through the bounded interaction-candidate path, leaves
+the counterpart's primary Activity untouched, and reuses ordinary interaction and Need consequences.
 
 ## Ordered phases
 
 | Phase | Outcome | Status |
 | --- | --- | --- |
 | 0. Lock playable intent | MPS and Player Agency briefs define one coherent playable world | Complete |
-| 1. Close the daily routine loop | Energy/Sleep/Wake, Employment obligations, ordinary Eating, discretionary Recreation, and Socializing support indefinite lives | In progress |
-| 2. Expand meaningful choice | Scenario-required branch points use compiled Considerations and production consequences | Pending |
+| 1. Close the daily routine loop | Energy/Sleep/Wake, Employment obligations, ordinary Eating, discretionary Recreation, and Socializing support indefinite lives | Complete |
+| 2. Expand meaningful choice | Scenario-required branch points use compiled Considerations and production consequences | In progress |
 | 3. Complete player agency | Nudge economy and Commons availability become real Commands; interactive Activity stays deferred | Pending |
 | 4. Build the small-cast world | 8–12 characters run 2–3 days through one durable headless acceptance scenario | Pending |
 | 5. Build playable Unity surfaces | Roster, character, Decision, schedule, Knowledge, world, and history views consume projections/Commands | Pending |
@@ -91,7 +95,11 @@ slice:
 4. Derived Decision Importance foundation. **Complete.**
 5. Recreation admission and automatic Tabletop Games / Reading selection from Interests and
    availability. **Complete.**
-6. Ordinary Socializing through bounded shared-context selection. **Next.**
+6. Ordinary Socializing through bounded shared-context selection. **Complete.**
+
+With the routine links complete, task selection proceeds through Phase 2's genuine branch-point list.
+Need-vs-obligation and two-desirable-Recreation branches already exist, making social invitation/help
+versus an existing plan the next unproven candidate.
 
 This is sequencing guidance, not permission to implement all five as one subsystem project.
 

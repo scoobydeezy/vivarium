@@ -223,6 +223,7 @@ namespace Vivarium.Infrastructure.Bootstrap
                 ? new SocialInteractionRelevance(world, catalog, interactionPressure, AppraisalLenses.Affiliation)
                 : null;
             var interactions = new InteractionService(interactionCandidates, knowledgeDiscovery, interactionRelevance);
+            var socializingRoutines = new SocializingRoutineService(catalog, transitions, interactions);
             var commitmentLifecycle = new CommitmentLifecycleService();
 
             foreach (KeyValuePair<AuthoredId, DecisionDefinition> pair in catalog.Decisions)
@@ -259,6 +260,9 @@ namespace Vivarium.Infrastructure.Bootstrap
             domainHandlers.Register(new NeedRestArrivalHandler(restRoutines), 50);
             domainHandlers.Register(new RecreationThresholdHandler(recreationRoutines), 60);
             domainHandlers.Register(new RecreationActivityStartedHandler(recreationRoutines), 60);
+            domainHandlers.Register(new SocializingThresholdHandler(socializingRoutines), 70);
+            domainHandlers.Register(new SocializingActivityStartedHandler(socializingRoutines), 70);
+            domainHandlers.Register(new SocializingArrivalHandler(socializingRoutines), 70);
             domainHandlers.Register(new NeedThresholdDecisionGenerationHandler(catalog, decisionSignals), 100);
             domainHandlers.Register(new CommitmentConflictDecisionGenerationHandler(catalog, decisionSignals), 100);
             domainHandlers.Register(new DecisionActivityOutcomeHandler(catalog, transitions), 100);

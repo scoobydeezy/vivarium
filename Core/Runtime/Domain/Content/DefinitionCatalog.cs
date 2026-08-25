@@ -299,6 +299,21 @@ namespace Vivarium.Domain.Content
                         }
                     }
                 }
+
+                SocializingRoutineDefinition socializing = need.SocializingRoutine;
+                if (socializing != null)
+                {
+                    if (!catalog.Activities.ContainsKey(socializing.ActivityDefinitionId))
+                        errors.Add($"need '{need.Id}' Socializing routine references unknown activity '{socializing.ActivityDefinitionId}'");
+                    if (need.DefaultRateNumerator <= 0)
+                        errors.Add($"need '{need.Id}' Socializing routine requires a positive ordinary rate");
+                    if (socializing.ActivationThreshold < need.MinValue || socializing.ActivationThreshold > need.MaxValue)
+                        errors.Add($"need '{need.Id}' Socializing activation threshold falls outside its range");
+                    if (!ContainsThreshold(need.BehaviouralThresholds, socializing.ActivationThreshold))
+                        errors.Add($"need '{need.Id}' Socializing activation threshold must be a declared behavioural threshold");
+                    if (need.MaxValue + socializing.SatisfactionOffset >= socializing.ActivationThreshold)
+                        errors.Add($"need '{need.Id}' Socializing satisfaction offset must rearm below its activation threshold");
+                }
             }
 
             foreach (KeyValuePair<AuthoredId, DecisionDefinition> pair in catalog.Decisions)

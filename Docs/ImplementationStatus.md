@@ -145,6 +145,16 @@ Working implementations:
   identical live, offline, and after save/load. Production content authors Tabletop Games and Reading;
   focused tests cover ordinary selection, unavailable-affordance fallback, promoted admission, preflight
   purity, and persistence equivalence.
+- **Ordinary Socializing routine** — an authored increasing-pressure Social Need may map to a concrete
+  Socializing Activity, activation threshold, satisfying offset, and hard-bounded candidate count. It
+  starts only for a free character at a location that explicitly affords Socializing and only after a
+  real counterpart exists in the indexed direct-occupancy context. Threshold, Waiting, and bounded
+  arrival reactions retry without polling or pair scanning. Candidate selection reuses directional
+  social relevance and deterministic sampling; the chosen interaction uses the established relationship,
+  familiarity, history, evidence, Knowledge, and optional social-Decision pipeline. Only the seeking
+  character changes primary Activity, while the counterpart's Work, Recreation, or other Activity is
+  left intact as a subordinate interaction. Target identity and Need satisfaction are snapshotted on the
+  Activity, whose completion returns to Waiting identically live, offline, and after save/load.
 - **Decisions** — living influence sets with stable influence identity, dependency-indexed
   reevaluation, deterministic dice resolution, bounded held decisions, one authority for intervention
   rules, one content-backed Need-threshold generation path with an Activity consequence, and targeted
@@ -310,12 +320,13 @@ Intentionally thin, pending game-design decisions:
   behavior remain unimplemented.
 - **Save serialization format.** Explicitly deferred (§57). `ISaveGameSerializer` is defined;
   `InMemorySaveGameStore` exercises mapping without committing to an encoding.
-- **Needs → behaviour breadth.** Threshold crossings can generate one Decision type, Energy drives a
-  Sleep/recovery routine, Hunger drives ordinary affordance-gated Eating, and Recreation selects between
-  reachable discretionary Activities from Interests with per-instance Decision admission. Competing
-  routine priority, ordinary Social satisfaction, and other behavioral reactions remain unimplemented.
+- **Needs → behaviour breadth.** Every locked MVP Need now has one production behavior: Energy drives
+  Sleep/recovery, Hunger drives affordance-gated Eating, Recreation selects reachable Activities from
+  Interests with per-instance Decision admission, and Social pressure starts bounded co-located
+  Socializing. Competing routine priority and broader circumstance combinations remain intentionally
+  thin.
 - **Unity authoring/presentation.** `ContentPackAsset` converts authored Needs (including rest,
-  satisfaction, and Recreation routines), the Decision admission policy, Activities, Employment
+  satisfaction, Recreation, and Socializing routines), the Decision admission policy, Activities, Employment
   definitions and obligation patterns, Decisions
   (including typed compiled reasoning, social triggers, and directional outcomes), appraisal calibration,
   social evidence/pressure, and interventions into the validated Domain catalog. Demo characters receive deterministic social
@@ -372,6 +383,7 @@ The test suite is organised around the §58 invariants rather than around classe
 | Living influence reevaluates with stable identity and reloads | `WorkContextTests` |
 | Observation reveals a generalized live influence | `WorkContextTests` |
 | Shared-context interaction leaves Activities intact | `InteractionTests` |
+| Social pressure waits for real shared context, Socializes without displacing its counterpart, and completes identically after reload/offline | `SocializingRoutineTests`, `GoldenScenarioTests` |
 | Shared travel segment interaction survives index rebuild/load | `InteractionTests` |
 | Watched interaction creates Knowledge; unwatched does not | `InteractionTests` |
 | Large shared context produces a bounded interaction outcome | `SimulationInvariantTests` |

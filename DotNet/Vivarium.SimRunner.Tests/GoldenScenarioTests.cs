@@ -58,6 +58,34 @@ namespace Vivarium.SimRunner.Tests
         }
 
         [Fact]
+        public void ProductionSocialNeedSelectsSharedContextWithoutDisplacingTheCounterpart()
+        {
+            Fixture fixture = Create();
+
+            fixture.Host.Session.Advance(SimDuration.FromMinutes(10));
+
+            Assert.True(fixture.Host.World.TryGetCurrentActivity(fixture.Layout.Lena, out ActivityInstance socializing));
+            Assert.Equal(SampleContent.ActivitySocializing, socializing.DefinitionId);
+            Assert.Equal(fixture.Layout.Glen.Value, socializing.CommittedParameterOr(
+                SocializingRoutineService.TargetCharacterParameter,
+                0));
+            Assert.True(fixture.Host.World.TryGetCurrentActivity(fixture.Layout.Glen, out ActivityInstance tabletop));
+            Assert.Equal(SampleContent.ActivityTabletopGames, tabletop.DefinitionId);
+            Assert.True(fixture.Host.World.RelationshipIndex.TryGetBetween(
+                fixture.Layout.Lena,
+                fixture.Layout.Glen,
+                out RelationshipId _));
+
+            fixture.Host.Session.Advance(SimDuration.FromMinutes(30));
+
+            Assert.True(fixture.Host.World.TryGetCurrentActivity(fixture.Layout.Lena, out ActivityInstance waiting));
+            Assert.Equal(WellKnownActivities.Waiting, waiting.DefinitionId);
+            Character lena = fixture.Host.World.Characters.Get(fixture.Layout.Lena);
+            Assert.True(lena.TryGetNeed(WellKnownNeeds.Social, out NeedState social));
+            Assert.True(social.ValueAt(fixture.Host.World.Clock.Now) < social.BehaviouralThreshold);
+        }
+
+        [Fact]
         public void GoldenScenarioConnectsTheWholeCausalChain()
         {
             Fixture fixture = Create();

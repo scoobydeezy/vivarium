@@ -263,6 +263,7 @@ namespace Vivarium.Unity.Authoring
             public RestRoutineEntry restRoutine;
             public SatisfactionRoutineEntry satisfactionRoutine;
             public RecreationRoutineEntry recreationRoutine;
+            public SocializingRoutineEntry socializingRoutine;
 
             public Domain.Characters.NeedDefinition ToDefinition() => new Domain.Characters.NeedDefinition(
                 new AuthoredId(authoredId),
@@ -274,7 +275,8 @@ namespace Vivarium.Unity.Authoring
                 ToBehaviouralThresholds(),
                 restRoutine.IsConfigured ? restRoutine.ToDefinition() : null,
                 satisfactionRoutine.IsConfigured ? satisfactionRoutine.ToDefinition() : null,
-                recreationRoutine.IsConfigured ? recreationRoutine.ToDefinition() : null);
+                recreationRoutine.IsConfigured ? recreationRoutine.ToDefinition() : null,
+                socializingRoutine.IsConfigured ? socializingRoutine.ToDefinition() : null);
 
             private long[] ToBehaviouralThresholds()
             {
@@ -357,6 +359,23 @@ namespace Vivarium.Unity.Authoring
                 new AuthoredId(optionId),
                 new AuthoredId(activityDefinitionId),
                 new AuthoredId(interestId));
+        }
+
+        [System.Serializable]
+        public struct SocializingRoutineEntry
+        {
+            public string activityDefinitionId;
+            public long activationThreshold;
+            public long satisfactionOffset;
+            public int maxCandidates;
+
+            public bool IsConfigured => !string.IsNullOrWhiteSpace(activityDefinitionId);
+
+            public SocializingRoutineDefinition ToDefinition() => new SocializingRoutineDefinition(
+                new AuthoredId(activityDefinitionId),
+                activationThreshold,
+                satisfactionOffset,
+                maxCandidates <= 0 ? 4 : maxCandidates);
         }
 
         [System.Serializable]

@@ -83,7 +83,8 @@ namespace Vivarium.Domain.Characters
             IReadOnlyList<long> behaviouralThresholds = null,
             NeedRestRoutineDefinition restRoutine = null,
             NeedSatisfactionRoutineDefinition satisfactionRoutine = null,
-            RecreationRoutineDefinition recreationRoutine = null)
+            RecreationRoutineDefinition recreationRoutine = null,
+            SocializingRoutineDefinition socializingRoutine = null)
         {
             if (!id.IsSet)
             {
@@ -100,6 +101,7 @@ namespace Vivarium.Domain.Characters
             RestRoutine = restRoutine;
             SatisfactionRoutine = satisfactionRoutine;
             RecreationRoutine = recreationRoutine;
+            SocializingRoutine = socializingRoutine;
         }
 
         public AuthoredId Id { get; }
@@ -130,6 +132,9 @@ namespace Vivarium.Domain.Characters
         /// <summary>Optional discretionary candidate routine driven by Interests and availability.</summary>
         public RecreationRoutineDefinition RecreationRoutine { get; }
 
+        /// <summary>Optional ordinary Social Activity selected from a bounded shared context.</summary>
+        public SocializingRoutineDefinition SocializingRoutine { get; }
+
         public override string ToString() => Id.ToString();
     }
 
@@ -138,5 +143,6 @@ namespace Vivarium.Domain.Characters
     {
         public static readonly AuthoredId Energy = new AuthoredId("need.energy");
         public static readonly AuthoredId Recreation = new AuthoredId("need.recreation");
+        public static readonly AuthoredId Social = new AuthoredId("need.social");
     }
 }

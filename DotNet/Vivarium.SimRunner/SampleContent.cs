@@ -33,7 +33,7 @@ namespace Vivarium.SimRunner
         public static readonly AuthoredId TraitHomebound = new AuthoredId("trait.homebound");
 
         public static readonly AuthoredId NeedHunger = new AuthoredId("need.hunger");
-        public static readonly AuthoredId NeedSocial = new AuthoredId("need.social");
+        public static readonly AuthoredId NeedSocial = WellKnownNeeds.Social;
         public static readonly AuthoredId NeedRecreation = WellKnownNeeds.Recreation;
 
         public static readonly AuthoredId ActivityWorking = new AuthoredId("activity.working");
@@ -42,6 +42,7 @@ namespace Vivarium.SimRunner
         public static readonly AuthoredId ActivityHelpingAtBakery = new AuthoredId("activity.helping_at_bakery");
         public static readonly AuthoredId ActivityTabletopGames = new AuthoredId("activity.tabletop_games");
         public static readonly AuthoredId ActivityReading = new AuthoredId("activity.reading");
+        public static readonly AuthoredId ActivitySocializing = WellKnownActivities.Socializing;
         public static readonly AuthoredId InterestTabletopGames = new AuthoredId("interest.tabletop_games");
         public static readonly AuthoredId InterestReading = new AuthoredId("interest.reading");
 
@@ -138,7 +139,19 @@ namespace Vivarium.SimRunner
                     WellKnownActivities.Eating,
                     6000,
                     -5000)));
-            builder.Add(new NeedDefinition(NeedSocial, "Social", 0, 10000, 4, 1, new long[] { 7000 }));
+            builder.Add(new NeedDefinition(
+                NeedSocial,
+                "Social",
+                0,
+                10000,
+                4,
+                1,
+                new long[] { 7000 },
+                socializingRoutine: new SocializingRoutineDefinition(
+                    ActivitySocializing,
+                    7000,
+                    -5000,
+                    4)));
             builder.Add(new NeedDefinition(
                 NeedRecreation,
                 "Recreation",
@@ -180,6 +193,7 @@ namespace Vivarium.SimRunner
             builder.Add(new ActivityDefinition(WellKnownActivities.Traveling, "Traveling", SimDuration.FromMinutes(10), false, false, true));
             builder.Add(new ActivityDefinition(ActivityTabletopGames, "Tabletop Games", SimDuration.FromMinutes(90), false));
             builder.Add(new ActivityDefinition(ActivityReading, "Reading", SimDuration.FromMinutes(60), false));
+            builder.Add(new ActivityDefinition(ActivitySocializing, "Socializing", SimDuration.FromMinutes(30), false));
 
             builder.Add(new LocationKindDefinition(LocationKindWorld, "World"));
             builder.Add(new LocationKindDefinition(LocationKindTown, "Town"));

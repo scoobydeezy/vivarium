@@ -1571,12 +1571,13 @@ Based on the current repository status and the joint Phase 0 review, the impleme
 2. **Employment v0 → workplace authority + recurring shift/closing-duty Commitments** — complete
 3. **ordinary Hunger → Eating behavior governed by location/Activity affordances** — complete
 4. **discretionary Recreation → Tabletop Games / Reading selection from Interests and availability** — complete
-5. **ordinary Socializing behavior** — next
+5. **ordinary Socializing behavior** — complete
 6. **Nudge economy + Commons availability management**
 7. **Unity surfaces for following approximately ten simultaneous lives**
 
-The immediate next slice is **ordinary Socializing behavior**. Revalidate later ordering after
-each completed causal link; do not implement all routine links as one subsystem project.
+All five routine links are complete. Further task selection returns to the phase ordering in
+[`Roadmap.md`](Roadmap.md), beginning with the earliest still-unproven meaningful Decision branch;
+do not fold later player-agency or presentation work into the completed routine subsystem.
 
 ---
 

@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: efa2c788149cc734eaa878ceb97ac2b0, type: 3}
   m_Name: ContentPack_Basic
   m_EditorClassIdentifier: Vivarium.Unity.Authoring::Vivarium.Unity.Authoring.ContentPackAsset
-  contentVersion: 7
+  contentVersion: 8
   decisionAdmissionFloor: 6500
   traits:
   - {fileID: 11400000, guid: afe9983f40078e045a269c0c1854d889, type: 2}
@@ -54,6 +54,20 @@ MonoBehaviour:
       - optionId: option.recreation.reading
         activityDefinitionId: activity.reading
         interestId: interest.reading
+  - authoredId: need.social
+    displayName: Social
+    minValue: 0
+    maxValue: 10000
+    ratePerMinuteNumerator: 4
+    ratePerMinuteDenominator: 1
+    behaviouralThresholds:
+    behaviouralThresholdValues:
+    - 7000
+    socializingRoutine:
+      activityDefinitionId: activity.socializing
+      activationThreshold: 7000
+      satisfactionOffset: -5000
+      maxCandidates: 4
   activities:
   - authoredId: activity.working
     displayName: Working
@@ -88,6 +102,12 @@ MonoBehaviour:
   - authoredId: activity.reading
     displayName: Reading
     defaultDurationMinutes: 60
+    producesOutcome: 0
+    supportsInteractiveResolution: 0
+    isTravel: 0
+  - authoredId: activity.socializing
+    displayName: Socializing
+    defaultDurationMinutes: 30
     producesOutcome: 0
     supportsInteractiveResolution: 0
     isTravel: 0

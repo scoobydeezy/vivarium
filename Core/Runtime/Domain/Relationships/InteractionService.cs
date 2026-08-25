@@ -83,6 +83,41 @@ namespace Vivarium.Domain.Relationships
                 null);
         }
 
+        /// <summary>Returns a bounded, relevance-ranked candidate set from one indexed location context.</summary>
+        public IReadOnlyList<CharacterId> SelectCandidatesAtLocation(
+            WorldState world,
+            CharacterId actor,
+            LocationId locationId,
+            int maxCandidates)
+        {
+            int rollIndex = OpportunityRollIndex(actor, world.Clock.Now);
+            return _candidates.Select(
+                actor,
+                world.Spatial.DirectOccupantsOf(locationId),
+                world.RelationshipIndex,
+                maxCandidates,
+                RandomScopeTypes.Location,
+                locationId.Value,
+                rollIndex,
+                _relevance);
+        }
+
+        /// <summary>Applies the ordinary subordinate interaction consequences to an exact co-located pair.</summary>
+        public bool TryInteractAtLocation(
+            SimulationContext context,
+            CharacterId actor,
+            CharacterId counterpart,
+            LocationId locationId)
+        {
+            WorldState world = context.World;
+            if (!world.TryGetSpatialContext(actor, out ActivitySpatialContext actorContext) ||
+                !world.TryGetSpatialContext(counterpart, out ActivitySpatialContext counterpartContext) ||
+                !actorContext.IsLocated || !counterpartContext.IsLocated ||
+                actorContext.LocationId != locationId || counterpartContext.LocationId != locationId)
+                return false;
+            return TryApplyInteraction(context, actor, counterpart, locationId, null);
+        }
+
         /// <summary>Resolves one opportunity among travellers indexed on the same directed segment.</summary>
         public bool TryInteractOnTravelSegment(
             SimulationContext context,
@@ -114,7 +149,7 @@ namespace Vivarium.Domain.Relationships
             LocationId locationId,
             TravelSegmentKey? travelSegment)
         {
-            int rollIndex = unchecked((actor.Value * 397) ^ (int)world.Clock.Now.TotalMinutes);
+            int rollIndex = OpportunityRollIndex(actor, world.Clock.Now);
             IReadOnlyList<CharacterId> selected = _candidates.Select(
                 actor,
                 pool,
@@ -128,63 +163,67 @@ namespace Vivarium.Domain.Relationships
             for (int i = 0; i < selected.Count; i++)
             {
                 CharacterId counterpart = selected[i];
-                if (!world.Characters.TryGet(counterpart, out Characters.Character other) || !other.IsActive)
-                {
-                    continue;
-                }
-
-                Relationship relationship;
-                if (world.RelationshipIndex.TryGetBetween(actor, counterpart, out RelationshipId relationshipId))
-                {
-                    relationship = world.Relationships.Get(relationshipId);
-                    if (!relationship.IsActive || relationship.LastInteractionAt == world.Clock.Now)
-                    {
-                        continue;
-                    }
-                }
-                else
-                {
-                    relationship = new Relationship(
-                        world.RuntimeIds.Relationships.Next(),
-                        actor,
-                        counterpart,
-                        AcquaintanceKind,
-                        AnalyticalProgression.Constant(0, world.Clock.Now),
-                        world.Clock.Now);
-                    world.Relationships.Add(relationship.Id, relationship);
-                    world.RelationshipIndex.Register(relationship);
-                }
-
-                relationship.RecordInteraction(world.Clock.Now, AffinityGain, FamiliarityGain);
-                world.BumpRevision(relationship.RevisionKey);
-                var subjects = new List<EntityRef> { actor.ToRef(), counterpart.ToRef(), relationship.Id.ToRef() };
-                if (locationId.IsSet)
-                {
-                    subjects.Add(locationId.ToRef());
-                }
-
-                string contextLabel = travelSegment.HasValue ? travelSegment.Value.ToString() : locationId.ToString();
-                world.HistoryLedger.Record(
-                    HistoryKind,
-                    world.Clock.Now,
-                    RetentionTier.Recent,
-                    $"{actor} interacted with {counterpart} at {contextLabel}",
-                    subjects);
-
-                ObserveIfWatched(context, actor);
-                ObserveIfWatched(context, counterpart);
-                world.Publish(new InteractionOccurredEvent(actor, counterpart, locationId, relationship.Id, travelSegment));
-
-                if (context.Trace.IsEnabled)
-                {
-                    context.Trace.Record("interaction", $"{world.Clock.Now} {actor} ↔ {counterpart} at {contextLabel}");
-                }
-
-                return true;
+                if (TryApplyInteraction(context, actor, counterpart, locationId, travelSegment)) return true;
             }
 
             return false;
         }
+
+        private bool TryApplyInteraction(
+            SimulationContext context,
+            CharacterId actor,
+            CharacterId counterpart,
+            LocationId locationId,
+            TravelSegmentKey? travelSegment)
+        {
+            WorldState world = context.World;
+            if (!world.Characters.TryGet(actor, out Characters.Character character) || !character.IsActive ||
+                !world.Characters.TryGet(counterpart, out Characters.Character other) || !other.IsActive)
+                return false;
+
+            Relationship relationship;
+            if (world.RelationshipIndex.TryGetBetween(actor, counterpart, out RelationshipId relationshipId))
+            {
+                relationship = world.Relationships.Get(relationshipId);
+                if (!relationship.IsActive || relationship.LastInteractionAt == world.Clock.Now) return false;
+            }
+            else
+            {
+                relationship = new Relationship(
+                    world.RuntimeIds.Relationships.Next(),
+                    actor,
+                    counterpart,
+                    AcquaintanceKind,
+                    AnalyticalProgression.Constant(0, world.Clock.Now),
+                    world.Clock.Now);
+                world.Relationships.Add(relationship.Id, relationship);
+                world.RelationshipIndex.Register(relationship);
+            }
+
+            relationship.RecordInteraction(world.Clock.Now, AffinityGain, FamiliarityGain);
+            world.BumpRevision(relationship.RevisionKey);
+            var subjects = new List<EntityRef> { actor.ToRef(), counterpart.ToRef(), relationship.Id.ToRef() };
+            if (locationId.IsSet) subjects.Add(locationId.ToRef());
+
+            string contextLabel = travelSegment.HasValue ? travelSegment.Value.ToString() : locationId.ToString();
+            world.HistoryLedger.Record(
+                HistoryKind,
+                world.Clock.Now,
+                RetentionTier.Recent,
+                $"{actor} interacted with {counterpart} at {contextLabel}",
+                subjects);
+
+            ObserveIfWatched(context, actor);
+            ObserveIfWatched(context, counterpart);
+            world.Publish(new InteractionOccurredEvent(actor, counterpart, locationId, relationship.Id, travelSegment));
+
+            if (context.Trace.IsEnabled)
+                context.Trace.Record("interaction", $"{world.Clock.Now} {actor} ↔ {counterpart} at {contextLabel}");
+            return true;
+        }
+
+        private static int OpportunityRollIndex(CharacterId actor, SimTime at) =>
+            unchecked((actor.Value * 397) ^ (int)at.TotalMinutes);
 
         private void ObserveIfWatched(SimulationContext context, CharacterId character)
         {
