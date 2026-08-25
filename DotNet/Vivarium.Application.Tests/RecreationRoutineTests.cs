@@ -1,4 +1,6 @@
 using Vivarium.Application.Persistence;
+using Vivarium.Application.Commands;
+using Vivarium.Application.Queries;
 using Vivarium.Domain.Activities;
 using Vivarium.Domain.Characters;
 using Vivarium.Domain.Common;
@@ -6,6 +8,7 @@ using Vivarium.Domain.Content;
 using Vivarium.Domain.Decisions;
 using Vivarium.Domain.Evaluation;
 using Vivarium.Domain.Simulation;
+using Vivarium.Domain.PlayerAgency;
 using Vivarium.Domain.Social;
 using Vivarium.Domain.Spatial;
 using Vivarium.Domain.Time;
@@ -91,6 +94,126 @@ namespace Vivarium.Application.Tests
         }
 
         [Fact]
+        public void ClosingCommonsBeforePlanningSpendsOneNudgeAndFallsBackToHomeAffordance()
+        {
+            Fixture fixture = Create(tabletopInterest: 9000, readingInterest: 3000);
+
+            Result result = fixture.Host.Session.Execute(
+                new SetLocationAvailabilityCommand(fixture.Commons, open: false));
+
+            Assert.True(result.IsSuccess);
+            Assert.Equal(2, fixture.Host.World.Nudges.Balance);
+            Assert.False(fixture.Host.World.Locations.Get(fixture.Commons).IsOpen);
+            Assert.True(new LocationProjector().TryProject(
+                fixture.Host.World, fixture.Commons, out LocationView locationView));
+            Assert.False(locationView.IsOpen);
+            Assert.True(locationView.CanManageAvailability);
+            Assert.Equal(LocationAvailabilityRules.NudgeCost, locationView.AvailabilityNudgeCost);
+
+            fixture.Host.Session.Advance(SimDuration.FromMinutes(10));
+
+            ActivityInstance current = Current(fixture.Host, fixture.Character);
+            Assert.Equal(Reading, current.DefinitionId);
+            Assert.Equal(fixture.Home, current.SpatialContext.LocationId);
+        }
+
+        [Fact]
+        public void ClosingCommonsTargetsAnInFlightRoutineWithoutInterruptingAnActivityAlreadyThere()
+        {
+            Fixture fixture = Create(tabletopInterest: 4500, readingInterest: 2500);
+            fixture.Host.Session.Advance(SimDuration.FromMinutes(10));
+            Assert.Equal(fixture.Commons, Current(fixture.Host, fixture.Character).SpatialContext.Transit.DestinationLocationId);
+
+            Result result = fixture.Host.Session.Execute(
+                new SetLocationAvailabilityCommand(fixture.Commons, open: false));
+
+            Assert.True(result.IsSuccess);
+            ActivityInstance redirected = Current(fixture.Host, fixture.Character);
+            Assert.False(redirected.SpatialContext.IsTraveling &&
+                redirected.SpatialContext.Transit.DestinationLocationId == fixture.Commons);
+
+            Fixture underwayFixture = Create(tabletopInterest: 4500, readingInterest: 2500);
+            underwayFixture.Host.Transitions.BeginActivity(
+                underwayFixture.Host.Simulation,
+                underwayFixture.Character,
+                Tabletop,
+                underwayFixture.Commons,
+                SimDuration.FromMinutes(30));
+            ActivityInstance underway = Current(underwayFixture.Host, underwayFixture.Character);
+
+            Assert.True(underwayFixture.Host.Session.Execute(
+                new SetLocationAvailabilityCommand(underwayFixture.Commons, open: false)).IsSuccess);
+
+            Assert.Equal(Tabletop, underway.DefinitionId);
+            Assert.Same(underway, Current(underwayFixture.Host, underwayFixture.Character));
+            Assert.Equal(underwayFixture.Commons, underway.SpatialContext.LocationId);
+            Assert.Equal(ActivityStatus.Active, underway.Status);
+        }
+
+        [Fact]
+        public void ClosingCommonsInvalidatesOnlyTheDependentLivingRecreationDecision()
+        {
+            Fixture fixture = Create(tabletopInterest: 8000, readingInterest: 3000);
+            fixture.Host.Session.Advance(SimDuration.FromMinutes(10));
+            Decision original = Assert.Single(fixture.Host.World.Decisions.All);
+            Assert.True(original.IsActive);
+
+            Result result = fixture.Host.Session.Execute(
+                new SetLocationAvailabilityCommand(fixture.Commons, open: false));
+
+            Assert.True(result.IsSuccess);
+            Assert.Equal(DecisionStatus.Dissolved, original.Status);
+            ActivityInstance current = Current(fixture.Host, fixture.Character);
+            Assert.Equal(Reading, current.DefinitionId);
+            Assert.Equal(fixture.Home, current.SpatialContext.LocationId);
+            Assert.Contains(fixture.Host.World.HistoryLedger.Entries,
+                entry => entry.Kind == LocationAvailabilityHistoryHandler.HistoryKind);
+        }
+
+        [Fact]
+        public void NoOpAvailabilityCommandDoesNotSpendAndReopeningRestoresAffordancesAcrossSaveLoad()
+        {
+            Fixture fixture = Create(tabletopInterest: 4500, readingInterest: 2500);
+
+            Result noOp = fixture.Host.Session.Execute(
+                new SetLocationAvailabilityCommand(fixture.Commons, open: true));
+            Assert.True(noOp.IsFailure);
+            Assert.Equal(LocationAvailabilityRules.ReasonAlreadySet, noOp.Reason);
+            Assert.Equal(NudgePolicy.InitialBalance, fixture.Host.World.Nudges.Balance);
+
+            Assert.True(fixture.Host.Session.Execute(
+                new SetLocationAvailabilityCommand(fixture.Commons, open: false)).IsSuccess);
+            Assert.True(fixture.Host.Session.Execute(
+                new SetLocationAvailabilityCommand(fixture.Commons, open: true)).IsSuccess);
+
+            SaveGameData save = fixture.Host.Session.Save("commons-reopened");
+            WorldState restored = fixture.Host.SaveMapper.Restore(save);
+
+            LocationNode commons = restored.Locations.Get(fixture.Commons);
+            Assert.True(commons.IsOpen);
+            Assert.True(commons.SupportsPlayerManagedAvailability);
+            Assert.Equal(1, restored.Nudges.Balance);
+        }
+
+        [Fact]
+        public void InsufficientNudgesLeavesCommonsAndItsRevisionUntouched()
+        {
+            Fixture fixture = Create(tabletopInterest: 4500, readingInterest: 2500);
+            Assert.True(fixture.Host.World.Nudges.TrySpend(NudgePolicy.InitialBalance));
+            int beforeRevision = fixture.Host.World.Revisions.Get(
+                new RevisionKey(fixture.Commons.ToRef(), RevisionAspects.LocationAvailability));
+
+            Result result = fixture.Host.Session.Execute(
+                new SetLocationAvailabilityCommand(fixture.Commons, open: false));
+
+            Assert.True(result.IsFailure);
+            Assert.Equal(LocationAvailabilityRules.ReasonInsufficientNudges, result.Reason);
+            Assert.True(fixture.Host.World.Locations.Get(fixture.Commons).IsOpen);
+            Assert.Equal(beforeRevision, fixture.Host.World.Revisions.Get(
+                new RevisionKey(fixture.Commons.ToRef(), RevisionAspects.LocationAvailability)));
+        }
+
+        [Fact]
         public void ImportantRecreationAdoptsExactPreflightReasonsAndContinuesAcrossReloadOffline()
         {
             Fixture fixture = Create(tabletopInterest: 8000, readingInterest: 3000);
@@ -152,7 +275,8 @@ namespace Vivarium.Application.Tests
                 LocationId.None,
                 Building,
                 "Commons",
-                activityAffordances: commonsAffordsTabletop ? new[] { Tabletop, Reading } : new[] { Reading });
+                activityAffordances: commonsAffordsTabletop ? new[] { Tabletop, Reading } : new[] { Reading },
+                supportsPlayerManagedAvailability: true);
             world.Locations.Add(commons);
             world.TravelNetwork.ConnectBidirectional(home.Id, commons.Id, SimDuration.FromMinutes(8), Walking);
 

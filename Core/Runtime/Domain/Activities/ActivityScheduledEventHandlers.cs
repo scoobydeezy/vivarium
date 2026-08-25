@@ -124,8 +124,12 @@ namespace Vivarium.Domain.Activities
             }
             else if (payload.ContinuationActivityDefinitionId.IsSet)
             {
-                nextDefinition = payload.ContinuationActivityDefinitionId;
-                duration = payload.ContinuationDuration;
+                if (world.Locations.TryGet(payload.DestinationLocationId, out Spatial.LocationNode destination) &&
+                    destination.IsOpen && destination.Affords(payload.ContinuationActivityDefinitionId))
+                {
+                    nextDefinition = payload.ContinuationActivityDefinitionId;
+                    duration = payload.ContinuationDuration;
+                }
             }
 
             ActivityInstance next = _transitions.BeginActivity(

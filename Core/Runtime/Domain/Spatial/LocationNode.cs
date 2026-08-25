@@ -25,7 +25,9 @@ namespace Vivarium.Domain.Spatial
             string displayName,
             bool isOccupiable = true,
             int capacity = 0,
-            IReadOnlyList<AuthoredId> activityAffordances = null)
+            IReadOnlyList<AuthoredId> activityAffordances = null,
+            bool supportsPlayerManagedAvailability = false,
+            bool isOpen = true)
         {
             if (!id.IsSet)
             {
@@ -39,6 +41,8 @@ namespace Vivarium.Domain.Spatial
             IsOccupiable = isOccupiable;
             Capacity = capacity;
             ActivityAffordances = CopyAffordances(activityAffordances);
+            SupportsPlayerManagedAvailability = supportsPlayerManagedAvailability;
+            IsOpen = isOpen;
         }
 
         public LocationId Id { get; }
@@ -62,6 +66,19 @@ namespace Vivarium.Domain.Spatial
 
         /// <summary>Activities this exact location makes ordinarily available.</summary>
         public IReadOnlyList<AuthoredId> ActivityAffordances { get; }
+
+        /// <summary>Whether the player may spend a Nudge to open or close this location.</summary>
+        public bool SupportsPlayerManagedAvailability { get; }
+
+        /// <summary>Closed locations retain occupants but suspend new discretionary affordances.</summary>
+        public bool IsOpen { get; private set; }
+
+        public bool SetOpen(bool open)
+        {
+            if (IsOpen == open) return false;
+            IsOpen = open;
+            return true;
+        }
 
         public bool Affords(AuthoredId activityDefinitionId)
         {

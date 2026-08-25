@@ -17,6 +17,8 @@ namespace Vivarium.Domain.Activities
     /// </summary>
     public sealed class RecreationRoutineService
     {
+        public static readonly AuthoredId DissolutionReasonAvailabilityChanged =
+            new AuthoredId("decision.dissolved.location_availability_changed");
         private readonly DefinitionCatalog _catalog;
         private readonly ActivityTransitionService _transitions;
         private readonly DecisionSignalProviderRegistry _signals;
@@ -155,13 +157,61 @@ namespace Vivarium.Domain.Activities
                         reasoningContext.ReasoningProgram,
                         conflictScope: conflict),
                     result);
-                return generated != null || HasActiveDecision(world, character.Id, decisionDefinition.Id);
+                if (generated != null)
+                {
+                    RegisterAvailabilityDependencies(world, generated);
+                    return true;
+                }
+                return HasActiveDecision(world, character.Id, decisionDefinition.Id);
             }
 
             DecisionOption selected = null;
             for (int i = 0; i < reasoningContext.Options.Count; i++)
                 if (reasoningContext.Options[i].Id == result.SelectedOptionId) selected = reasoningContext.Options[i];
             return selected != null && TryStartOption(context, character.Id, selected);
+        }
+
+        public void ReactToAvailabilityChanged(SimulationContext context, LocationId locationId, bool isOpen)
+        {
+            if (isOpen) return;
+            WorldState world = context.World;
+            var key = new DecisionDependencyKey(RevisionAspects.LocationAvailability, locationId.ToRef());
+            var affected = new List<DecisionId>(world.DecisionDependencies.DecisionsDependingOn(key));
+            for (int i = 0; i < affected.Count; i++)
+            {
+                if (!world.Decisions.TryGet(affected[i], out Decision decision) ||
+                    !decision.IsActive || !_needByDecision.ContainsKey(decision.DefinitionId))
+                    continue;
+
+                if (decision.PendingResolveEventId.IsSet) world.Scheduler.Cancel(decision.PendingResolveEventId);
+                decision.Dissolve();
+                world.Attention.Release(decision.Id);
+                world.Attention.SetPolicy(decision.Id, Vivarium.Domain.Attention.AttentionPolicy.Normal);
+                world.DecisionDependencies.Unregister(decision.Id);
+                world.Publish(new DecisionDissolvedEvent(
+                    decision.Id,
+                    decision.CharacterId,
+                    DissolutionReasonAvailabilityChanged,
+                    decision.Interventions,
+                    world.Clock.Now));
+                TryStartDeferred(context, decision.CharacterId);
+            }
+        }
+
+        private static void RegisterAvailabilityDependencies(WorldState world, Decision decision)
+        {
+            for (int i = 0; i < decision.Options.Count; i++)
+            {
+                if (!decision.Options[i].TryGetContext(
+                        DecisionReasoningParameters.Destination,
+                        out DecisionParameterValue destination) ||
+                    destination.Kind != DecisionParameterKind.Entity ||
+                    destination.Entity.Kind != EntityKind.Location)
+                    continue;
+                var key = new DecisionDependencyKey(RevisionAspects.LocationAvailability, destination.Entity);
+                decision.RegisterDependency(key);
+                world.DecisionDependencies.RegisterDependency(key, decision.Id);
+            }
         }
 
         private bool TryStartOption(SimulationContext context, CharacterId characterId, DecisionOption option)
@@ -172,6 +222,7 @@ namespace Vivarium.Domain.Activities
                 !TryPlan(option, out LocationId destination, out AuthoredId activityId,
                     out SimDuration duration, out AuthoredId needId, out long satisfactionOffset) ||
                 !world.Locations.TryGet(destination, out LocationNode destinationNode) ||
+                !destinationNode.IsOpen ||
                 !destinationNode.Affords(activityId))
                 return false;
 
@@ -286,5 +337,14 @@ namespace Vivarium.Domain.Activities
             : base(DecisionDomainEventTypes.DecisionResolved) => _service = service;
         protected override void Handle(DecisionResolvedEvent e, WorldState world, SimulationContext context) =>
             _service.ReactToDecisionResolved(context, e.DecisionId);
+    }
+
+    public sealed class RecreationAvailabilityChangedHandler : DomainEventHandler<LocationAvailabilityChangedEvent>
+    {
+        private readonly RecreationRoutineService _service;
+        public RecreationAvailabilityChangedHandler(RecreationRoutineService service)
+            : base(LocationAvailabilityDomainEventTypes.Changed) => _service = service;
+        protected override void Handle(LocationAvailabilityChangedEvent e, WorldState world, SimulationContext context) =>
+            _service.ReactToAvailabilityChanged(context, e.LocationId, e.IsOpen);
     }
 }

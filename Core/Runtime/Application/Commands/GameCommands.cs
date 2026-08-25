@@ -3,6 +3,7 @@ using Vivarium.Domain.Attention;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Decisions;
 using Vivarium.Domain.Simulation;
+using Vivarium.Domain.Spatial;
 using Vivarium.Domain.Time;
 
 namespace Vivarium.Application.Commands
@@ -202,6 +203,19 @@ namespace Vivarium.Application.Commands
         public string DisplayName { get; }
 
         public bool Occupiable { get; }
+    }
+
+    /// <summary>Spends one Nudge to open or close a player-managed location.</summary>
+    public sealed class SetLocationAvailabilityCommand : ICommand<Result>
+    {
+        public SetLocationAvailabilityCommand(LocationId locationId, bool open)
+        {
+            LocationId = locationId;
+            Open = open;
+        }
+
+        public LocationId LocationId { get; }
+        public bool Open { get; }
     }
 
     /// <summary>Sets the attention policy for a character (§20).</summary>

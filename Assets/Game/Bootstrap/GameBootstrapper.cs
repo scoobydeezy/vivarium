@@ -151,8 +151,9 @@ namespace Vivarium.Unity.Bootstrap
                 "Demo Room",
                 new[] { WellKnownActivities.Eating, ActivityReading });
             LocationId cafe = SeedDemoLocation(
-                "Demo Cafe",
-                new[] { ActivityTabletopGames, ActivityReading, ActivitySocializing });
+                "Demo Commons",
+                new[] { ActivityTabletopGames, ActivityReading, ActivitySocializing },
+                supportsPlayerManagedAvailability: true);
             LocationId workshop = SeedDemoLocation("Demo Workshop");
 
             CharacterId mina = SeedDemoCharacter("Mina Test", room, 5592);
@@ -201,14 +202,16 @@ namespace Vivarium.Unity.Bootstrap
 
         private LocationId SeedDemoLocation(
             string locationName,
-            IReadOnlyList<AuthoredId> activityAffordances = null)
+            IReadOnlyList<AuthoredId> activityAffordances = null,
+            bool supportsPlayerManagedAvailability = false)
         {
             var location = new LocationNode(
                 _host.World.RuntimeIds.Locations.Next(),
                 LocationId.None,
                 new AuthoredId("location_kind.building"),
                 locationName,
-                activityAffordances: activityAffordances);
+                activityAffordances: activityAffordances,
+                supportsPlayerManagedAvailability: supportsPlayerManagedAvailability);
             _host.World.Locations.Add(location);
             _demoLocations.Add(location.Id);
             return location.Id;

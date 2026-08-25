@@ -89,6 +89,9 @@ namespace Vivarium.Domain.Common
         /// <summary>Occupancy / spatial containment of a location.</summary>
         public static readonly AuthoredId Occupancy = new AuthoredId("revision.occupancy");
 
+        /// <summary>Whether a location currently permits its discretionary affordances.</summary>
+        public static readonly AuthoredId LocationAvailability = new AuthoredId("revision.location.availability");
+
         /// <summary>Composes a per-instance aspect such as <c>revision.need:need.hunger</c>.</summary>
         public static AuthoredId Scoped(AuthoredId aspect, AuthoredId qualifier) =>
             new AuthoredId(aspect.Value + ":" + qualifier.Value);

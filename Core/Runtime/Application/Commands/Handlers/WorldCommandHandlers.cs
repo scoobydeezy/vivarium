@@ -5,6 +5,7 @@ using Vivarium.Domain.Characters;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Simulation;
 using Vivarium.Domain.Spatial;
+using Vivarium.Domain.PlayerAgency;
 
 namespace Vivarium.Application.Commands.Handlers
 {
@@ -237,6 +238,31 @@ namespace Vivarium.Application.Commands.Handlers
 
             context.World.Locations.Add(node);
             return Result<LocationId>.Ok(node.Id);
+        }
+    }
+
+    public sealed class SetLocationAvailabilityHandler : CommandHandler<SetLocationAvailabilityCommand, Result>
+    {
+        public override Result Handle(SetLocationAvailabilityCommand command, CommandContext context)
+        {
+            Result eligibility = LocationAvailabilityRules.Evaluate(context.World, command.LocationId, command.Open);
+            if (eligibility.IsFailure) return eligibility;
+
+            LocationNode location = context.World.Locations.Get(command.LocationId);
+            if (!context.World.Nudges.TrySpend(LocationAvailabilityRules.NudgeCost))
+                throw new InvalidOperationException("Location availability eligibility and Nudge spend diverged.");
+            if (!location.SetOpen(command.Open))
+                throw new InvalidOperationException("Location availability eligibility and mutation diverged.");
+
+            int revision = context.World.BumpRevision(
+                new RevisionKey(command.LocationId.ToRef(), RevisionAspects.LocationAvailability));
+            context.World.Publish(new LocationAvailabilityChangedEvent(command.LocationId, command.Open, revision));
+            context.World.Publish(new NudgeBalanceChangedEvent(
+                NudgeBalanceChangeKind.Spent,
+                LocationAvailabilityRules.NudgeCost,
+                LocationAvailabilityRules.NudgeCost,
+                context.World.Nudges.Balance));
+            return Result.Ok();
         }
     }
 

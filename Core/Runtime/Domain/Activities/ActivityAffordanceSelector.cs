@@ -18,7 +18,7 @@ namespace Vivarium.Domain.Activities
             foreach (LocationId candidate in world.Locations.Affording(activityDefinitionId))
             {
                 LocationNode node = world.Locations.Get(candidate);
-                if (!node.IsOccupiable || !world.TravelNetwork.TryPlanRoute(origin, candidate, out TravelPlan plan))
+                if (!node.IsOpen || !node.IsOccupiable || !world.TravelNetwork.TryPlanRoute(origin, candidate, out TravelPlan plan))
                     continue;
                 if (!locationId.IsSet || plan.TotalCost < bestCost ||
                     (plan.TotalCost == bestCost && candidate.CompareTo(locationId) < 0))

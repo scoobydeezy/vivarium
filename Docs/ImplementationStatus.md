@@ -196,6 +196,15 @@ Working implementations:
   eligibility, spend/refund behavior, scheduled refresh, and no Nudge coupling. Accepted and
   superseded evidence, fixed-die provenance, pending expiry work, and resource balances round-trip in
   save schema v12. Automatic and OfflineCatchUp resolution commit without waiting or spending.
+- **Commons availability** — the sample Commons has persisted authoritative Open/Closed state and a
+  validated one-Nudge `SetLocationAvailabilityCommand`. State-changing commands bump a location-scoped
+  availability revision, publish retained history, and share eligibility/cost rules with the location
+  projection; invalid, no-op, and unaffordable requests spend nothing. Closed locations are excluded
+  from new discretionary affordance selection. Destination-indexed revalidation redirects only
+  in-flight routine Travel that depended on the changed location, while already-running Activities and
+  unrelated Commitment travel continue. Living Recreation Decisions register rebuildable location
+  dependencies and dissolve/replan when an option set is invalidated. State, management capability,
+  revisions, and Nudge balance round-trip through save schema v13; legacy locations migrate open.
 - **Knowledge** — player- and character-scoped fact providers, sparse social belief distributions,
   lifecycle/retention metadata, and discovery driven by observation through one canonical `WatchState`
   (§20.1, §22–§25).
@@ -331,7 +340,8 @@ Working implementations:
   v9 adds authoritative location Activity affordances; optional continuation parameters reuse the
   existing scheduled-payload collections and older Travel arrivals decode with none. Schema v10 derives
   saved Decision Importance from active persisted reason evaluations rather than retaining legacy authored
-  per-type values.
+  per-type values. Schema v13 adds persisted location availability and management capability; v12
+  locations migrate open and unmanaged.
 - **Scale regression gate** — the normal suite repeats a 250-character/six-hour workload and requires
   identical authoritative hashes and deterministic work counts under structural per-character ceilings.
   An opt-in 1,000-character/one-day tier enforces initial wall-clock and heap budgets while the CLI
@@ -339,11 +349,10 @@ Working implementations:
 
 Intentionally thin, pending game-design decisions:
 
-- **MVP agency contract.** Follow, Hold/Release, stable Influence intervention, knowledge-filtered
-  Decision projection foundations, the Nudge economy, and Re-roll/die-substitution authority exist.
-  Normal/Auto-Hold/Quiet policy semantics, Commons availability Command, targeted availability
-  reactions, bounded recap, and
-  complete MVP Unity surfaces are not implemented.
+- **MVP agency presentation breadth.** Follow, Hold/Release, stable Influence intervention,
+  knowledge-filtered Decision projection foundations, the Nudge economy, Re-roll/die-substitution,
+  and the Commons availability Command and targeted reactions exist authoritatively. Normal/Auto-Hold/
+  Quiet tuning, bounded recap presentation, and complete MVP Unity surfaces are not implemented.
 - **Intent versus forced outcome.** Decisions retain historical reasoning and Commitments distinguish
   planning intent from Activity execution, but there is no general action-attempt provenance or player
   physical-interference path. The simulation cannot yet record “Mina chose and attempted to leave, but

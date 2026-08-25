@@ -399,7 +399,10 @@ namespace Vivarium.Application.Queries
             string locationKindId,
             int directOccupantCount,
             int occupantsWithinCount,
-            IReadOnlyList<int> childLocationIds)
+            IReadOnlyList<int> childLocationIds,
+            bool isOpen = true,
+            bool canManageAvailability = false,
+            string availabilityDisabledReason = null)
         {
             LocationId = locationId;
             DisplayName = displayName;
@@ -407,6 +410,9 @@ namespace Vivarium.Application.Queries
             DirectOccupantCount = directOccupantCount;
             OccupantsWithinCount = occupantsWithinCount;
             ChildLocationIds = childLocationIds;
+            IsOpen = isOpen;
+            CanManageAvailability = canManageAvailability;
+            AvailabilityDisabledReason = availabilityDisabledReason;
         }
 
         public int LocationId { get; }
@@ -422,6 +428,11 @@ namespace Vivarium.Application.Queries
         public int OccupantsWithinCount { get; }
 
         public IReadOnlyList<int> ChildLocationIds { get; }
+
+        public bool IsOpen { get; }
+        public bool CanManageAvailability { get; }
+        public int AvailabilityNudgeCost => Vivarium.Domain.Spatial.LocationAvailabilityRules.NudgeCost;
+        public string AvailabilityDisabledReason { get; }
     }
 
     /// <summary>A character's upcoming commitments (§29.3, §29.4).</summary>

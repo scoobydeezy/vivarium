@@ -143,13 +143,18 @@ namespace Vivarium.Application.Queries
             }
 
             // Counts come from maintained indexes, never from scanning the population (§50).
+            bool requestedState = !node.IsOpen;
+            Result availability = LocationAvailabilityRules.Evaluate(world, node.Id, requestedState);
             view = new LocationView(
                 node.Id.Value,
                 node.DisplayName,
                 node.LocationKindId.Value,
                 world.Spatial.CountDirectlyIn(locationId),
                 world.Spatial.CountWithin(locationId),
-                children);
+                children,
+                node.IsOpen,
+                availability.IsSuccess,
+                availability.IsFailure ? availability.Reason.Value : null);
 
             return true;
         }

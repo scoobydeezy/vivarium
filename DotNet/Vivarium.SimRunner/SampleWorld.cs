@@ -63,13 +63,14 @@ namespace Vivarium.SimRunner
                 world,
                 layout.Town,
                 SampleContent.LocationKindBuilding,
-                "Corner cafe",
+                "Eastmarket Commons",
                 new[]
                 {
                     SampleContent.ActivityTabletopGames,
                     SampleContent.ActivityReading,
                     SampleContent.ActivitySocializing,
-                });
+                },
+                supportsPlayerManagedAvailability: true);
 
             // --- travel topology, separate from containment (§28) ---
             world.TravelNetwork.ConnectBidirectional(layout.Home, layout.Bakery, SimDuration.FromMinutes(12), SampleContent.TravelModeWalking);
@@ -190,14 +191,16 @@ namespace Vivarium.SimRunner
             LocationId parent,
             AuthoredId kind,
             string name,
-            IReadOnlyList<AuthoredId> activityAffordances = null)
+            IReadOnlyList<AuthoredId> activityAffordances = null,
+            bool supportsPlayerManagedAvailability = false)
         {
             var node = new LocationNode(
                 world.RuntimeIds.Locations.Next(),
                 parent,
                 kind,
                 name,
-                activityAffordances: activityAffordances);
+                activityAffordances: activityAffordances,
+                supportsPlayerManagedAvailability: supportsPlayerManagedAvailability);
             world.Locations.Add(node);
             return node.Id;
         }

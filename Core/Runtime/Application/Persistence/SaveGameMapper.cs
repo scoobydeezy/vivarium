@@ -298,6 +298,8 @@ namespace Vivarium.Application.Persistence
                     DisplayName = node.DisplayName,
                     IsOccupiable = node.IsOccupiable,
                     Capacity = node.Capacity,
+                    SupportsPlayerManagedAvailability = node.SupportsPlayerManagedAvailability,
+                    IsOpen = node.IsOpen,
                 });
                 LocationData location = data.Locations[data.Locations.Count - 1];
                 for (int a = 0; a < node.ActivityAffordances.Count; a++)
@@ -340,7 +342,9 @@ namespace Vivarium.Application.Persistence
                     location.DisplayName,
                     location.IsOccupiable,
                     location.Capacity,
-                    affordances));
+                    affordances,
+                    location.SupportsPlayerManagedAvailability,
+                    location.IsOpen));
             }
 
             for (int i = 0; i < data.TravelConnections.Count; i++)

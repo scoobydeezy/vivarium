@@ -21,6 +21,7 @@ using Vivarium.Domain.Relationships;
 using Vivarium.Domain.Scheduling;
 using Vivarium.Domain.Simulation;
 using Vivarium.Domain.Social;
+using Vivarium.Domain.Spatial;
 using Vivarium.Domain.Time;
 
 namespace Vivarium.Infrastructure.Bootstrap
@@ -286,6 +287,8 @@ namespace Vivarium.Infrastructure.Bootstrap
             domainHandlers.Register(new RecreationDecisionResolvedHandler(recreationRoutines), 105);
             domainHandlers.Register(new SocialInvitationDecisionResolvedHandler(socializingRoutines), 106);
             domainHandlers.Register(new NeedContinuationDecisionResolvedHandler(continuationRoutines), 107);
+            domainHandlers.Register(new LocationAvailabilityTravelRevalidationHandler(transitions), 108);
+            domainHandlers.Register(new RecreationAvailabilityChangedHandler(recreationRoutines), 109);
             domainHandlers.Register(new CommitmentConflictDecisionOutcomeHandler(commitmentLifecycle), 110);
             domainHandlers.Register(new CommitmentOutcomeConsequenceHandler(catalog, socialBeliefs), 100);
             domainHandlers.Register(new CommitmentStatusScheduleChangeHandler(), 200);
@@ -309,6 +312,7 @@ namespace Vivarium.Infrastructure.Bootstrap
             domainHandlers.Register(new InterventionResourceDissolutionRefundHandler(), 801);
             domainHandlers.Register(new NudgeBalanceHistoryHandler(), 900);
             domainHandlers.Register(new DecisionDissolvedHistoryHandler(), 900);
+            domainHandlers.Register(new LocationAvailabilityHistoryHandler(), 900);
 
             var settlement = new SettlementLoop(scheduledHandlers, domainHandlers);
             var projections = new ProjectionPublisher();
@@ -334,6 +338,7 @@ namespace Vivarium.Infrastructure.Bootstrap
             dispatcher.Register(new CommitDecisionResolutionHandler(decisionResolution));
             dispatcher.Register(new SubmitActivityPerformanceHandler(activityResolution));
             dispatcher.Register(new BuildLocationHandler());
+            dispatcher.Register(new SetLocationAvailabilityHandler());
             dispatcher.Register(new SetAttentionPolicyHandler());
 
             var session = new GameSession(

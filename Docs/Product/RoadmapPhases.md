@@ -440,7 +440,7 @@ at most one application of each intervention definition per Influence. Substitut
 stack on the same Influence. Pending inputs and accepted/superseded rolls are frozen, projected,
 persisted, and committed without player input on expiry or during OfflineCatchUp.
 
-#### 3C. First environmental management action
+#### 3C. First environmental management action — Complete
 
 Implement authoritative Commons Open/Closed availability and its one-Nudge management Command.
 
@@ -449,6 +449,13 @@ It must cause ordinary simulation fallout rather than directly targeting a chara
 Required causal shape:
 
 `Player changes availability → schedule/location revision → planner/feasibility reevaluation → Activity/Commitment/Decision fallout → visible history/notification`.
+
+Implemented in save schema v13. A shared rule authority validates the one-Nudge command and location
+projection; successful changes bump the location-availability revision and record history. Closed
+locations leave occupants and active Activities untouched, disappear from new discretionary planning,
+and use maintained destination and Decision-dependency indexes to revalidate only affected in-flight
+routine Travel and living Recreation Decisions. Reopening restores the authored affordances. Invalid,
+no-op, and unaffordable commands do not spend.
 
 #### 3D. Interactive Activity (deferred from MVP)
 
@@ -926,7 +933,7 @@ behavior, making this the earliest incomplete MPS causal link.
 | Commitment conflict/accountability | Complete v0 | Important | Reuse; defer broader semantics |
 | Player Knowledge/Attention | Complete foundation | Critical | Surface broadly in UI |
 | Intervention mechanics | Nudge economy, Re-roll, and substitution complete | Critical | Reuse in remaining Phase 3 UI/gameplay |
-| Player environmental management | Commons lever locked, not implemented | Critical | Implement in Phase 3 |
+| Player environmental management | Commons availability Command and targeted fallout complete | Critical | Reuse in Phase 4 scenario and Phase 5 UI |
 | Employment | Conceptual/architectural only | Critical for reviewed MPS | Lock/implement authority + obligation-pattern v0 |
 | Hobbies/discretionary routine | Conceptual only | Critical | Start with concrete Tabletop Games + Reading Activities |
 | Sleep/Energy loop | Missing from playable routine | Critical | Immediate next vertical slice |

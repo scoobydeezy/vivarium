@@ -56,6 +56,7 @@ namespace Vivarium.Domain.Spatial
         private readonly IndexedMembership<LocationId, CharacterId> _direct = new IndexedMembership<LocationId, CharacterId>();
         private readonly IndexedMembership<LocationId, CharacterId> _withinAncestors = new IndexedMembership<LocationId, CharacterId>();
         private readonly IndexedMembership<TravelSegmentKey, CharacterId> _travelSegments = new IndexedMembership<TravelSegmentKey, CharacterId>();
+        private readonly IndexedMembership<LocationId, CharacterId> _travelDestinations = new IndexedMembership<LocationId, CharacterId>();
         private readonly SortedSet<CharacterId> _travelers = new SortedSet<CharacterId>();
 
         public SpatialIndexes(LocationHierarchy hierarchy)
@@ -99,6 +100,9 @@ namespace Vivarium.Domain.Spatial
         /// <summary>Travellers sharing a journey stretch — a bounded candidate pool, not a pair scan (§32).</summary>
         public IReadOnlyCollection<CharacterId> TravelersOn(TravelSegmentKey segment) => _travelSegments.MembersOf(segment);
 
+        /// <summary>Travellers whose committed route currently ends here, ascending.</summary>
+        public IReadOnlyCollection<CharacterId> TravelersTo(LocationId destination) => _travelDestinations.MembersOf(destination);
+
         /// <summary>The location a character directly occupies, if they are not travelling.</summary>
         public bool TryGetDirectLocation(CharacterId character, out LocationId location)
         {
@@ -119,6 +123,7 @@ namespace Vivarium.Domain.Spatial
             _direct.Clear();
             _withinAncestors.Clear();
             _travelSegments.Clear();
+            _travelDestinations.Clear();
             _travelers.Clear();
         }
 
@@ -128,6 +133,7 @@ namespace Vivarium.Domain.Spatial
             {
                 _travelers.Add(character);
                 _travelSegments.Add(new TravelSegmentKey(context.Transit.OriginLocationId, context.Transit.DestinationLocationId), character);
+                _travelDestinations.Add(context.Transit.DestinationLocationId, character);
                 return;
             }
 
@@ -152,6 +158,7 @@ namespace Vivarium.Domain.Spatial
             {
                 _travelers.Remove(character);
                 _travelSegments.Remove(new TravelSegmentKey(context.Transit.OriginLocationId, context.Transit.DestinationLocationId), character);
+                _travelDestinations.Remove(context.Transit.DestinationLocationId, character);
                 return;
             }
 
