@@ -669,11 +669,25 @@ namespace Vivarium.Unity.Authoring
             public string authoredId;
             public InterventionKind kind;
             public int cost;
+            public InterventionResourceKind resourceKind;
+            public int replacementDieSides;
+            public int fixedResult;
+            public int initialBalance;
+            public int availabilityCap;
+            public int refreshAmount;
+            public long refreshPeriodMinutes;
 
             public InterventionDefinition ToDefinition() => new InterventionDefinition(
                 new AuthoredId(authoredId),
                 kind,
-                cost);
+                cost,
+                replacementDie: new Die(replacementDieSides, fixedResult),
+                resourceKind: resourceKind,
+                resourcePolicy: availabilityCap > 0
+                    ? new Vivarium.Domain.PlayerAgency.InterventionResourcePolicy(
+                        initialBalance, availabilityCap, refreshAmount,
+                        new Vivarium.Domain.Time.SimDuration(refreshPeriodMinutes))
+                    : default);
         }
 
         [System.Serializable]

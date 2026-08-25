@@ -564,6 +564,33 @@ MonoBehaviour:
   - authoredId: intervention.encourage
     kind: 2
     cost: 1
+    resourceKind: 0
+    replacementDieSides: 0
+    fixedResult: 0
+    initialBalance: 0
+    availabilityCap: 0
+    refreshAmount: 0
+    refreshPeriodMinutes: 0
+  - authoredId: intervention.re_roll
+    kind: 4
+    cost: 1
+    resourceKind: 2
+    replacementDieSides: 0
+    fixedResult: 0
+    initialBalance: 1
+    availabilityCap: 1
+    refreshAmount: 1
+    refreshPeriodMinutes: 1440
+  - authoredId: intervention.loaded_twenty
+    kind: 5
+    cost: 1
+    resourceKind: 3
+    replacementDieSides: 20
+    fixedResult: 20
+    initialBalance: 1
+    availabilityCap: 1
+    refreshAmount: 0
+    refreshPeriodMinutes: 0
   appraisalCalibrations:
   - authoredId: social.calibration.standard
     version: 1

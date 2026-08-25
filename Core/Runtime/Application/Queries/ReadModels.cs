@@ -120,7 +120,14 @@ namespace Vivarium.Application.Queries
     /// </summary>
     public sealed class InfluenceView
     {
-        public InfluenceView(int influenceId, string label, string category, int? dieSides, string explanation, bool canBeIntervenedOn)
+        public InfluenceView(
+            int influenceId,
+            string label,
+            string category,
+            int? dieSides,
+            string explanation,
+            bool canBeIntervenedOn,
+            IReadOnlyList<InterventionAvailabilityView> interventions = null)
         {
             InfluenceId = influenceId;
             Label = label;
@@ -128,6 +135,7 @@ namespace Vivarium.Application.Queries
             DieSides = dieSides;
             Explanation = explanation;
             CanBeIntervenedOn = canBeIntervenedOn;
+            Interventions = interventions ?? new InterventionAvailabilityView[0];
         }
 
         /// <summary>Stable within-decision id. Interventions target this (§17.2).</summary>
@@ -149,6 +157,59 @@ namespace Vivarium.Application.Queries
         /// authoritative rules the command handler applies (§19, invariant 57).
         /// </summary>
         public bool CanBeIntervenedOn { get; }
+
+        /// <summary>Authoritative per-action cost and eligibility, including resource sufficiency.</summary>
+        public IReadOnlyList<InterventionAvailabilityView> Interventions { get; }
+    }
+
+    public sealed class InterventionAvailabilityView
+    {
+        public InterventionAvailabilityView(
+            string interventionDefinitionId,
+            string resourceKind,
+            int cost,
+            bool isAvailable,
+            string unavailableReason)
+        {
+            InterventionDefinitionId = interventionDefinitionId;
+            ResourceKind = resourceKind;
+            Cost = cost;
+            IsAvailable = isAvailable;
+            UnavailableReason = unavailableReason;
+        }
+
+        public string InterventionDefinitionId { get; }
+        public string ResourceKind { get; }
+        public int Cost { get; }
+        public bool IsAvailable { get; }
+        public string UnavailableReason { get; }
+    }
+
+    public sealed class NudgeEconomyView
+    {
+        public NudgeEconomyView(int balance, int cap, int revision, string nextRegenerationAt)
+        {
+            Balance = balance;
+            Cap = cap;
+            Revision = revision;
+            NextRegenerationAt = nextRegenerationAt;
+        }
+
+        public int Balance { get; }
+        public int Cap { get; }
+        public int Revision { get; }
+        public string NextRegenerationAt { get; }
+    }
+
+    public sealed class InterventionResourceView
+    {
+        public InterventionResourceView(string resourceKind, int balance, int cap, int revision, string nextRefreshAt)
+        { ResourceKind = resourceKind; Balance = balance; Cap = cap; Revision = revision; NextRefreshAt = nextRefreshAt; }
+        public string ResourceKind { get; }
+        public int Balance { get; }
+        public int Cap { get; }
+        public int Revision { get; }
+        public string NextRefreshAt { get; }
     }
 
     /// <summary>One option and the influences the player can see arguing for it (§17, §26).</summary>
@@ -195,7 +256,8 @@ namespace Vivarium.Application.Queries
             bool canBeHeld,
             IReadOnlyList<DecisionOptionView> options,
             DecisionResolutionView resolution,
-            bool hasHardDeadline = false)
+            bool hasHardDeadline = false,
+            PendingDecisionResolutionView pendingResolution = null)
         {
             DecisionId = decisionId;
             CharacterId = characterId;
@@ -209,6 +271,7 @@ namespace Vivarium.Application.Queries
             Options = options;
             Resolution = resolution;
             HasHardDeadline = hasHardDeadline;
+            PendingResolution = pendingResolution;
         }
 
         public int DecisionId { get; }
@@ -240,6 +303,29 @@ namespace Vivarium.Application.Queries
 
         /// <summary>The resolve time is an authoritative feasibility boundary, not a soft timer.</summary>
         public bool HasHardDeadline { get; }
+
+        public PendingDecisionResolutionView PendingResolution { get; }
+    }
+
+    public sealed class PendingDecisionResolutionView
+    {
+        public PendingDecisionResolutionView(string expiresAt, IReadOnlyList<PendingInfluenceRollView> accepted,
+            IReadOnlyList<PendingInfluenceRollView> superseded)
+        { ExpiresAt = expiresAt; AcceptedRolls = accepted; SupersededRolls = superseded; }
+        public string ExpiresAt { get; }
+        public IReadOnlyList<PendingInfluenceRollView> AcceptedRolls { get; }
+        public IReadOnlyList<PendingInfluenceRollView> SupersededRolls { get; }
+    }
+
+    public sealed class PendingInfluenceRollView
+    {
+        public PendingInfluenceRollView(int influenceId, int dieSides, int rolled, int rollIndex, bool fixedDie)
+        { InfluenceId = influenceId; DieSides = dieSides; Rolled = rolled; RollIndex = rollIndex; FixedDie = fixedDie; }
+        public int InfluenceId { get; }
+        public int DieSides { get; }
+        public int Rolled { get; }
+        public int RollIndex { get; }
+        public bool FixedDie { get; }
     }
 
     /// <summary>The outcome, once there is one (§18).</summary>
@@ -250,13 +336,15 @@ namespace Vivarium.Application.Queries
             string degreeLabel,
             string resolvedAtLabel,
             string outcomeSourceLabel,
-            IReadOnlyList<DecisionReasonExplanationView> reasons = null)
+            IReadOnlyList<DecisionReasonExplanationView> reasons = null,
+            IReadOnlyList<PendingInfluenceRollView> supersededRolls = null)
         {
             ChosenOptionId = chosenOptionId;
             DegreeLabel = degreeLabel;
             ResolvedAtLabel = resolvedAtLabel;
             OutcomeSourceLabel = outcomeSourceLabel;
             Reasons = reasons ?? new DecisionReasonExplanationView[0];
+            SupersededRolls = supersededRolls ?? new PendingInfluenceRollView[0];
         }
 
         public string ChosenOptionId { get; }
@@ -267,6 +355,7 @@ namespace Vivarium.Application.Queries
 
         public string OutcomeSourceLabel { get; }
         public IReadOnlyList<DecisionReasonExplanationView> Reasons { get; }
+        public IReadOnlyList<PendingInfluenceRollView> SupersededRolls { get; }
     }
 
     public sealed class DecisionReasonExplanationView

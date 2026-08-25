@@ -72,13 +72,17 @@ namespace Vivarium.Domain.Decisions
             DecisionInfluenceId targetInfluenceId,
             long commandSequence,
             InterventionKind kind = InterventionKind.Unknown,
-            Die replacementDie = default)
+            Die replacementDie = default,
+            InterventionResourceKind resourceKind = InterventionResourceKind.None,
+            int resourceCost = 0)
         {
             InterventionDefinitionId = interventionDefinitionId;
             TargetInfluenceId = targetInfluenceId;
             CommandSequence = commandSequence;
             Kind = kind;
             ReplacementDie = replacementDie;
+            ResourceKind = resourceKind;
+            ResourceCost = resourceCost;
         }
 
         public AuthoredId InterventionDefinitionId { get; }
@@ -96,6 +100,11 @@ namespace Vivarium.Domain.Decisions
         public InterventionKind Kind { get; }
 
         public Die ReplacementDie { get; }
+
+        /// <summary>Snapshotted spend policy so dissolution refunds do not depend on reloaded content.</summary>
+        public InterventionResourceKind ResourceKind { get; }
+
+        public int ResourceCost { get; }
 
         public override string ToString() => $"{InterventionDefinitionId} → {TargetInfluenceId} (cmd {CommandSequence})";
     }

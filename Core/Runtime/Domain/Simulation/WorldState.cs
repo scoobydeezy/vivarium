@@ -8,6 +8,7 @@ using Vivarium.Domain.Employment;
 using Vivarium.Domain.Groups;
 using Vivarium.Domain.History;
 using Vivarium.Domain.Knowledge;
+using Vivarium.Domain.PlayerAgency;
 using Vivarium.Domain.Relationships;
 using Vivarium.Domain.Scheduling;
 using Vivarium.Domain.Spatial;
@@ -62,6 +63,8 @@ namespace Vivarium.Domain.Simulation
 
             Knowledge = new KnowledgeLedger();
             Attention = new AttentionState();
+            Nudges = new NudgeAccount();
+            InterventionResources = new DecisionInterventionResources();
             HistoryLedger = new HistoryLedger(RuntimeIds.HistoryEntries);
         }
 
@@ -122,6 +125,14 @@ namespace Vivarium.Domain.Simulation
 
         /// <summary>Attention and the canonical watch signal (§20).</summary>
         public AttentionState Attention { get; }
+
+        /// <summary>Authoritative MVP intervention resource state.</summary>
+        public NudgeAccount Nudges { get; private set; }
+
+        public void RestoreNudges(int balance, int revision) => Nudges = new NudgeAccount(balance, revision);
+
+        /// <summary>Authoritative Re-roll allowances and replacement-die holdings.</summary>
+        public DecisionInterventionResources InterventionResources { get; }
 
         /// <summary>Retained history with explicit retention tiers (§37).</summary>
         public HistoryLedger HistoryLedger { get; }
@@ -196,7 +207,7 @@ namespace Vivarium.Domain.Simulation
 
             foreach (Decision decision in Decisions.All)
             {
-                if (decision.IsActive)
+                if (decision.IsActive && !decision.IsAwaitingCommit)
                 {
                     DecisionDependencies.Register(decision);
                     CommitmentConflicts.Register(decision);

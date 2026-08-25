@@ -149,6 +149,20 @@ namespace Vivarium.Application.Commands
         public DecisionInfluenceId TargetInfluenceId { get; }
     }
 
+    /// <summary>Produces and freezes an attended Decision's rolls before outcome commitment.</summary>
+    public sealed class BeginDecisionResolutionCommand : ICommand<Result>
+    {
+        public BeginDecisionResolutionCommand(DecisionId decisionId) => DecisionId = decisionId;
+        public DecisionId DecisionId { get; }
+    }
+
+    /// <summary>Accepts the currently frozen rolls and commits the ordinary Decision outcome.</summary>
+    public sealed class CommitDecisionResolutionCommand : ICommand<Result>
+    {
+        public CommitDecisionResolutionCommand(DecisionId decisionId) => DecisionId = decisionId;
+        public DecisionId DecisionId { get; }
+    }
+
     /// <summary>
     /// Submits a normalized result from interactive play (§29.6).
     /// <para>

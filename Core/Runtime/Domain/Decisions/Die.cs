@@ -16,17 +16,28 @@ namespace Vivarium.Domain.Decisions
 
         public static readonly Die None = new Die(0);
 
-        public Die(int sides)
+        public Die(int sides, int fixedResult = 0)
         {
             if (sides < 0)
             {
                 throw new ArgumentOutOfRangeException(nameof(sides), "A die cannot have negative faces.");
             }
 
+            if (fixedResult < 0 || (fixedResult > 0 && (sides == 0 || fixedResult > sides)))
+            {
+                throw new ArgumentOutOfRangeException(nameof(fixedResult), "A fixed result must be a face on the die.");
+            }
+
             Sides = sides;
+            FixedResult = fixedResult;
         }
 
         public int Sides { get; }
+
+        /// <summary>Zero for an ordinary uniform die; otherwise this authored die always lands here.</summary>
+        public int FixedResult { get; }
+
+        public bool IsFixed => FixedResult > 0;
 
         public bool IsSet => Sides > 0;
 
@@ -70,18 +81,22 @@ namespace Vivarium.Domain.Decisions
             return this;
         }
 
-        public bool Equals(Die other) => Sides == other.Sides;
+        public bool Equals(Die other) => Sides == other.Sides && FixedResult == other.FixedResult;
 
         public override bool Equals(object obj) => obj is Die other && Equals(other);
 
-        public override int GetHashCode() => Sides;
+        public override int GetHashCode() => (Sides * 397) ^ FixedResult;
 
-        public int CompareTo(Die other) => Sides.CompareTo(other.Sides);
+        public int CompareTo(Die other)
+        {
+            int bySides = Sides.CompareTo(other.Sides);
+            return bySides != 0 ? bySides : FixedResult.CompareTo(other.FixedResult);
+        }
 
-        public override string ToString() => IsSet ? "d" + Sides : "-";
+        public override string ToString() => IsSet ? (IsFixed ? $"d{Sides}={FixedResult}" : "d" + Sides) : "-";
 
-        public static bool operator ==(Die a, Die b) => a.Sides == b.Sides;
+        public static bool operator ==(Die a, Die b) => a.Equals(b);
 
-        public static bool operator !=(Die a, Die b) => a.Sides != b.Sides;
+        public static bool operator !=(Die a, Die b) => !a.Equals(b);
     }
 }

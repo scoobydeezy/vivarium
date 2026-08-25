@@ -4,21 +4,22 @@ using Vivarium.Domain.Activities;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Randomness;
 using Vivarium.Domain.Simulation;
+using Vivarium.Domain.Time;
 
 namespace Vivarium.Domain.Decisions
 {
     /// <summary>Owns how one option-relative roll changes that option's score.</summary>
     public interface IDecisionResolutionPolicy
     {
-        int ApplyRoll(int currentTotal, DecisionInfluence influence, int rolled);
+        int ApplyRoll(int currentTotal, InfluenceRoll roll);
     }
 
     public sealed class SignedOptionRelativeResolutionPolicy : IDecisionResolutionPolicy
     {
-        public int ApplyRoll(int currentTotal, DecisionInfluence influence, int rolled) =>
-            influence.Polarity == InfluencePolarity.Supporting
-                ? checked(currentTotal + rolled)
-                : checked(currentTotal - rolled);
+        public int ApplyRoll(int currentTotal, InfluenceRoll roll) =>
+            roll.Polarity == InfluencePolarity.Supporting
+                ? checked(currentTotal + roll.Rolled)
+                : checked(currentTotal - roll.Rolled);
     }
 
     /// <summary>
@@ -52,7 +53,53 @@ namespace Vivarium.Domain.Decisions
                 throw new ArgumentNullException(nameof(decision));
             }
 
+            return Complete(decision, ProduceRolls(decision, context), context.World.Clock.Now);
+        }
+
+        /// <summary>Freezes the current participating dice and produces their initial results.</summary>
+        public IReadOnlyList<InfluenceRoll> ProduceRolls(Decision decision, SimulationContext context)
+        {
+            if (decision == null) throw new ArgumentNullException(nameof(decision));
             var rolls = new List<InfluenceRoll>();
+            var scope = new RandomScope(RandomScopeTypes.Decision, decision.Id.Value);
+
+            var live = new List<DecisionInfluence>();
+            for (int i = 0; i < decision.Influences.Count; i++)
+            {
+                DecisionInfluence influence = decision.Influences[i];
+                if (!influence.IsRetracted && influence.CurrentDie.IsSet) live.Add(influence);
+            }
+            live.Sort((a, b) => a.Id.CompareTo(b.Id));
+
+            for (int i = 0; i < live.Count; i++)
+            {
+                DecisionInfluence influence = live[i];
+                int rolled = Roll(context, scope, PurposeFor(influence), influence.RollIndex, influence.CurrentDie);
+                rolls.Add(new InfluenceRoll(influence.Id, influence.OptionId, influence.CurrentDie, rolled,
+                    influence.RollIndex, influence.Polarity, FrozenDecisionReason.From(influence)));
+            }
+            return rolls;
+        }
+
+        /// <summary>Produces the next deterministic result for one frozen pending Influence.</summary>
+        public InfluenceRoll Reroll(Decision decision, DecisionInfluenceId influenceId, SimulationContext context)
+        {
+            if (decision?.PendingResolution == null ||
+                !decision.PendingResolution.TryGetAccepted(influenceId, out InfluenceRoll previous) ||
+                !decision.TryGetInfluence(influenceId, out DecisionInfluence influence))
+                throw new InvalidOperationException("Re-roll requires a participating frozen Influence.");
+            influence.Reroll();
+            var scope = new RandomScope(RandomScopeTypes.Decision, decision.Id.Value);
+            int rolled = Roll(context, scope, PurposeFor(previous), influence.RollIndex, previous.Die);
+            return new InfluenceRoll(previous.InfluenceId, previous.OptionId, previous.Die, rolled,
+                influence.RollIndex, previous.Polarity, previous.Reason);
+        }
+
+        /// <summary>Calculates the outcome exclusively from the frozen accepted roll set.</summary>
+        public DecisionResolution Complete(Decision decision, IReadOnlyList<InfluenceRoll> rolls, SimTime resolvedAt,
+            IReadOnlyList<InfluenceRoll> supersededRolls = null)
+        {
+            if (decision == null) throw new ArgumentNullException(nameof(decision));
             var totalsByOption = new SortedDictionary<AuthoredId, int>();
 
             IReadOnlyList<DecisionOption> options = decision.Options;
@@ -61,46 +108,19 @@ namespace Vivarium.Domain.Decisions
                 totalsByOption[options[i].Id] = 0;
             }
 
-            var scope = new RandomScope(RandomScopeTypes.Decision, decision.Id.Value);
-
-            // Influences roll in stable id order so the trace reads the same on every replay (§15).
-            var live = new List<DecisionInfluence>();
-            for (int i = 0; i < decision.Influences.Count; i++)
+            for (int i = 0; i < rolls.Count; i++)
             {
-                DecisionInfluence influence = decision.Influences[i];
-                if (!influence.IsRetracted && influence.CurrentDie.IsSet)
+                InfluenceRoll roll = rolls[i];
+                if (totalsByOption.TryGetValue(roll.OptionId, out int running))
                 {
-                    live.Add(influence);
-                }
-            }
-
-            live.Sort((a, b) => a.Id.CompareTo(b.Id));
-
-            for (int i = 0; i < live.Count; i++)
-            {
-                DecisionInfluence influence = live[i];
-                AuthoredId purpose = PurposeFor(influence);
-                int rolled = context.Random.RollDie(scope, purpose, influence.RollIndex, influence.CurrentDie.Sides);
-
-                rolls.Add(new InfluenceRoll(
-                    influence.Id,
-                    influence.OptionId,
-                    influence.CurrentDie,
-                    rolled,
-                    influence.RollIndex,
-                    influence.Polarity,
-                    FrozenDecisionReason.From(influence)));
-
-                if (totalsByOption.TryGetValue(influence.OptionId, out int running))
-                {
-                    totalsByOption[influence.OptionId] = _policy.ApplyRoll(running, influence, rolled);
+                    totalsByOption[roll.OptionId] = _policy.ApplyRoll(running, roll);
                 }
                 else
                 {
                     // An influence for an option the decision does not declare is a content error;
                     // fail loudly rather than silently dropping a reason the character actually had.
                     throw new InvalidOperationException(
-                        $"Influence {influence.Id} on decision {decision.Id} argues for unknown option '{influence.OptionId}'.");
+                        $"Influence {roll.InfluenceId} on decision {decision.Id} argues for unknown option '{roll.OptionId}'.");
                 }
             }
 
@@ -136,10 +156,11 @@ namespace Vivarium.Domain.Decisions
             return new DecisionResolution(
                 best.OptionId,
                 DegreeFor(margin),
-                context.World.Clock.Now,
+                resolvedAt,
                 optionTotals,
                 rolls,
-                OutcomeSource.Automatic);
+                OutcomeSource.Automatic,
+                supersededRolls);
         }
 
         /// <summary>
@@ -150,6 +171,13 @@ namespace Vivarium.Domain.Decisions
             RandomPurposes.Qualified(
                 RandomPurposes.DecisionInfluenceRoll,
                 influence.OptionId.Value + "/" + influence.LabelId.Value + "#" + influence.Id.Value);
+
+        public static AuthoredId PurposeFor(InfluenceRoll roll) => RandomPurposes.Qualified(
+            RandomPurposes.DecisionInfluenceRoll,
+            roll.OptionId.Value + "/" + (roll.Reason?.LabelId.Value ?? string.Empty) + "#" + roll.InfluenceId.Value);
+
+        private static int Roll(SimulationContext context, RandomScope scope, AuthoredId purpose, int index, Die die) =>
+            die.IsFixed ? die.FixedResult : context.Random.RollDie(scope, purpose, index, die.Sides);
 
         private static DegreeOfSuccess DegreeFor(int margin)
         {

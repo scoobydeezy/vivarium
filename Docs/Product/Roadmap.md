@@ -1,7 +1,7 @@
 # Vivarium Product Roadmap
 
 **Status:** Current product sequence and next-task authority  
-**Last reconciled:** 2026-08-24
+**Last reconciled:** 2026-08-25
 
 This document answers: **given the implemented simulation, what should be built next?** The product
 north star is [`CoreIdentity.md`](CoreIdentity.md). Detailed phase
@@ -26,7 +26,7 @@ multiple habitats, and reciprocal autonomy.
 
 ## Current gate
 
-**Phases 0–2 are complete; Phase 3 is next.** The jointly locked
+**Phases 0–2 and Phase 3A–3B are complete; Phase 3C is next.** The jointly locked
 [`Minimum Playable Scenario`](MinimumPlayableScenario.md) and
 [`Player Agency Brief`](PlayerAgencyBrief.md) define the small world, meaningful character Decisions,
 supported player actions, and required Unity surfaces.
@@ -34,16 +34,23 @@ supported player actions, and required Unity surfaces.
 The complete locked Need set now drives ordinary life through production routines: Energy rests,
 Hunger eats, Recreation selects available hobbies, and Social pressure selects bounded shared-context
 company, and the five required circumstance branches now use production-shaped Decisions. The
-immediate next work begins player agency as a real game system:
+player agency now has deterministic resource and dice-intervention foundations. The immediate next
+work turns the first environmental management verb into ordinary world fallout:
 
-> **The authoritative Nudge economy.**
+> **Open/close the Commons.**
 
 Observable completion test:
 
-> A world begins with three Nudges, spends them only through valid Emphasize/Temper interventions,
-> regenerates one at each eight-hour world-time boundary without banking above the cap, refunds a
-> dissolved Decision's interventions, and projects the same eligibility/cost state across live,
-> offline, and save/load continuation.
+> A validated one-Nudge Command changes authoritative Commons availability, causes targeted routine
+> reconsideration, and produces observable consequences without directly selecting a character's
+> Activity or Decision outcome.
+
+The completed Phase 3A slice begins at three Nudges, spends only through valid Nudge-backed
+interventions, regenerates at aligned eight-hour boundaries without banking, refunds a Dissolved
+Decision's snapshotted spend, and projects the same balance/eligibility/cost state across live, offline,
+and save/load continuation. Phase 3B now adds frozen pending rolls, next-index Re-roll, authored die
+substitution (including a fixed-result variant), independent availability policies, expiry, and exact
+save/load/offline continuation. Phase 3C follows the Commons contract in the Player Agency Brief.
 
 The Ordinary Hunger slice is complete: an authored satisfaction routine now turns analytical Hunger
 into Eating only at an explicit, reachable location Activity affordance. It carries snapshotted meal
@@ -85,7 +92,7 @@ outcome identically offline and across save/load.
 | 0. Lock playable intent | MPS and Player Agency briefs define one coherent playable world | Complete |
 | 1. Close the daily routine loop | Energy/Sleep/Wake, Employment obligations, ordinary Eating, discretionary Recreation, and Socializing support indefinite lives | Complete |
 | 2. Expand meaningful choice | Scenario-required branch points use compiled Considerations and production consequences | Complete |
-| 3. Complete player agency | Nudge economy and Commons availability become real Commands; interactive Activity stays deferred | Pending |
+| 3. Complete player agency | Nudge economy, re-roll/substitution, and Commons availability become real Commands; interactive Activity stays deferred | Pending |
 | 4. Build the small-cast world | 8–12 characters run 2–3 days through one durable headless acceptance scenario | Pending |
 | 5. Build playable Unity surfaces | Roster, character, Decision, schedule, Knowledge, world, and history views consume projections/Commands | Pending |
 | 6. Productize save/continue | Concrete storage, restart continuation, offline catch-up, migration diagnostics, and failure UX | Pending |
@@ -119,8 +126,8 @@ slice:
 
 All five Phase 2 branch candidates now exist: Need-vs-obligation, two-desirable-Recreation,
 social-invitation-versus-plan, rest-versus-continuation, and a second commitment conflict produced by
-routine Employment rather than scenario input. Task selection therefore advances to Phase 3A's
-authoritative Nudge economy.
+routine Employment rather than scenario input. Phase 3A–3B's authoritative intervention economy and
+dice mechanics are complete; task selection advances to Phase 3C's Commons slice.
 
 This is sequencing guidance, not permission to implement all five as one subsystem project.
 

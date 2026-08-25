@@ -5,6 +5,7 @@ using Vivarium.Domain.Common;
 using Vivarium.Domain.Decisions;
 using Vivarium.Domain.Events;
 using Vivarium.Domain.Knowledge;
+using Vivarium.Domain.PlayerAgency;
 using Vivarium.Domain.Randomness;
 using Vivarium.Domain.Relationships;
 using Vivarium.Domain.Scheduling;
@@ -229,7 +230,7 @@ namespace Vivarium.Domain.Tests
                 new AuthoredId("option.accept"), new AuthoredId("cat"), new AuthoredId("influence.ambition"), Die.D10, InfluenceVisibility.Full);
 
             var stepUp = new InterventionDefinition(new AuthoredId("intervention.encourage"), InterventionKind.StepDieUp, 1);
-            Assert.True(DecisionInterventionRules.Evaluate(decision, stepUp, ambition.Id).IsSuccess);
+            Assert.True(DecisionInterventionRules.Evaluate(decision, stepUp, ambition.Id, new NudgeAccount(), new DecisionInterventionResources()).IsSuccess);
             DecisionInterventionRules.Apply(decision, stepUp, ambition.Id, commandSequence: 501);
 
             Assert.Equal(Die.D12, ambition.CurrentDie);
@@ -274,7 +275,7 @@ namespace Vivarium.Domain.Tests
             var stepUp = new InterventionDefinition(new AuthoredId("intervention.encourage"), InterventionKind.StepDieUp, 1);
             DecisionInterventionRules.Apply(decision, stepUp, influence.Id, 1);
 
-            Result second = DecisionInterventionRules.Evaluate(decision, stepUp, influence.Id);
+            Result second = DecisionInterventionRules.Evaluate(decision, stepUp, influence.Id, new NudgeAccount(), new DecisionInterventionResources());
 
             Assert.True(second.IsFailure);
             Assert.Equal(DecisionInterventionRules.ReasonAlreadyApplied, second.Reason);
@@ -288,7 +289,7 @@ namespace Vivarium.Domain.Tests
                 new AuthoredId("option.accept"), new AuthoredId("cat"), new AuthoredId("influence.a"), Die.D20, InfluenceVisibility.Full);
 
             var stepUp = new InterventionDefinition(new AuthoredId("intervention.encourage"), InterventionKind.StepDieUp, 1);
-            Result result = DecisionInterventionRules.Evaluate(decision, stepUp, influence.Id);
+            Result result = DecisionInterventionRules.Evaluate(decision, stepUp, influence.Id, new NudgeAccount(), new DecisionInterventionResources());
 
             Assert.True(result.IsFailure);
             Assert.Equal(DecisionInterventionRules.ReasonDieAtLadderTop, result.Reason);

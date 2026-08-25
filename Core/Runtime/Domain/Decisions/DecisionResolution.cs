@@ -132,7 +132,8 @@ namespace Vivarium.Domain.Decisions
             SimTime resolvedAt,
             IReadOnlyList<OptionTotal> optionTotals,
             IReadOnlyList<InfluenceRoll> rolls,
-            OutcomeSource source)
+            OutcomeSource source,
+            IReadOnlyList<InfluenceRoll> supersededRolls = null)
         {
             ChosenOptionId = chosenOptionId;
             Degree = degree;
@@ -140,6 +141,7 @@ namespace Vivarium.Domain.Decisions
             OptionTotals = optionTotals;
             Rolls = rolls;
             Source = source;
+            SupersededRolls = supersededRolls ?? new InfluenceRoll[0];
         }
 
         public AuthoredId ChosenOptionId { get; }
@@ -151,6 +153,9 @@ namespace Vivarium.Domain.Decisions
         public IReadOnlyList<OptionTotal> OptionTotals { get; }
 
         public IReadOnlyList<InfluenceRoll> Rolls { get; }
+
+        /// <summary>Known results discarded by Re-roll; retained as non-causal history.</summary>
+        public IReadOnlyList<InfluenceRoll> SupersededRolls { get; }
 
         /// <summary>Automatic dice resolution, or player-provided. Shared provenance convention (§29.6).</summary>
         public OutcomeSource Source { get; }

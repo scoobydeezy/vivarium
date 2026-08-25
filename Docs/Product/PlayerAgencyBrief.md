@@ -1,7 +1,7 @@
 # Vivarium — MVP Player Agency Brief
 
 **Status:** Locked MVP product contract  
-**Last reconciled:** 2026-08-24  
+**Last reconciled:** 2026-08-25
 **Purpose:** Define what the player can understand and do in the Minimum Playable Scenario without
 directly choosing character outcomes.
 
@@ -27,6 +27,8 @@ The player may:
 - decide whose life deserves proactive attention;
 - buy time to consider a qualifying Decision;
 - spend a scarce **Nudge** to change the weight of one known reason;
+- use a bounded Re-roll after seeing a roll but before its outcome is committed;
+- substitute an authored special die for one known reason before rolling;
 - open or close the Commons, changing a real circumstance to which characters react.
 
 The player may not select a Decision Option, assign a character an Activity, teleport a character,
@@ -36,7 +38,7 @@ routines.
 The MVP loop is:
 
 ```text
-look → learn → follow → notice → inspect → optionally hold/nudge
+look → learn → follow → notice → inspect → optionally hold/intervene
      → character resolves → consequences continue → recap → look again
 ```
 
@@ -53,6 +55,8 @@ look → learn → follow → notice → inspect → optionally hold/nudge
 | Inspect Decision | Show known Options, reasons, resolve time, and prior changes | Knowledge-filtered read model |
 | Hold/release Decision | Defer eligible auto-resolution within bounded capacity; release restores scheduling | Validated Commands; saved; an immovable ceiling (§4) still wins where one exists |
 | Emphasize/Temper reason | Spend one Nudge to step one visible reason up/down | Validated Command; never selects the winning Option |
+| Re-roll reason die | Replace one known produced roll before outcome commitment | Validated Command; uses the next deterministic scoped roll index |
+| Substitute reason die | Before rolling, replace one visible reason's die with an available authored variant | Validated Command; variant content and availability are authoritative |
 | Open/close Commons | Spend one Nudge to change authoritative Commons availability | Validated Command; saved; causes targeted replanning |
 | Review recap/history | Explain important off-screen/offline changes the player is allowed to know | Knowledge-filtered projections |
 
@@ -106,7 +110,9 @@ the most specific label/explanation and die magnitude the player's Knowledge per
 - whether Hold is legal and remaining global/per-character capacity;
 - whether this Decision's `ResolveAt` has an immovable ceiling Hold cannot push past (every Decision has
   a `ResolveAt`; most MVP types do not yet define a ceiling — see §4);
-- Emphasize/Temper eligibility and cost using the authoritative rule result;
+- eligibility, timing, availability, and cost for every supported intervention using the authoritative
+  rule result;
+- produced/pending roll state when a Re-roll window exists;
 - applied interventions and any refund;
 - frozen post-resolution reasoning and outcome provenance.
 
@@ -214,7 +220,10 @@ event list. Selecting a recap entry opens the relevant character, Decision, or l
 
 ## 6. Nudge economy
 
-Intervention is normal MVP play through a single deterministic resource named **Nudges**.
+Intervention is normal MVP play. **Nudges** are the first deterministic intervention resource, not a
+synonym for every intervention effect. Re-roll allowances and replacement-die availability use the same
+authoritative validation/spend/refund boundary but may have distinct resource policies, as locked in
+[`../Design/DecisionInterventions.md`](../Design/DecisionInterventions.md).
 
 ### Balance and regeneration
 
@@ -228,14 +237,24 @@ Intervention is normal MVP play through a single deterministic resource named **
 
 ### Costs and intervention content
 
-The MVP exposes exactly two Decision interventions:
+The MVP exposes four Decision-intervention families:
 
 - **Emphasize** — cost 1; step one visible active reason's die up once.
 - **Temper** — cost 1; step one visible active reason's die down once.
+- **Re-roll** — after an initial result is known but before outcome commitment, discard one eligible
+  reason's result and roll its same effective die with the next deterministic roll index.
+- **Substitute** — before rolls, replace one eligible reason's effective die with an available authored
+  die variant for this resolution.
 
-Each intervention may target a given Influence at most once. The existing stable Influence identity and
-authoritative `DecisionInterventionRules` remain the legality authority. Resource sufficiency becomes
-part of that same evaluation path so projections and command execution agree.
+Emphasize and Temper may each target a given Influence at most once. Re-roll and Substitute stacking
+limits are authored tuning (§14). The existing stable Influence identity and authoritative
+`DecisionInterventionRules` remain the legality authority. Timing and resource sufficiency are part of
+that same evaluation path so projections and command execution agree.
+
+Re-roll introduces a bounded authoritative pre-commit roll state; it never undoes a resolved Decision.
+Substitution accepts a trusted die-variant definition ID, never a client-authored result or face table.
+Even a loaded variant that always yields one face changes only that die—the normal resolution policy
+still determines the winning Option.
 
 Opening or closing the Commons costs **1 Nudge** when the command actually changes its state. An invalid
 or no-op Command costs nothing.
@@ -247,8 +266,8 @@ or no-op Command costs nothing.
   set becomes invalid.
 - Resolution, manual Release, a retracted reason, or player regret does not refund it.
 - An accepted Commons state change is never refunded.
-- Refunds are authoritative, capped at 3, persisted through the resulting balance, and shown in
-  history/recap.
+- Nudge refunds are authoritative, capped at 3, persisted through the resulting balance, and shown in
+  history/recap. Other intervention resources follow their selected authoritative refund/cap policy.
 - The cap is enforced by clamping balance after **every** individual balance-affecting event (a spend, a
   refund, or a regeneration tick) — not only checked at regeneration boundaries. A refund and a
   regeneration boundary can coincide at the same simulation instant (a Decision dissolving exactly at
@@ -333,6 +352,8 @@ The save must preserve:
 - Follow and Normal/Auto-Hold/Quiet policies;
 - Held Decisions and bounded-capacity state already required for continuation;
 - Nudge balance;
+- Re-roll availability and replacement-die holdings/charges under their selected resource policies;
+- any produced-but-uncommitted resolution snapshot and superseded roll evidence;
 - Commons availability and its revision;
 - intervention applications/refunds and causal history.
 
@@ -355,7 +376,8 @@ The minimum playable UI consists of:
 3. virtualized character roster;
 4. character profile with Overview, Schedule, Social/Knowledge, Decisions, and History sections;
 5. Decision feed and Decision detail/encounter panel;
-6. Nudge balance and authoritative eligibility/cost feedback;
+6. Nudge balance, other intervention availability, pending-roll state, and authoritative
+   eligibility/cost feedback;
 7. Commons open/close management control;
 8. live notifications and grouped offline/off-screen recap.
 
@@ -378,13 +400,17 @@ The MVP agency loop is complete when a deterministic two-day MPS run proves all 
    Held.
 6. Emphasize or Temper spends one Nudge, changes a stable reason, and can change—but cannot select—the
    deterministic outcome.
-7. Nudge regeneration and dissolution refund behavior match across uninterrupted, save/load, and
+7. A pre-roll substitution uses an authored die variant and survives reevaluation/save-load while
+   remaining bound to the intended stable reason.
+8. A known initial roll can be re-rolled before commitment; the accepted next-index result and
+   superseded-roll history replay identically, including save/load in the pre-commit state.
+9. Nudge regeneration and dissolution refund behavior match across uninterrupted, save/load, and
    offline runs, including when a refund and a regeneration boundary coincide.
-8. Closing the Commons spends one Nudge, changes authoritative availability, and causally changes a
+10. Closing the Commons spends one Nudge, changes authoritative availability, and causally changes a
    downstream plan/Activity/social opportunity both for a plan formed after closure and for a character
    already Traveling toward the Commons when it closes; reopening restores the affordance.
-9. Quiet changes surfacing only, never simulation or outcome.
-10. Off-screen and offline important events appear in a bounded, Knowledge-filtered recap.
+11. Quiet changes surfacing only, never simulation or outcome.
+12. Off-screen and offline important events appear in a bounded, Knowledge-filtered recap.
 
 ---
 
@@ -396,8 +422,8 @@ character up, redirecting or isolating them, or transferring them between habita
 farming, queued location schedules, forced Activity cancellation, multiple managed locations,
 player-authored Commitments, interactive Activities, or final notification tuning.
 
-Everything in this brief is Core Identity's **Influence** category only: the player changes the weight
-of a reason inside a Decision the character still resolves. **Interference** — the player physically
+Everything in this brief is Core Identity's **Influence** category only: the player alters a reason's
+effective die or roll inside a Decision the character still resolves. **Interference** — the player physically
 overriding what happens regardless of that resolution — is entirely out of MVP scope and remains
 post-MVP Roadmap Phase 9 ("The Poke").
 
@@ -405,10 +431,27 @@ Expand these only when a later playable failure proves they are necessary.
 
 ---
 
-## 14. Open MVP parameters
+## 14. MVP parameters and tuning
 
-Numeric parameters this brief depends on are named here but not yet assigned values anywhere in the
-documentation, and must be locked before Phase 3 (Roadmap.md) implementation can complete:
+The mechanic boundaries above are locked. The following values are authored tuning knobs: Phase 3
+must ship with explicit deterministic starting values, but playtesting may change them without a
+product-contract revision so long as the mechanic and persistence boundaries remain intact:
+
+- **Re-roll availability.** Its deterministic refresh boundary, banking/cap behavior, and the bounded
+  expiry of a produced-but-uncommitted roll. Offline catch-up commits without consuming this
+  player-only allowance. **Re-roll** is the player-facing name for now.
+- **Replacement-die availability and catalog.** How variants are granted/consumed/refunded, the first
+  authored variants, and whether variants persist across Decisions. The architecture supports size
+  changes, weighted faces, and deterministic faces.
+- **Intervention stacking.** Whether Substitute and Re-roll can affect the same Influence/Decision and
+  their per-Influence/per-Decision limits. Emphasize/Temper retain their existing once-per-target rule.
+
+Phase 3B's initial test values are one non-banking daily Re-roll, one persistent replacement charge, a
+loaded d20 fixed at 20, a 15-world-minute pending window, and once-per-definition-per-Influence use.
+Substitute and Re-roll may stack. These remain tuning values, not permanent balance commitments.
+
+The following parameters remain genuine Phase 3 product gates because the system cannot exercise the
+locked Attention behavior coherently without choosing initial values:
 
 - **The Decision importance scale.** `Architecture/Reference.md` §18.2 and `DecisionReasoning.md` §39.2
   (2026-08-24) now fix the *mechanism*: `Importance` is derived from a Decision's own evaluated Signal
@@ -452,8 +495,8 @@ documentation, and must be locked before Phase 3 (Roadmap.md) implementation can
   global/per-character capacity... as manual Hold" as a known quantity; it is actually an open product
   decision, not a locked one.
 
-None of these parameters change this brief's mechanics—only their numbers—so later tuning should be a
-small, self-contained follow-up rather than a redesign. The admission, prioritized-feed, normal-feed, and
-Auto-Hold floors should be calibrated together because they read the same evaluated-magnitude scale at
-different moments. Their required ordering and initial derivation are owned by
+Changing authored tuning values does not change this brief's mechanics and should not require a
+redesign. The admission, prioritized-feed, normal-feed, and Auto-Hold floors should be calibrated
+together because they read the same evaluated-magnitude scale at different moments. Their required
+ordering and initial derivation are owned by
 [`DecisionImportance.md`](../Design/DecisionImportance.md).

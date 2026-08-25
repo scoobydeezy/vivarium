@@ -15,6 +15,7 @@ using Vivarium.Domain.Decisions;
 using Vivarium.Domain.Events;
 using Vivarium.Domain.Employment;
 using Vivarium.Domain.Knowledge;
+using Vivarium.Domain.PlayerAgency;
 using Vivarium.Domain.Randomness;
 using Vivarium.Domain.Relationships;
 using Vivarium.Domain.Scheduling;
@@ -218,6 +219,7 @@ namespace Vivarium.Infrastructure.Bootstrap
                 transitions,
                 decisionSignals);
             var holdPolicy = new DecisionHoldPolicy(maxGlobalHeld: 12, maxHeldPerCharacter: 3);
+            var resolutionWindow = new DecisionResolutionWindowPolicy(SimDuration.FromMinutes(15));
             var interactionCandidates = new InteractionCandidateSelector(random);
             var socialBeliefs = new SocialBeliefUpdateService();
 
@@ -254,8 +256,14 @@ namespace Vivarium.Infrastructure.Bootstrap
             scheduledHandlers.Register(new CommitmentWindowExpiredHandler(commitmentLifecycle));
             scheduledHandlers.Register(new NeedThresholdHandler());
             scheduledHandlers.Register(new DecisionResolveHandler(decisionResolution, holdPolicy));
+            scheduledHandlers.Register(new DecisionPendingCommitHandler(decisionResolution));
             scheduledHandlers.Register(new CommitmentConflictAutoResolveHandler(decisionResolution));
             scheduledHandlers.Register(new CommitmentBecomesKnownHandler());
+            scheduledHandlers.Register(new NudgeRegenerationHandler());
+            scheduledHandlers.Register(new InterventionResourceRefreshHandler());
+
+            NudgeRegenerationSchedule.EnsureScheduled(world);
+            ConfigureInterventionResources(world, catalog);
 
             // Content-backed reactions use explicit stable order (§12.1).
             var domainHandlers = new OrderedDomainEventHandlerRegistry();
@@ -297,6 +305,9 @@ namespace Vivarium.Infrastructure.Bootstrap
             domainHandlers.Register(new DecisionRelationshipOutcomeHandler(catalog), 200);
             domainHandlers.Register(new DecisionCreatedHistoryHandler(), 900);
             domainHandlers.Register(new DecisionInterventionHistoryHandler(), 900);
+            domainHandlers.Register(new NudgeDissolutionRefundHandler(), 800);
+            domainHandlers.Register(new InterventionResourceDissolutionRefundHandler(), 801);
+            domainHandlers.Register(new NudgeBalanceHistoryHandler(), 900);
             domainHandlers.Register(new DecisionDissolvedHistoryHandler(), 900);
 
             var settlement = new SettlementLoop(scheduledHandlers, domainHandlers);
@@ -318,7 +329,9 @@ namespace Vivarium.Infrastructure.Bootstrap
             dispatcher.Register(new TravelCharacterHandler(transitions));
             dispatcher.Register(new HoldDecisionHandler(holdPolicy));
             dispatcher.Register(new ReleaseDecisionHandler());
-            dispatcher.Register(new ApplyDecisionInterventionHandler(catalog.Interventions));
+            dispatcher.Register(new ApplyDecisionInterventionHandler(catalog.Interventions, decisionResolution));
+            dispatcher.Register(new BeginDecisionResolutionHandler(decisionResolution, resolutionWindow));
+            dispatcher.Register(new CommitDecisionResolutionHandler(decisionResolution));
             dispatcher.Register(new SubmitActivityPerformanceHandler(activityResolution));
             dispatcher.Register(new BuildLocationHandler());
             dispatcher.Register(new SetAttentionPolicyHandler());
@@ -355,6 +368,18 @@ namespace Vivarium.Infrastructure.Bootstrap
                 scheduledHandlers,
                 dispatcher,
                 catalog);
+        }
+
+        private static void ConfigureInterventionResources(WorldState world, DefinitionCatalog catalog)
+        {
+            foreach (KeyValuePair<AuthoredId, InterventionDefinition> pair in catalog.Interventions)
+            {
+                InterventionDefinition definition = pair.Value;
+                if (definition.ResourceKind != InterventionResourceKind.ReRoll &&
+                    definition.ResourceKind != InterventionResourceKind.ReplacementDie) continue;
+                world.InterventionResources.Configure(definition.ResourceKind, definition.ResourcePolicy, world.Clock.Now);
+                DecisionInterventionResourceEvents.EnsureScheduled(world, definition.ResourceKind);
+            }
         }
 
         private static string[] ToArray(IReadOnlyList<string> values)

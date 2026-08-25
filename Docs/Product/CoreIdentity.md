@@ -193,7 +193,7 @@ Examples:
 
 - strengthen an existing consideration;
 - weaken one;
-- replace or reroll a die;
+- replace or re-roll a die;
 - reveal information;
 - alter circumstances before resolution.
 
@@ -231,6 +231,34 @@ If Mina tries six times to leave work and the Observer physically prevents her s
 A forced outcome is not the same thing as an autonomous choice.
 
 This principle protects the integrity of the character simulation even when the player behaves coercively.
+
+### Interference is not exclusively a player action
+
+The Observer is not the only source of forced outcomes.
+
+A body can override a mind, too.
+
+Exhaustion can put someone to sleep before they meant to stop. Illness or injury can end an Activity a
+character fully intended to finish. Starvation, intoxication, or a severe Condition can make a physically
+intended action briefly impossible to carry out.
+
+No one chose these on Mina's behalf. But they are the same *shape* of event Interference already names:
+the world — this time her own body — prevented her from carrying out what she wanted.
+
+> A forced outcome is not the same thing as an autonomous choice, regardless of whether the force came
+> from the player or from the character's own condition.
+
+Concretely: a Need or Condition may be severe enough to end an Activity, block a transition, or put a
+character to sleep without that ever having been chosen through ordinary reasoning. When it does, that
+outcome must carry the same causal honesty player Interference already requires — what the character was
+actually doing, and that it ended because it was imposed rather than decided — so history can still say
+*Mina collapsed at work* rather than quietly rewriting it as *Mina chose to stay*.
+
+What a Need or Condition may never do is the other kind of intervention: silently choosing a *voluntary*
+action on the character's behalf. Compelling consumption, forcing a specific Option, or picking a course
+of action for a character is Influence pretending to be a physical fact, and the two must not be
+conflated. A collapse is something that happens *to* a character. A Decision is something a character
+*does*. Only the first belongs to an involuntary Condition.
 
 ---
 

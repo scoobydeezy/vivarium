@@ -21,7 +21,7 @@ namespace Vivarium.Application.Persistence
         /// <summary>
         /// The current persisted shape. Bump on any structural change and add a migration (§39).
         /// </summary>
-        public const int CurrentSchemaVersion = 10;
+        public const int CurrentSchemaVersion = 12;
 
         /// <summary>Determines whether the persisted shape can be understood or migrated (§39.1).</summary>
         public int SchemaVersion = CurrentSchemaVersion;
@@ -50,6 +50,12 @@ namespace Vivarium.Application.Persistence
 
         /// <summary>Last external command sequence issued, so ingress numbering continues (§2.2.1).</summary>
         public long LastCommandSequence;
+
+        public int NudgeBalance = 3;
+
+        public int NudgeRevision;
+
+        public List<InterventionResourceData> InterventionResources = new List<InterventionResourceData>();
 
         public RuntimeIdCountersData RuntimeIdCounters = new RuntimeIdCountersData();
 
@@ -387,6 +393,12 @@ namespace Vivarium.Application.Persistence
         public int ResolutionSource;
         public List<OptionTotalData> OptionTotals = new List<OptionTotalData>();
         public List<InfluenceRollData> Rolls = new List<InfluenceRollData>();
+        public bool HasPendingResolution;
+        public long PendingProducedAtMinutes;
+        public long PendingExpiresAtMinutes;
+        public int PendingExpiryEventId;
+        public List<InfluenceRollData> PendingRolls = new List<InfluenceRollData>();
+        public List<InfluenceRollData> SupersededRolls = new List<InfluenceRollData>();
     }
 
     public sealed class DecisionOptionData
@@ -507,7 +519,9 @@ namespace Vivarium.Application.Persistence
         public string Category;
         public string LabelId;
         public int BaseDieSides;
+        public int BaseDieFixedResult;
         public int CurrentDieSides;
+        public int CurrentDieFixedResult;
         public int Visibility;
         public int RollIndex;
         public bool IsRetracted;
@@ -529,6 +543,9 @@ namespace Vivarium.Application.Persistence
         public long CommandSequence;
         public int Kind = -1;
         public int ReplacementDieSides;
+        public int ReplacementDieFixedResult;
+        public int ResourceKind = 1;
+        public int ResourceCost;
     }
 
     public sealed class DependencyKeyData
@@ -550,10 +567,22 @@ namespace Vivarium.Application.Persistence
         public int InfluenceId;
         public string OptionId;
         public int DieSides;
+        public int DieFixedResult;
         public int Rolled;
         public int RollIndex;
         public int Polarity;
         public FrozenDecisionReasonData Reason;
+    }
+
+    public sealed class InterventionResourceData
+    {
+        public int Kind;
+        public int Balance;
+        public int Cap;
+        public int Revision;
+        public int RefreshAmount;
+        public long RefreshPeriodMinutes;
+        public long NextRefreshAtMinutes;
     }
 
     public sealed class DecisionReasonEvaluationData

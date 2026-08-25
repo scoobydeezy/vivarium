@@ -34,6 +34,7 @@ whole set.
 | --- | --- |
 | Matrix-first social model, beliefs, appraisal, and social scaling | [`Design/SocialModel.md`](Design/SocialModel.md) |
 | SignalFields, Considerations, ReasonChannels, and Decision explanations | [`Design/DecisionReasoning.md`](Design/DecisionReasoning.md) |
+| Decision intervention types, timing, dice, and resource-policy boundaries | [`Design/DecisionInterventions.md`](Design/DecisionInterventions.md) |
 | Per-instance Decision Importance, admission, feed, and Auto-Hold gates | [`Design/DecisionImportance.md`](Design/DecisionImportance.md) |
 | Joint commitment feasibility, plans, deadlines, and Dissolution | [`Design/CommitmentConflict.md`](Design/CommitmentConflict.md) |
 | Commitment outcomes, attribution, stakeholders, and accountability | [`Design/CommitmentAccountability.md`](Design/CommitmentAccountability.md) |

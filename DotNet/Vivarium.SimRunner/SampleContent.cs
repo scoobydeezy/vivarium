@@ -308,7 +308,20 @@ namespace Vivarium.SimRunner
                 reasoningProgram: RestOrContinueReasoningProgram()));
 
             builder.Add(new InterventionDefinition(InterventionStepUp, InterventionKind.StepDieUp, 1));
-            builder.Add(new InterventionDefinition(InterventionReroll, InterventionKind.Reroll, 1));
+            builder.Add(new InterventionDefinition(
+                InterventionReroll,
+                InterventionKind.Reroll,
+                1,
+                resourceKind: InterventionResourceKind.ReRoll,
+                resourcePolicy: new Vivarium.Domain.PlayerAgency.InterventionResourcePolicy(
+                    1, 1, 1, SimDuration.FromDays(1))));
+            builder.Add(new InterventionDefinition(
+                new AuthoredId("intervention.loaded_twenty"),
+                InterventionKind.ReplaceDie,
+                1,
+                replacementDie: new Die(20, 20),
+                resourceKind: InterventionResourceKind.ReplacementDie,
+                resourcePolicy: new Vivarium.Domain.PlayerAgency.InterventionResourcePolicy(1, 1)));
 
             builder.Add(new AppraisalCalibrationProfile(
                 SocialCalibrationStandard,

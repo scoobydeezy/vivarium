@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Vivarium.Domain.Activities;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Decisions;
+using Vivarium.Domain.PlayerAgency;
 using Vivarium.Domain.Scheduling;
 using Vivarium.Domain.Time;
 
@@ -68,7 +69,10 @@ namespace Vivarium.Application.Persistence
             registry.Register(new CommitmentWindowExpiredPayloadCodec());
             registry.Register(new CommitmentBecomesKnownPayloadCodec());
             registry.Register(new DecisionResolvePayloadCodec());
+            registry.Register(new DecisionPendingCommitPayloadCodec());
             registry.Register(new CommitmentConflictAutoResolvePayloadCodec());
+            registry.Register(new NudgeRegenerationPayloadCodec());
+            registry.Register(new InterventionResourceRefreshPayloadCodec());
             return registry;
         }
     }
@@ -289,5 +293,43 @@ namespace Vivarium.Application.Persistence
         public IScheduledEventPayload Decode(ScheduledEventPayloadData data) => new DecisionResolvePayload(
             new DecisionId((int)PayloadData.Number(data, 0)),
             new CharacterId((int)PayloadData.Number(data, 1)));
+    }
+
+    public sealed class DecisionPendingCommitPayloadCodec : IScheduledEventPayloadCodec
+    {
+        public AuthoredId EventType => ScheduledEventTypes.DecisionPendingCommit;
+        public ScheduledEventPayloadData Encode(IScheduledEventPayload payload)
+        {
+            var typed = (DecisionPendingCommitPayload)payload;
+            return PayloadData.Of(null, new long[] { typed.DecisionId.Value, typed.CharacterId.Value });
+        }
+        public IScheduledEventPayload Decode(ScheduledEventPayloadData data) => new DecisionPendingCommitPayload(
+            new DecisionId((int)PayloadData.Number(data, 0)), new CharacterId((int)PayloadData.Number(data, 1)));
+    }
+
+    public sealed class NudgeRegenerationPayloadCodec : IScheduledEventPayloadCodec
+    {
+        public AuthoredId EventType => PlayerAgencyScheduledEventTypes.NudgeRegeneration;
+
+        public ScheduledEventPayloadData Encode(IScheduledEventPayload payload)
+        {
+            if (!(payload is NudgeRegenerationPayload))
+            {
+                throw new ArgumentException("Expected a NudgeRegenerationPayload.", nameof(payload));
+            }
+            return PayloadData.Of(null, null);
+        }
+
+        public IScheduledEventPayload Decode(ScheduledEventPayloadData data) => new NudgeRegenerationPayload();
+    }
+
+
+    public sealed class InterventionResourceRefreshPayloadCodec : IScheduledEventPayloadCodec
+    {
+        public AuthoredId EventType => DecisionInterventionResourceEvents.Refresh;
+        public ScheduledEventPayloadData Encode(IScheduledEventPayload payload) => PayloadData.Of(
+            null, new long[] { (int)((InterventionResourceRefreshPayload)payload).Kind });
+        public IScheduledEventPayload Decode(ScheduledEventPayloadData data) =>
+            new InterventionResourceRefreshPayload((InterventionResourceKind)PayloadData.Number(data, 0));
     }
 }

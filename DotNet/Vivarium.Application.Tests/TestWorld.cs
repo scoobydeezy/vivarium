@@ -11,6 +11,7 @@ using Vivarium.Domain.Spatial;
 using Vivarium.Domain.Time;
 using Vivarium.Domain.Social;
 using Vivarium.Domain.Relationships;
+using Vivarium.Domain.PlayerAgency;
 using Vivarium.Infrastructure.Bootstrap;
 using Vivarium.Infrastructure.Clock;
 using Vivarium.Infrastructure.Persistence;
@@ -41,6 +42,8 @@ namespace Vivarium.Application.Tests
         public static readonly AuthoredId OptionPreserveFirstCommitment = new AuthoredId("option.preserve_first_relinquish_second");
         public static readonly AuthoredId OptionPreserveSecondCommitment = new AuthoredId("option.preserve_second_relinquish_first");
         public static readonly AuthoredId InterventionStepUp = new AuthoredId("intervention.encourage");
+        public static readonly AuthoredId InterventionReroll = new AuthoredId("intervention.re_roll");
+        public static readonly AuthoredId InterventionLoadedTwenty = new AuthoredId("intervention.loaded_twenty");
         public static readonly AuthoredId Walking = new AuthoredId("travel_mode.walking");
         public static readonly AuthoredId KindBuilding = new AuthoredId("location_kind.building");
         public static readonly AuthoredId ContextWorkPressure = new AuthoredId("decision_context.work_pressure");
@@ -108,6 +111,15 @@ namespace Vivarium.Application.Tests
                 reasoningProgram: LeaveWorkReasoningProgram()));
 
             builder.Add(new InterventionDefinition(InterventionStepUp, InterventionKind.StepDieUp, 1));
+            builder.Add(new InterventionDefinition(
+                InterventionReroll, InterventionKind.Reroll, 1,
+                resourceKind: InterventionResourceKind.ReRoll,
+                resourcePolicy: new InterventionResourcePolicy(1, 1, 1, SimDuration.FromDays(1))));
+            builder.Add(new InterventionDefinition(
+                InterventionLoadedTwenty, InterventionKind.ReplaceDie, 1,
+                replacementDie: new Die(20, 20),
+                resourceKind: InterventionResourceKind.ReplacementDie,
+                resourcePolicy: new InterventionResourcePolicy(1, 1)));
 
             builder.Add(new AppraisalCalibrationProfile(
                 new AuthoredId("social.calibration.standard"),

@@ -158,6 +158,7 @@ namespace Vivarium.Domain.Decisions
         public DecisionReasoningProgram ReasoningProgram { get; private set; }
 
         public DecisionResolution Resolution { get; private set; }
+        public PendingDecisionResolution PendingResolution { get; private set; }
         public HistoryEntryId ResolutionHistoryEntryId { get; private set; }
 
         public CommitmentConflictKey CommitmentConflictKey { get; private set; }
@@ -167,6 +168,8 @@ namespace Vivarium.Domain.Decisions
         public ScheduledEventId PendingResolveEventId { get; private set; }
 
         public bool IsActive => Status == DecisionStatus.Active;
+
+        public bool IsAwaitingCommit => IsActive && PendingResolution != null;
 
         /// <summary>Revision key protecting this Decision's influence set (§11.2.1).</summary>
         public RevisionKey InfluenceRevisionKey => new RevisionKey(Id.ToRef(), RevisionAspects.DecisionInfluence);
@@ -422,6 +425,15 @@ namespace Vivarium.Domain.Decisions
 
         public void SetPendingResolveEvent(ScheduledEventId eventId) => PendingResolveEventId = eventId;
 
+        public void BeginPendingResolution(PendingDecisionResolution pending)
+        {
+            RequireActive();
+            if (PendingResolution != null) throw new InvalidOperationException("Decision already has frozen pending rolls.");
+            PendingResolution = pending ?? throw new ArgumentNullException(nameof(pending));
+        }
+
+        public void RestorePendingResolution(PendingDecisionResolution pending) => PendingResolution = pending;
+
         public void SetCommitmentConflict(CommitmentConflictKey key, SimTime latestResolutionAt)
         {
             RequireActive();
@@ -516,6 +528,7 @@ namespace Vivarium.Domain.Decisions
         {
             RequireActive();
             Resolution = resolution ?? throw new ArgumentNullException(nameof(resolution));
+            PendingResolution = null;
             Status = DecisionStatus.Resolved;
         }
 

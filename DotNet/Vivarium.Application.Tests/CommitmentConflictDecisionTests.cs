@@ -76,6 +76,7 @@ namespace Vivarium.Application.Tests
             Assert.True(fixture.Host.Session.Execute(new HoldDecisionCommand(decision.Id)).IsSuccess);
             Assert.True(fixture.Host.Session.Execute(new ApplyDecisionInterventionCommand(
                 decision.Id, TestWorld.InterventionStepUp, decision.Influences[0].Id)).IsSuccess);
+            Assert.Equal(2, fixture.Host.World.Nudges.Balance);
 
             new CommitmentLifecycleService().Cancel(
                 fixture.Host.World,
@@ -85,6 +86,7 @@ namespace Vivarium.Application.Tests
 
             Assert.Equal(DecisionStatus.Dissolved, decision.Status);
             Assert.False(fixture.Host.World.Attention.IsHeld(decision.Id));
+            Assert.Equal(3, fixture.Host.World.Nudges.Balance);
             HistoryEntry recap = fixture.Host.World.HistoryLedger.Entries
                 .Single(e => e.Kind == DecisionDissolvedHistoryHandler.HistoryKind);
             Assert.Equal(RetentionTier.Ephemeral, recap.Tier);

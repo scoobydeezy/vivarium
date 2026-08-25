@@ -494,7 +494,12 @@ namespace Vivarium.Unity.Tests
             for (int i = 0; i < decision.Influences.Count; i++)
             {
                 DecisionInfluence influence = decision.Influences[i];
-                if (DecisionInterventionRules.Evaluate(decision, intervention, influence.Id).IsSuccess)
+                if (DecisionInterventionRules.Evaluate(
+                    decision,
+                    intervention,
+                    influence.Id,
+                    _bootstrapper.Host.World.Nudges,
+                    _bootstrapper.Host.World.InterventionResources).IsSuccess)
                 {
                     return influence;
                 }

@@ -11,6 +11,7 @@ using Vivarium.Domain.Employment;
 using Vivarium.Domain.History;
 using Vivarium.Domain.Knowledge;
 using Vivarium.Domain.Randomness;
+using Vivarium.Domain.PlayerAgency;
 using Vivarium.Domain.Relationships;
 using Vivarium.Domain.Scheduling;
 using Vivarium.Domain.Simulation;
@@ -63,7 +64,20 @@ namespace Vivarium.Application.Persistence
                 ClockMinutes = world.Clock.Now.TotalMinutes,
                 SavedAtRealTimeUtcTicks = savedAtRealTimeUtcTicks,
                 LastCommandSequence = lastCommandSequence,
+                NudgeBalance = world.Nudges.Balance,
+                NudgeRevision = world.Nudges.Revision,
             };
+
+            foreach (KeyValuePair<InterventionResourceKind, ResourceState> pair in world.InterventionResources.All)
+            {
+                ResourceState state = pair.Value;
+                data.InterventionResources.Add(new InterventionResourceData
+                {
+                    Kind = (int)pair.Key, Balance = state.Balance, Cap = state.Cap, Revision = state.Revision,
+                    RefreshAmount = state.RefreshAmount, RefreshPeriodMinutes = state.RefreshPeriod.TotalMinutes,
+                    NextRefreshAtMinutes = state.NextRefreshAt.TotalMinutes,
+                });
+            }
 
             RuntimeIdCounters counters = world.RuntimeIds.Snapshot();
             data.RuntimeIdCounters = new RuntimeIdCountersData
@@ -146,6 +160,15 @@ namespace Vivarium.Application.Persistence
             ReadHistory(world, data);
             ReadRevisions(world, data);
             ReadScheduler(world, data);
+            world.RestoreNudges(data.NudgeBalance, data.NudgeRevision);
+            for (int i = 0; i < data.InterventionResources.Count; i++)
+            {
+                InterventionResourceData resource = data.InterventionResources[i];
+                world.InterventionResources.Restore((InterventionResourceKind)resource.Kind,
+                    new ResourceState(resource.Balance, resource.Cap, resource.Revision, resource.RefreshAmount,
+                        new SimDuration(resource.RefreshPeriodMinutes), new SimTime(resource.NextRefreshAtMinutes)));
+            }
+            NudgeRegenerationSchedule.EnsureScheduled(world);
 
             // Canonical state is in; derived structures are rebuilt from it and never trusted from disk.
             world.RebuildDerivedIndexes();
@@ -154,7 +177,7 @@ namespace Vivarium.Application.Persistence
                 var reasoning = new CompiledDecisionReasoningService();
                 foreach (Decision decision in world.Decisions.All)
                 {
-                    if (decision.IsActive && decision.ReasoningProgram != null)
+                    if (decision.IsActive && !decision.IsAwaitingCommit && decision.ReasoningProgram != null)
                     {
                         reasoning.RebuildRoutes(world, decision, _decisionSignals);
                     }
@@ -847,7 +870,9 @@ namespace Vivarium.Application.Persistence
                         Category = influence.Category.Value,
                         LabelId = influence.LabelId.Value,
                         BaseDieSides = influence.BaseDie.Sides,
+                        BaseDieFixedResult = influence.BaseDie.FixedResult,
                         CurrentDieSides = influence.CurrentDie.Sides,
+                        CurrentDieFixedResult = influence.CurrentDie.FixedResult,
                         Visibility = (int)influence.DefaultVisibility,
                         RollIndex = influence.RollIndex,
                         IsRetracted = influence.IsRetracted,
@@ -873,6 +898,9 @@ namespace Vivarium.Application.Persistence
                         CommandSequence = intervention.CommandSequence,
                         Kind = (int)intervention.Kind,
                         ReplacementDieSides = intervention.ReplacementDie.Sides,
+                        ReplacementDieFixedResult = intervention.ReplacementDie.FixedResult,
+                        ResourceKind = (int)intervention.ResourceKind,
+                        ResourceCost = intervention.ResourceCost,
                     });
                 }
 
@@ -928,12 +956,26 @@ namespace Vivarium.Application.Persistence
                             InfluenceId = roll.InfluenceId.Value,
                             OptionId = roll.OptionId.Value,
                             DieSides = roll.Die.Sides,
+                            DieFixedResult = roll.Die.FixedResult,
                             Rolled = roll.Rolled,
                             RollIndex = roll.RollIndex,
                             Polarity = (int)roll.Polarity,
                             Reason = WriteFrozenReason(roll.Reason),
                         });
                     }
+                    for (int i = 0; i < resolution.SupersededRolls.Count; i++)
+                        dto.SupersededRolls.Add(WriteInfluenceRoll(resolution.SupersededRolls[i]));
+                }
+
+                if (decision.PendingResolution != null)
+                {
+                    PendingDecisionResolution pending = decision.PendingResolution;
+                    dto.HasPendingResolution = true;
+                    dto.PendingProducedAtMinutes = pending.ProducedAt.TotalMinutes;
+                    dto.PendingExpiresAtMinutes = pending.ExpiresAt.TotalMinutes;
+                    dto.PendingExpiryEventId = pending.ExpiryEventId.Value;
+                    for (int i = 0; i < pending.AcceptedRolls.Count; i++) dto.PendingRolls.Add(WriteInfluenceRoll(pending.AcceptedRolls[i]));
+                    for (int i = 0; i < pending.SupersededRolls.Count; i++) dto.SupersededRolls.Add(WriteInfluenceRoll(pending.SupersededRolls[i]));
                 }
 
                 data.Decisions.Add(dto);
@@ -992,8 +1034,8 @@ namespace Vivarium.Application.Persistence
                         new AuthoredId(influence.OptionId),
                         new AuthoredId(influence.Category),
                         new AuthoredId(influence.LabelId),
-                        new Die(influence.BaseDieSides),
-                        new Die(influence.CurrentDieSides),
+                        new Die(influence.BaseDieSides, influence.BaseDieFixedResult),
+                        new Die(influence.CurrentDieSides, influence.CurrentDieFixedResult),
                         (InfluenceVisibility)influence.Visibility,
                         influence.RollIndex,
                         influence.IsRetracted,
@@ -1015,7 +1057,9 @@ namespace Vivarium.Application.Persistence
                         new DecisionInfluenceId(intervention.TargetInfluenceId),
                         intervention.CommandSequence,
                         (InterventionKind)intervention.Kind,
-                        new Die(intervention.ReplacementDieSides)));
+                        new Die(intervention.ReplacementDieSides, intervention.ReplacementDieFixedResult),
+                        (InterventionResourceKind)intervention.ResourceKind,
+                        intervention.ResourceCost));
                 }
 
                 for (int k = 0; k < dto.DependencyKeys.Count; k++)
@@ -1058,7 +1102,7 @@ namespace Vivarium.Application.Persistence
                         rolls[r] = new InfluenceRoll(
                             new DecisionInfluenceId(roll.InfluenceId),
                             new AuthoredId(roll.OptionId),
-                            new Die(roll.DieSides),
+                            new Die(roll.DieSides, roll.DieFixedResult),
                             roll.Rolled,
                             roll.RollIndex,
                             (InfluencePolarity)roll.Polarity,
@@ -1071,7 +1115,20 @@ namespace Vivarium.Application.Persistence
                         new SimTime(dto.ResolvedAtMinutes),
                         totals,
                         rolls,
-                        (OutcomeSource)dto.ResolutionSource);
+                        (OutcomeSource)dto.ResolutionSource,
+                        ReadInfluenceRolls(dto.SupersededRolls));
+                }
+
+
+                if (dto.HasPendingResolution)
+                {
+                    var accepted = new InfluenceRoll[dto.PendingRolls.Count];
+                    var superseded = new InfluenceRoll[dto.SupersededRolls.Count];
+                    for (int r = 0; r < accepted.Length; r++) accepted[r] = ReadInfluenceRoll(dto.PendingRolls[r]);
+                    for (int r = 0; r < superseded.Length; r++) superseded[r] = ReadInfluenceRoll(dto.SupersededRolls[r]);
+                    decision.RestorePendingResolution(new PendingDecisionResolution(
+                        new SimTime(dto.PendingProducedAtMinutes), new SimTime(dto.PendingExpiresAtMinutes),
+                        new ScheduledEventId(dto.PendingExpiryEventId), accepted, superseded));
                 }
 
                 decision.SetPendingResolveEvent(new ScheduledEventId(dto.PendingResolveEventId));
@@ -1084,6 +1141,25 @@ namespace Vivarium.Application.Persistence
 
                 world.Decisions.Add(decision.Id, decision);
             }
+        }
+
+        private static InfluenceRollData WriteInfluenceRoll(InfluenceRoll roll) => new InfluenceRollData
+        {
+            InfluenceId = roll.InfluenceId.Value, OptionId = roll.OptionId.Value, DieSides = roll.Die.Sides,
+            DieFixedResult = roll.Die.FixedResult, Rolled = roll.Rolled, RollIndex = roll.RollIndex,
+            Polarity = (int)roll.Polarity, Reason = WriteFrozenReason(roll.Reason),
+        };
+
+        private static InfluenceRoll ReadInfluenceRoll(InfluenceRollData roll) => new InfluenceRoll(
+            new DecisionInfluenceId(roll.InfluenceId), new AuthoredId(roll.OptionId),
+            new Die(roll.DieSides, roll.DieFixedResult), roll.Rolled, roll.RollIndex,
+            (InfluencePolarity)roll.Polarity, ReadFrozenReason(roll.Reason));
+
+        private static InfluenceRoll[] ReadInfluenceRolls(List<InfluenceRollData> rolls)
+        {
+            var result = new InfluenceRoll[rolls.Count];
+            for (int i = 0; i < result.Length; i++) result[i] = ReadInfluenceRoll(rolls[i]);
+            return result;
         }
 
         private static CommitmentResolutionPlanData WriteCommitmentPlan(CommitmentResolutionPlan plan)

@@ -178,7 +178,24 @@ Working implementations:
   rules, one content-backed Need-threshold generation path with an Activity consequence, and targeted
   compiled Activity-context influence reevaluation (§17–§20). Influences now carry persisted option-relative
   polarity: the current replaceable resolution policy adds supporting rolls and subtracts opposing
-  rolls, while interventions modify die magnitude without changing polarity.
+  rolls, while interventions modify die magnitude without changing polarity. Production intervention
+  eligibility now also evaluates its authored resource policy and cost against authoritative player
+  state; command execution and per-action projection consume that same result.
+- **Nudge economy** — new worlds begin at the locked three-Nudge cap. Successful Nudge-backed
+  interventions spend their snapshotted cost; invalid/no-op commands spend nothing. A persistent
+  Preparation-phase event regenerates one Nudge at each aligned eight-hour SimTime boundary without
+  banking above the cap, including OfflineCatchUp. Dissolved Decisions refund snapshotted Nudge costs
+  one intervention at a time with per-event clamping. Balance/revision, scheduled regeneration,
+  applied resource provenance, migration from legacy free interventions, history, and balance plus
+  eligibility/cost projections all round-trip through save schema v11 (and continue unchanged in v12).
+- **Re-roll and die substitution** — an attended held Decision can produce a frozen pending roll set,
+  expose accepted results, replace one result with the next deterministic per-Influence roll index, and
+  commit explicitly or at a bounded expiry. Pre-roll substitution snapshots an authored effective die;
+  the initial catalog includes a fixed-result loaded d20. Re-roll allowance and replacement-die
+  holdings are separate authoritative resources with authored policy, shared command/projection
+  eligibility, spend/refund behavior, scheduled refresh, and no Nudge coupling. Accepted and
+  superseded evidence, fixed-die provenance, pending expiry work, and resource balances round-trip in
+  save schema v12. Automatic and OfflineCatchUp resolution commit without waiting or spending.
 - **Knowledge** — player- and character-scoped fact providers, sparse social belief distributions,
   lifecycle/retention metadata, and discovery driven by observation through one canonical `WatchState`
   (§20.1, §22–§25).
@@ -249,8 +266,9 @@ Working implementations:
   `CommitmentConflictKey` retains an episode revision while a rebuildable active-conflict index prevents
   duplicate generation. A revision-dependent hard deadline auto-resolves even a Held Decision at the
   correct simulation instant. If the candidate set stops describing reality first, the Decision becomes
-  `Dissolved`: its pending event is cancelled, held capacity is released, interventions are enumerated
-  for unconditional refund, no resolution consequence runs, and an Ephemeral recap is recorded. A
+  `Dissolved`: its pending event is cancelled, held capacity is released, snapshotted Nudge spend is
+  unconditionally refunded under the authoritative capped account, no resolution consequence runs,
+  and an Ephemeral recap is recorded. A
   resolved plan marks sacrificed intent `Relinquished`; a separate routine-planner reaction schedules
   Activity/Travel for preserved intent. Save schema v5 persists plans, conflict identity, deadline,
   interventions, and the deadline event while rebuilding only indexes/routes.
@@ -321,10 +339,11 @@ Working implementations:
 
 Intentionally thin, pending game-design decisions:
 
-- **MVP agency contract.** Follow, Hold/Release, stable Influence intervention, and knowledge-filtered
-  Decision projection foundations exist. The locked Nudge balance/regeneration/refund economy,
+- **MVP agency contract.** Follow, Hold/Release, stable Influence intervention, knowledge-filtered
+  Decision projection foundations, the Nudge economy, and Re-roll/die-substitution authority exist.
   Normal/Auto-Hold/Quiet policy semantics, Commons availability Command, targeted availability
-  reactions, bounded recap, and complete MVP Unity surfaces are not implemented.
+  reactions, bounded recap, and
+  complete MVP Unity surfaces are not implemented.
 - **Intent versus forced outcome.** Decisions retain historical reasoning and Commitments distinguish
   planning intent from Activity execution, but there is no general action-attempt provenance or player
   physical-interference path. The simulation cannot yet record “Mina chose and attempted to leave, but
@@ -355,7 +374,7 @@ Intentionally thin, pending game-design decisions:
   satisfaction, Recreation, Socializing, and Energy-continuation routines), the Decision admission policy, Activities, Employment
   definitions and obligation patterns, Decisions
   (including typed compiled reasoning, social triggers, and directional outcomes), appraisal calibration,
-  social evidence/pressure, and interventions into the validated Domain catalog. Demo characters receive deterministic social
+  social evidence/pressure, and interventions with authored resource policies into the validated Domain catalog. Demo characters receive deterministic social
   profiles. The smoke scene creates Mina and Glen's Bakery Employments, whose shared shift Commitments
   interact while travelling, Mina arrives beside a disliked working colleague and gains Work pressure,
   then a real hunger crossing generates the compiled, explainable leave-work Decision. Leaving Work now
@@ -398,6 +417,9 @@ The test suite is organised around the §58 invariants rather than around classe
 | Held decisions bounded, overflow deterministic | `SimulationInvariantTests`, `CommandAndProjectionTests` |
 | Commands execute in ingress order at quiescent boundaries | `CommandAndProjectionTests` |
 | UI availability and command validation share one authority | `CommandAndProjectionTests` |
+| Nudge spend, insufficiency/no-op safety, and per-action eligibility/cost projection agree | `NudgeEconomyTests`, `CommandAndProjectionTests` |
+| Eight-hour Nudge regeneration does not bank at cap and matches save/load/OfflineCatchUp | `NudgeEconomyTests`, `PersistenceTests` |
+| Dissolved Decisions refund snapshotted Nudge spend under per-event clamping | `NudgeEconomyTests`, `CommitmentConflictDecisionTests` |
 | Hidden influence count not exposed | `CommandAndProjectionTests` |
 | Different knowledge yields different views of one decision | `CommandAndProjectionTests` |
 | Save/load round-trip, including active travel and revisions | `PersistenceTests` |

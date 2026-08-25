@@ -8,6 +8,7 @@ using Vivarium.Domain.Characters;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Decisions;
 using Vivarium.Domain.Evaluation;
+using Vivarium.Domain.PlayerAgency;
 using Vivarium.Domain.Simulation;
 using Vivarium.Domain.Time;
 using Vivarium.Infrastructure.Bootstrap;
@@ -237,6 +238,42 @@ namespace Vivarium.Application.Tests
             Assert.True(report.CanLoad);
             Assert.Equal(SaveGameData.CurrentSchemaVersion, save.SchemaVersion);
             Assert.Equal(7600, decision.Importance);
+        }
+
+        [Fact]
+        public void SchemaTenAddsFullNudgeBalanceWithoutRefundingLegacyFreeInterventions()
+        {
+            var save = new SaveGameData { SchemaVersion = 10, NudgeBalance = 0 };
+            var decision = new DecisionData();
+            decision.Interventions.Add(new AppliedInterventionData
+            {
+                InterventionDefinitionId = "intervention.legacy",
+                ResourceKind = (int)InterventionResourceKind.Nudge,
+                ResourceCost = 99,
+            });
+            save.Decisions.Add(decision);
+
+            SaveCompatibilityReport report = new SaveMigrator().Migrate(save, 0, 0, 0);
+
+            Assert.True(report.CanLoad);
+            Assert.Equal(SaveGameData.CurrentSchemaVersion, save.SchemaVersion);
+            Assert.Equal(NudgePolicy.InitialBalance, save.NudgeBalance);
+            Assert.Equal((int)InterventionResourceKind.None, decision.Interventions[0].ResourceKind);
+            Assert.Equal(0, decision.Interventions[0].ResourceCost);
+        }
+
+        [Fact]
+        public void SchemaElevenAddsNoInventedPendingRollsOrNonNudgeSpend()
+        {
+            var save = new SaveGameData { SchemaVersion = 11 };
+            save.Decisions.Add(new DecisionData { Id = 1 });
+
+            SaveCompatibilityReport report = new SaveMigrator().Migrate(save, 0, 0, 0);
+
+            Assert.True(report.CanLoad);
+            Assert.Equal(SaveGameData.CurrentSchemaVersion, save.SchemaVersion);
+            Assert.False(save.Decisions[0].HasPendingResolution);
+            Assert.Empty(save.InterventionResources);
         }
 
         [Fact]

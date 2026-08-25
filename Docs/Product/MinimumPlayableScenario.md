@@ -998,8 +998,9 @@ Hunger becomes behaviorally important
 → meaningful Need-vs-Work Decision
 → Mina's Attention policy Holds it
 → player inspects the known reasons
-→ player spends one Nudge on Emphasize or Temper
-→ player Releases it, or lets its ordinary/hard deadline resolve it
+→ player may Emphasize, Temper, or Substitute before rolling
+→ player Releases it or begins resolution; if an eligible initial roll is known, player may Re-roll
+→ accepted rolls commit, or the ordinary/hard deadline commits them
 → world continues around her
 ```
 
@@ -1272,14 +1273,15 @@ view one location
 → set Normal, Auto-Hold, or Quiet attention
 → inspect a surfaced Decision
 → optionally Hold / Release
-→ optionally spend a Nudge to Emphasize or Temper one known reason
+→ optionally Emphasize, Temper, Substitute, or Re-roll one known reason under its resource policy
 → optionally spend a Nudge to open or close Commons
 → review Knowledge-filtered off-screen / offline recap
 ```
 
 The MPS begins with three Nudges and uses the same eight-hour regeneration boundaries as production.
-The two-day acceptance run must exercise a Decision intervention and a Commons state change without
-directly choosing a character outcome. Interactive Activities are explicitly deferred from MVP.
+The two-day acceptance branches must collectively exercise all four Decision-intervention families
+and a Commons state change without directly choosing a character outcome. They need not spend every
+intervention in one canonical branch. Interactive Activities are explicitly deferred from MVP.
 
 ---
 
@@ -1370,6 +1372,8 @@ Within the first approximately two simulated days, the fixture should naturally 
 - player proves Quiet changes surfacing without changing simulation;
 - Mina's important Decision becomes Held;
 - player spends one Nudge to Emphasize or Temper a visible reason;
+- player substitutes one authored die variant before a roll in one branch;
+- player sees an initial roll and re-rolls it before outcome commitment in one branch;
 - player Releases Hold in one branch;
 - ignoring the hard deadline still permits authoritative resolution;
 - other characters continue autonomously throughout;
@@ -1384,6 +1388,8 @@ Within the first approximately two simulated days, the fixture should naturally 
 - save while Mina has a Held Decision;
 - save before commitment conflict;
 - save with a non-full Nudge balance and the Commons Closed;
+- save after resolution rolls are produced but before a re-roll/commit, then reproduce the exact
+  accepted result and superseded-roll history;
 - reload and reproduce exact later outcomes;
 - offline catch-up produces the same authoritative state, Nudge regeneration, and Commons-driven
   planning as uninterrupted simulation.

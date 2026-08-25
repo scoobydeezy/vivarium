@@ -6,6 +6,7 @@ using Vivarium.Domain.Common;
 using Vivarium.Domain.Decisions;
 using Vivarium.Domain.Knowledge;
 using Vivarium.Domain.Simulation;
+using Vivarium.Domain.PlayerAgency;
 
 namespace Vivarium.Application.Queries
 {
@@ -82,7 +83,8 @@ namespace Vivarium.Application.Queries
                     decision.Resolution.Degree.ToString(),
                     decision.Resolution.ResolvedAt.ToString(),
                     decision.Resolution.Source.ToString(),
-                    ProjectResolvedReasons(decision.Resolution));
+                    ProjectResolvedReasons(decision.Resolution),
+                    ProjectRolls(decision.Resolution.SupersededRolls));
 
             return new DecisionView(
                 decision.Id.Value,
@@ -93,10 +95,31 @@ namespace Vivarium.Application.Queries
                 decision.ResolveAt.ToString(),
                 decision.InfluenceRevision,
                 world.Attention.IsHeld(decision.Id),
-                decision.IsActive,
+                decision.IsActive && !decision.IsAwaitingCommit,
                 options,
                 resolution,
-                decision.CommitmentConflictKey != null);
+                decision.CommitmentConflictKey != null,
+                ProjectPending(decision.PendingResolution));
+        }
+
+        private static PendingDecisionResolutionView ProjectPending(PendingDecisionResolution pending)
+        {
+            if (pending == null) return null;
+            var accepted = new List<PendingInfluenceRollView>(pending.AcceptedRolls.Count);
+            var superseded = new List<PendingInfluenceRollView>(pending.SupersededRolls.Count);
+            for (int i = 0; i < pending.AcceptedRolls.Count; i++) accepted.Add(ProjectPendingRoll(pending.AcceptedRolls[i]));
+            for (int i = 0; i < pending.SupersededRolls.Count; i++) superseded.Add(ProjectPendingRoll(pending.SupersededRolls[i]));
+            return new PendingDecisionResolutionView(pending.ExpiresAt.ToString(), accepted, superseded);
+        }
+
+        private static PendingInfluenceRollView ProjectPendingRoll(InfluenceRoll roll) =>
+            new PendingInfluenceRollView(roll.InfluenceId.Value, roll.Die.Sides, roll.Rolled, roll.RollIndex, roll.Die.IsFixed);
+
+        private static IReadOnlyList<PendingInfluenceRollView> ProjectRolls(IReadOnlyList<InfluenceRoll> rolls)
+        {
+            var result = new List<PendingInfluenceRollView>(rolls.Count);
+            for (int i = 0; i < rolls.Count; i++) result.Add(ProjectPendingRoll(rolls[i]));
+            return result;
         }
 
         private static string ProjectCommitmentIntent(WorldState world, DecisionOption option)
@@ -184,7 +207,8 @@ namespace Vivarium.Application.Queries
                 category,
                 dieSides,
                 explanation,
-                AnyInterventionAvailable(decision, influence.Id));
+                AnyInterventionAvailable(world, decision, influence.Id),
+                ProjectInterventions(world, decision, influence.Id));
         }
 
         /// <summary>
@@ -214,17 +238,61 @@ namespace Vivarium.Application.Queries
             return visibility;
         }
 
-        private bool AnyInterventionAvailable(Decision decision, DecisionInfluenceId influenceId)
+        private bool AnyInterventionAvailable(WorldState world, Decision decision, DecisionInfluenceId influenceId)
         {
             foreach (KeyValuePair<AuthoredId, InterventionDefinition> pair in _interventions)
             {
-                if (DecisionInterventionRules.Evaluate(decision, pair.Value, influenceId).IsSuccess)
+                if (DecisionInterventionRules.Evaluate(decision, pair.Value, influenceId, world.Nudges, world.InterventionResources).IsSuccess)
                 {
                     return true;
                 }
             }
 
             return false;
+        }
+
+        private IReadOnlyList<InterventionAvailabilityView> ProjectInterventions(
+            WorldState world,
+            Decision decision,
+            DecisionInfluenceId influenceId)
+        {
+            var views = new List<InterventionAvailabilityView>(_interventions.Count);
+            foreach (KeyValuePair<AuthoredId, InterventionDefinition> pair in _interventions)
+            {
+                Result eligibility = DecisionInterventionRules.Evaluate(decision, pair.Value, influenceId, world.Nudges, world.InterventionResources);
+                views.Add(new InterventionAvailabilityView(
+                    pair.Key.Value,
+                    pair.Value.ResourceKind.ToString(),
+                    pair.Value.Cost,
+                    eligibility.IsSuccess,
+                    eligibility.IsFailure ? eligibility.Reason.Value : null));
+            }
+            return views;
+        }
+    }
+
+    public sealed class NudgeEconomyProjector
+    {
+        public NudgeEconomyView Project(WorldState world) => new NudgeEconomyView(
+            world.Nudges.Balance,
+            world.Nudges.Cap,
+            world.Nudges.Revision,
+            NudgeRegenerationSchedule.NextBoundaryAfter(world.Clock.Now).ToString());
+    }
+
+
+    public sealed class DecisionInterventionResourceProjector
+    {
+        public IReadOnlyList<InterventionResourceView> Project(WorldState world)
+        {
+            var result = new List<InterventionResourceView>();
+            foreach (KeyValuePair<InterventionResourceKind, ResourceState> pair in world.InterventionResources.All)
+            {
+                ResourceState state = pair.Value;
+                result.Add(new InterventionResourceView(pair.Key.ToString(), state.Balance, state.Cap, state.Revision,
+                    state.Refreshes ? state.NextRefreshAt.ToString() : null));
+            }
+            return result;
         }
     }
 }

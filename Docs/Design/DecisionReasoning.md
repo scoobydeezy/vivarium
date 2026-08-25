@@ -1421,11 +1421,18 @@ If the reason disappears and later genuinely reappears, exact identity policy ma
 The player may:
 
 - add/remove/step a die;
-- reroll;
+- re-roll;
 - replace;
 - apply another content-defined intervention.
 
 Those operations act on the resulting stable `DecisionInfluenceId`.
+
+Timing is semantically significant. Add/remove/step/replace operations are pre-roll transformations of
+an Influence's effective die. A re-roll acts only after that die has produced a known result and before
+the Decision outcome is committed; it advances that Influence's deterministic roll index rather than
+reconstructing or undoing a resolved Decision. Authored replacement dice may use a different size,
+distribution, or deterministic face. See [`DecisionInterventions.md`](DecisionInterventions.md) for the
+Phase 3 lifecycle, persistence, and resource-policy contract.
 
 The player does not directly edit:
 

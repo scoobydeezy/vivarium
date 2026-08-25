@@ -7,6 +7,7 @@ using Vivarium.Domain.Decisions;
 using Vivarium.Domain.Employment;
 using Vivarium.Domain.Spatial;
 using Vivarium.Domain.Social;
+using Vivarium.Domain.PlayerAgency;
 
 namespace Vivarium.Domain.Content
 {
@@ -512,6 +513,26 @@ namespace Vivarium.Domain.Content
                 {
                     errors.Add($"commitment template '{template.Id}' references unknown activity '{template.ActivityDefinitionId}'");
                 }
+            }
+
+            var resourcePolicies = new Dictionary<InterventionResourceKind, InterventionResourcePolicy>();
+            foreach (KeyValuePair<AuthoredId, InterventionDefinition> pair in catalog.Interventions)
+            {
+                InterventionDefinition intervention = pair.Value;
+                if (intervention.Kind == InterventionKind.Reroll && intervention.ResourceKind != InterventionResourceKind.ReRoll)
+                    errors.Add($"intervention '{intervention.Id}' Re-roll must use the ReRoll availability policy");
+                if (intervention.Kind == InterventionKind.ReplaceDie && intervention.ResourceKind != InterventionResourceKind.ReplacementDie)
+                    errors.Add($"intervention '{intervention.Id}' die substitution must use ReplacementDie holdings");
+                if (intervention.ResourceKind != InterventionResourceKind.ReRoll &&
+                    intervention.ResourceKind != InterventionResourceKind.ReplacementDie) continue;
+                if (resourcePolicies.TryGetValue(intervention.ResourceKind, out InterventionResourcePolicy existing))
+                {
+                    InterventionResourcePolicy current = intervention.ResourcePolicy;
+                    if (existing.InitialBalance != current.InitialBalance || existing.Cap != current.Cap ||
+                        existing.RefreshAmount != current.RefreshAmount || existing.RefreshPeriod != current.RefreshPeriod)
+                        errors.Add($"intervention '{intervention.Id}' disagrees with the shared {intervention.ResourceKind} policy");
+                }
+                else resourcePolicies.Add(intervention.ResourceKind, intervention.ResourcePolicy);
             }
 
             foreach (KeyValuePair<AuthoredId, EmploymentDefinition> pair in catalog.EmploymentDefinitions)

@@ -1,7 +1,7 @@
 # Vivarium Roadmap — Detailed Phase Reference
 
 **Status:** Detailed phase requirements and acceptance reference  
-**Last reconciled:** 2026-08-24 (MPS, Player Agency, and Core Identity incorporated)
+**Last reconciled:** 2026-08-25 (Phase 3 intervention breadth incorporated)
 **Scope:** From the current proven Golden Scenario to a minimum viable playable simulation with approximately 8–12 characters (target: about 10) living complete routines, with all meaningful character Decisions and all supported player choices surfaced through playable presentation.
 
 > Current priority and next-task authority live in [`Roadmap.md`](Roadmap.md). This detailed reference
@@ -399,7 +399,7 @@ Each new Decision must prove:
 
 **Goal:** player influence is not a debug command set.
 
-#### 3A. Intervention economy
+#### 3A. Intervention economy — Complete
 
 Implement the locked Nudge economy from the Player Agency Brief:
 
@@ -410,13 +410,37 @@ Implement the locked Nudge economy from the Player Agency Brief:
 - Hold/Dissolution integration;
 - save/load and offline behavior;
 - projections explaining availability and cost;
-- the two open parameters this slice cannot ship without: the Decision importance scale and the
-  held-decision capacity numbers (both named but unassigned — see
-  [`PlayerAgencyBrief.md`](PlayerAgencyBrief.md) §14).
+- a content-defined resource-policy seam so later interventions are not hard-coded as Nudge spends.
 
-The existing unconditional refund rule for Dissolved Decisions remains authoritative.
+Implemented in save schema v11 with scheduled aligned-boundary regeneration, snapshotted spend/refund,
+shared command/projection eligibility, migration of legacy free interventions, and live/save-load/offline
+coverage. The existing unconditional refund rule for Dissolved Decisions remains authoritative.
 
-#### 3B. First environmental management action
+The Decision importance thresholds and held-decision capacity values in
+[`PlayerAgencyBrief.md`](PlayerAgencyBrief.md) §14 remain Phase 3-wide Attention tuning dependencies;
+they do not alter or block the completed resource economy.
+
+#### 3B. Re-roll and die substitution — Complete
+
+Implement the two additional intervention families locked in
+[`../Design/DecisionInterventions.md`](../Design/DecisionInterventions.md):
+
+- pre-roll replacement of one stable Influence's effective die with an authored variant;
+- post-roll, pre-outcome-commit re-roll using the next deterministic scoped roll index;
+- a bounded pending-roll lifecycle with expiry/unattended commitment;
+- content-defined availability/cost rather than an assumption that both spend Nudges;
+- projection, history, deterministic replay, save/load, and offline behavior;
+- explicit initial authored values for Re-roll cadence/cap, replacement-die catalog/availability,
+  stacking, and expiry. These are tuning knobs expected to change through testing, not product gates.
+
+Implemented in save schema v12. The initial authored tuning is one Re-roll charge with a one-world-day
+refresh and cap of one; one persistent replacement-die charge with no automatic refresh; a loaded d20
+that always produces 20 as the first replacement catalog entry; a 15-world-minute pending window; and
+at most one application of each intervention definition per Influence. Substitute and Re-roll may
+stack on the same Influence. Pending inputs and accepted/superseded rolls are frozen, projected,
+persisted, and committed without player input on expiry or during OfflineCatchUp.
+
+#### 3C. First environmental management action
 
 Implement authoritative Commons Open/Closed availability and its one-Nudge management Command.
 
@@ -426,7 +450,7 @@ Required causal shape:
 
 `Player changes availability → schedule/location revision → planner/feasibility reevaluation → Activity/Commitment/Decision fallout → visible history/notification`.
 
-#### 3C. Interactive Activity (deferred from MVP)
+#### 3D. Interactive Activity (deferred from MVP)
 
 The Player Agency Brief explicitly defers interactive Activities. Preserve the existing
 `SubmitActivityPerformanceCommand` seam; do not build an MVP mini-game or parallel simulation state.
@@ -468,7 +492,7 @@ Across the scenario:
 - stakeholder social consequences use KnownAttribution rather than leaking authoritative cause;
 - at least one commitment conflict is caused materially by travel/duration even though the clock windows are not simply overlapping;
 - at least one player environmental action changes later circumstances;
-- Hold/intervention/resource spending works;
+- Hold and all four intervention families/resource policies work;
 - save/reload at several checkpoints is equivalent;
 - offline catch-up across active routine/Decisions is equivalent;
 - repeated runs produce the same authoritative hash.
@@ -493,7 +517,7 @@ Recommended surface order:
 6. **Knowledge/relationship view** — what the player knows rather than omniscient truth.
 7. **World/location view** — enough spatial context to understand travel and the selected management action.
 8. **History/notification feed** — causal events that explain why the world changed.
-9. **Interactive Activity surface** — only if Phase 3C is in MVP scope.
+9. **Interactive Activity surface** — only if Phase 3D is brought into MVP scope later.
 
 Use UI Toolkit as the default unless a concrete Unity constraint justifies another route.
 
@@ -901,7 +925,7 @@ behavior, making this the earliest incomplete MPS causal link.
 | Inter-habitat contact / reciprocal autonomy | Product direction only | Core Identity | Focused brief and Phase 14 |
 | Commitment conflict/accountability | Complete v0 | Important | Reuse; defer broader semantics |
 | Player Knowledge/Attention | Complete foundation | Critical | Surface broadly in UI |
-| Intervention mechanics | Mechanically proven; Nudge economy locked | Critical | Implement in Phase 3 |
+| Intervention mechanics | Nudge economy, Re-roll, and substitution complete | Critical | Reuse in remaining Phase 3 UI/gameplay |
 | Player environmental management | Commons lever locked, not implemented | Critical | Implement in Phase 3 |
 | Employment | Conceptual/architectural only | Critical for reviewed MPS | Lock/implement authority + obligation-pattern v0 |
 | Hobbies/discretionary routine | Conceptual only | Critical | Start with concrete Tabletop Games + Reading Activities |

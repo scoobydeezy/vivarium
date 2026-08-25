@@ -21,6 +21,7 @@ Use progressive disclosure; do not preload every brief.
 | Changing MVP player verbs, Attention, Nudges, Commons management, recap, or agency UI | [`Docs/Product/PlayerAgencyBrief.md`](Docs/Product/PlayerAgencyBrief.md) |
 | Changing social modeling | [`Docs/Design/SocialModel.md`](Docs/Design/SocialModel.md) |
 | Changing Decision reasoning | [`Docs/Design/DecisionReasoning.md`](Docs/Design/DecisionReasoning.md) |
+| Changing Decision intervention types, timing, dice, or availability | [`Docs/Design/DecisionInterventions.md`](Docs/Design/DecisionInterventions.md) |
 | Changing commitment conflict or accountability | The applicable brief under [`Docs/Design/`](Docs/Design/) |
 
 The full documentation map is [`Docs/README.md`](Docs/README.md).

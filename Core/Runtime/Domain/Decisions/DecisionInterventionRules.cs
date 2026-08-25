@@ -1,5 +1,6 @@
 using System;
 using Vivarium.Domain.Common;
+using Vivarium.Domain.PlayerAgency;
 
 namespace Vivarium.Domain.Decisions
 {
@@ -15,6 +16,15 @@ namespace Vivarium.Domain.Decisions
         ReplaceDie = 5,
     }
 
+    /// <summary>Which authoritative availability policy pays for an intervention.</summary>
+    public enum InterventionResourceKind
+    {
+        Nudge = 0,
+        None = 1,
+        ReRoll = 2,
+        ReplacementDie = 3,
+    }
+
     /// <summary>Immutable content description of a player intervention (§19).</summary>
     public sealed class InterventionDefinition
     {
@@ -24,11 +34,23 @@ namespace Vivarium.Domain.Decisions
             int cost,
             bool requiresTargetInfluence = true,
             bool repeatableOnSameInfluence = false,
-            Die replacementDie = default)
+            Die replacementDie = default,
+            InterventionResourceKind resourceKind = InterventionResourceKind.Nudge,
+            InterventionResourcePolicy resourcePolicy = default)
         {
             if (!id.IsSet)
             {
                 throw new ArgumentException("Definitions need a stable authored id (§7).", nameof(id));
+            }
+
+            if (cost < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(cost));
+            }
+
+            if (resourceKind == InterventionResourceKind.None && cost != 0)
+            {
+                throw new ArgumentException("An intervention with no resource policy must have zero cost.", nameof(cost));
             }
 
             Id = id;
@@ -37,14 +59,26 @@ namespace Vivarium.Domain.Decisions
             RequiresTargetInfluence = requiresTargetInfluence;
             RepeatableOnSameInfluence = repeatableOnSameInfluence;
             ReplacementDie = replacementDie;
+            ResourceKind = resourceKind;
+            ResourcePolicy = resourcePolicy;
+
+            if (kind == InterventionKind.ReplaceDie && !replacementDie.IsSet)
+                throw new ArgumentException("A die substitution needs an authored replacement die.", nameof(replacementDie));
+            if ((resourceKind == InterventionResourceKind.ReRoll || resourceKind == InterventionResourceKind.ReplacementDie) &&
+                resourcePolicy.Cap < 1)
+                throw new ArgumentException("A non-Nudge resource needs an authored availability policy.", nameof(resourcePolicy));
         }
 
         public AuthoredId Id { get; }
 
         public InterventionKind Kind { get; }
 
-        /// <summary>Resource cost. The intervention economy itself is deferred (§57).</summary>
+        /// <summary>Cost under <see cref="ResourceKind"/>.</summary>
         public int Cost { get; }
+
+        public InterventionResourceKind ResourceKind { get; }
+
+        public InterventionResourcePolicy ResourcePolicy { get; }
 
         public bool RequiresTargetInfluence { get; }
 
@@ -73,11 +107,47 @@ namespace Vivarium.Domain.Decisions
         public static readonly AuthoredId ReasonAlreadyApplied = new AuthoredId("decision.intervention.already_applied");
         public static readonly AuthoredId ReasonDieAtLadderTop = new AuthoredId("decision.intervention.die_at_ladder_top");
         public static readonly AuthoredId ReasonDieAtLadderBottom = new AuthoredId("decision.intervention.die_at_ladder_bottom");
+        public static readonly AuthoredId ReasonInsufficientNudges = new AuthoredId("decision.intervention.insufficient_nudges");
+        public static readonly AuthoredId ReasonUnsupportedResource = new AuthoredId("decision.intervention.resource_not_available");
+        public static readonly AuthoredId ReasonRollsNotProduced = new AuthoredId("decision.intervention.rolls_not_produced");
+        public static readonly AuthoredId ReasonRollsAlreadyProduced = new AuthoredId("decision.intervention.rolls_already_produced");
+        public static readonly AuthoredId ReasonInfluenceHidden = new AuthoredId("decision.intervention.influence_hidden");
 
         /// <summary>
         /// Evaluates eligibility without mutating anything.
         /// </summary>
-        public static Result Evaluate(Decision decision, InterventionDefinition intervention, DecisionInfluenceId targetInfluenceId)
+        /// <summary>Eligibility including the intervention's authoritative resource policy.</summary>
+        public static Result Evaluate(
+            Decision decision,
+            InterventionDefinition intervention,
+            DecisionInfluenceId targetInfluenceId,
+            NudgeAccount nudges,
+            DecisionInterventionResources resources)
+        {
+            Result mechanics = EvaluateMechanics(decision, intervention, targetInfluenceId);
+            if (mechanics.IsFailure)
+            {
+                return mechanics;
+            }
+
+            switch (intervention.ResourceKind)
+            {
+                case InterventionResourceKind.None:
+                    return Result.Ok();
+                case InterventionResourceKind.Nudge:
+                    return nudges.CanSpend(intervention.Cost)
+                        ? Result.Ok()
+                        : Result.Fail(ReasonInsufficientNudges, $"Need {intervention.Cost}; have {nudges.Balance}.");
+                case InterventionResourceKind.ReRoll:
+                case InterventionResourceKind.ReplacementDie:
+                    return resources != null && resources.CanSpend(intervention.ResourceKind, intervention.Cost)
+                        ? Result.Ok()
+                        : Result.Fail(ReasonUnsupportedResource, intervention.ResourceKind.ToString());
+                default: return Result.Fail(ReasonUnsupportedResource, intervention.ResourceKind.ToString());
+            }
+        }
+
+        private static Result EvaluateMechanics(Decision decision, InterventionDefinition intervention, DecisionInfluenceId targetInfluenceId)
         {
             if (decision == null)
             {
@@ -93,6 +163,11 @@ namespace Vivarium.Domain.Decisions
             {
                 return Result.Fail(ReasonDecisionNotActive, $"Decision {decision.Id} is {decision.Status}.");
             }
+
+            if (intervention.Kind == InterventionKind.Reroll && !decision.IsAwaitingCommit)
+                return Result.Fail(ReasonRollsNotProduced, "Re-roll is available only after the initial roll is known.");
+            if (intervention.Kind != InterventionKind.Reroll && decision.IsAwaitingCommit)
+                return Result.Fail(ReasonRollsAlreadyProduced, "Pre-roll interventions cannot alter frozen rolls.");
 
             if (!intervention.RequiresTargetInfluence)
             {
@@ -113,6 +188,13 @@ namespace Vivarium.Domain.Decisions
             {
                 return Result.Fail(ReasonInfluenceRetracted, $"{targetInfluenceId} no longer applies.");
             }
+
+            if ((influence.DefaultVisibility & InfluenceVisibility.Existence) == 0)
+                return Result.Fail(ReasonInfluenceHidden, targetInfluenceId.ToString());
+
+            if (intervention.Kind == InterventionKind.Reroll &&
+                !decision.PendingResolution.TryGetAccepted(targetInfluenceId, out InfluenceRoll _))
+                return Result.Fail(ReasonInfluenceUnknown, "The target did not participate in the frozen roll set.");
 
             if (!intervention.RepeatableOnSameInfluence && decision.HasInterventionTargeting(targetInfluenceId, intervention.Id))
             {
@@ -166,7 +248,8 @@ namespace Vivarium.Domain.Decisions
                         break;
 
                     case InterventionKind.Reroll:
-                        influence.Reroll();
+                        // The resolution service advances the scoped stream only after the frozen
+                        // target and resource spend have both been validated.
                         break;
 
                     case InterventionKind.AddDie:
@@ -177,7 +260,13 @@ namespace Vivarium.Domain.Decisions
             }
 
             decision.RecordIntervention(new AppliedIntervention(
-                intervention.Id, targetInfluenceId, commandSequence, intervention.Kind, intervention.ReplacementDie));
+                intervention.Id,
+                targetInfluenceId,
+                commandSequence,
+                intervention.Kind,
+                intervention.ReplacementDie,
+                intervention.ResourceKind,
+                intervention.Cost));
         }
     }
 }

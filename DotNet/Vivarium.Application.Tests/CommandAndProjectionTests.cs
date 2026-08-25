@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Vivarium.Application.Commands;
 using Vivarium.Application.Queries;
 using Vivarium.Domain.Activities;
@@ -159,14 +160,17 @@ namespace Vivarium.Application.Tests
             Assert.True(ambitionView.CanBeIntervenedOn);
             Assert.True(fixture.Host.Session.Execute(
                 new ApplyDecisionInterventionCommand(decision.Id, TestWorld.InterventionStepUp, decision.Influences[0].Id)).IsSuccess);
+            Assert.Equal(2, fixture.Host.World.Nudges.Balance);
 
             // Spent: the projection must now agree that the control should be disabled.
             DecisionView after = projector.Project(fixture.Host.World, decision);
-            Assert.False(FindInfluenceView(after, decision.Influences[0].Id.Value).CanBeIntervenedOn);
+            Assert.False(FindInfluenceView(after, decision.Influences[0].Id.Value).Interventions
+                .Single(item => item.InterventionDefinitionId == TestWorld.InterventionStepUp.Value).IsAvailable);
 
             Result second = fixture.Host.Session.Execute(
                 new ApplyDecisionInterventionCommand(decision.Id, TestWorld.InterventionStepUp, decision.Influences[0].Id));
             Assert.True(second.IsFailure);
+            Assert.Equal(2, fixture.Host.World.Nudges.Balance);
         }
 
         [Fact]

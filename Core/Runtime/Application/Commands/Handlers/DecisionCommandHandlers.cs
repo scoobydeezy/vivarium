@@ -1,8 +1,12 @@
 using System;
 using System.Collections.Generic;
 using Vivarium.Domain.Attention;
+using Vivarium.Domain.Activities;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Decisions;
+using Vivarium.Domain.PlayerAgency;
+using Vivarium.Domain.Scheduling;
+using Vivarium.Domain.Time;
 
 namespace Vivarium.Application.Commands.Handlers
 {
@@ -20,10 +24,14 @@ namespace Vivarium.Application.Commands.Handlers
         public static readonly AuthoredId ReasonUnknownIntervention = new AuthoredId("command.intervention.unknown_definition");
 
         private readonly IReadOnlyDictionary<AuthoredId, InterventionDefinition> _interventions;
+        private readonly DecisionResolutionService _resolution;
 
-        public ApplyDecisionInterventionHandler(IReadOnlyDictionary<AuthoredId, InterventionDefinition> interventions)
+        public ApplyDecisionInterventionHandler(
+            IReadOnlyDictionary<AuthoredId, InterventionDefinition> interventions,
+            DecisionResolutionService resolution)
         {
             _interventions = interventions ?? throw new ArgumentNullException(nameof(interventions));
+            _resolution = resolution ?? throw new ArgumentNullException(nameof(resolution));
         }
 
         public override Result Handle(ApplyDecisionInterventionCommand command, CommandContext context)
@@ -38,13 +46,45 @@ namespace Vivarium.Application.Commands.Handlers
                 return Result.Fail(ReasonUnknownIntervention, command.InterventionDefinitionId.ToString());
             }
 
-            Result eligibility = DecisionInterventionRules.Evaluate(decision, intervention, command.TargetInfluenceId);
+            Result eligibility = DecisionInterventionRules.Evaluate(
+                decision,
+                intervention,
+                command.TargetInfluenceId,
+                context.World.Nudges,
+                context.World.InterventionResources);
             if (eligibility.IsFailure)
             {
                 return eligibility;
             }
 
+            if (intervention.ResourceKind == InterventionResourceKind.Nudge &&
+                !context.World.Nudges.TrySpend(intervention.Cost))
+            {
+                throw new InvalidOperationException("Authoritative Nudge eligibility and spend diverged.");
+            }
+            if ((intervention.ResourceKind == InterventionResourceKind.ReRoll ||
+                 intervention.ResourceKind == InterventionResourceKind.ReplacementDie) &&
+                !context.World.InterventionResources.TrySpend(intervention.ResourceKind, intervention.Cost))
+                throw new InvalidOperationException("Authoritative intervention eligibility and spend diverged.");
+
+            InfluenceRoll rerolled = default;
+            if (intervention.Kind == InterventionKind.Reroll)
+                rerolled = _resolution.Reroll(decision, command.TargetInfluenceId, context.Simulation);
+
             DecisionInterventionRules.Apply(decision, intervention, command.TargetInfluenceId, context.CommandSequence);
+            if (intervention.Kind == InterventionKind.Reroll)
+                decision.PendingResolution.Replace(rerolled);
+            if (intervention.ResourceKind == InterventionResourceKind.Nudge && intervention.Cost > 0)
+            {
+                context.World.Publish(new NudgeBalanceChangedEvent(
+                    NudgeBalanceChangeKind.Spent,
+                    intervention.Cost,
+                    intervention.Cost,
+                    context.World.Nudges.Balance,
+                    decision.Id,
+                    decision.CharacterId,
+                    intervention.Id));
+            }
             context.World.BumpRevision(decision.InfluenceRevisionKey);
             context.World.Publish(new DecisionInfluencesChangedEvent(decision.Id, decision.InfluenceRevision));
             context.World.Publish(new DecisionInterventionAppliedEvent(
@@ -60,6 +100,66 @@ namespace Vivarium.Application.Commands.Handlers
                     $"cmd #{context.CommandSequence} ApplyIntervention {intervention.Id} → decision {decision.Id} influence {command.TargetInfluenceId}");
             }
 
+            return Result.Ok();
+        }
+    }
+
+    public sealed class DecisionResolutionWindowPolicy
+    {
+        public DecisionResolutionWindowPolicy(SimDuration duration)
+        {
+            if (duration.TotalMinutes <= 0) throw new ArgumentOutOfRangeException(nameof(duration));
+            Duration = duration;
+        }
+        public SimDuration Duration { get; }
+    }
+
+    public sealed class BeginDecisionResolutionHandler : CommandHandler<BeginDecisionResolutionCommand, Result>
+    {
+        public static readonly AuthoredId ReasonUnknownDecision = new AuthoredId("command.decision_resolution.unknown_decision");
+        public static readonly AuthoredId ReasonNotHeld = new AuthoredId("command.decision_resolution.not_held");
+        public static readonly AuthoredId ReasonUnavailable = new AuthoredId("command.decision_resolution.unavailable");
+        private readonly DecisionResolutionService _resolution;
+        private readonly DecisionResolutionWindowPolicy _window;
+        public BeginDecisionResolutionHandler(DecisionResolutionService resolution, DecisionResolutionWindowPolicy window)
+        { _resolution = resolution; _window = window; }
+        public override Result Handle(BeginDecisionResolutionCommand command, CommandContext context)
+        {
+            if (!context.World.Decisions.TryGet(command.DecisionId, out Decision decision))
+                return Result.Fail(ReasonUnknownDecision, command.DecisionId.ToString());
+            if (!decision.IsActive || decision.IsAwaitingCommit || !context.Simulation.AllowsHeldDecisions)
+                return Result.Fail(ReasonUnavailable, decision.Status.ToString());
+            if (!context.World.Attention.IsHeld(decision.Id))
+                return Result.Fail(ReasonNotHeld, decision.Id.ToString());
+
+            SimTime expiresAt = context.World.Clock.Now + _window.Duration;
+            if (decision.CommitmentConflictKey != null && expiresAt > decision.LatestResolutionAt)
+                expiresAt = decision.LatestResolutionAt;
+            ScheduledEvent scheduled = context.World.Scheduler.Schedule(expiresAt, SchedulePhase.Decision,
+                ScheduledEventTypes.DecisionPendingCommit,
+                new DecisionPendingCommitPayload(decision.Id, decision.CharacterId));
+            decision.BeginPendingResolution(new PendingDecisionResolution(
+                context.World.Clock.Now, expiresAt, scheduled.Id, _resolution.ProduceRolls(decision, context.Simulation)));
+            context.World.DecisionDependencies.Unregister(decision.Id);
+            decision.SetPendingResolveEvent(scheduled.Id);
+            return Result.Ok();
+        }
+    }
+
+    public sealed class CommitDecisionResolutionHandler : CommandHandler<CommitDecisionResolutionCommand, Result>
+    {
+        public static readonly AuthoredId ReasonNotPending = new AuthoredId("command.decision_resolution.not_pending");
+        private readonly DecisionResolutionService _resolution;
+        public CommitDecisionResolutionHandler(DecisionResolutionService resolution) => _resolution = resolution;
+        public override Result Handle(CommitDecisionResolutionCommand command, CommandContext context)
+        {
+            if (!context.World.Decisions.TryGet(command.DecisionId, out Decision decision) || !decision.IsAwaitingCommit)
+                return Result.Fail(ReasonNotPending, command.DecisionId.ToString());
+            context.World.Scheduler.Cancel(decision.PendingResolution.ExpiryEventId);
+            DecisionResolution result = _resolution.Complete(
+                decision, decision.PendingResolution.AcceptedRolls, context.World.Clock.Now,
+                decision.PendingResolution.SupersededRolls);
+            DecisionResolutionCommitter.Commit(context.World, decision, result, context.Simulation);
             return Result.Ok();
         }
     }

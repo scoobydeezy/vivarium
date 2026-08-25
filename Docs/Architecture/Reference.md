@@ -1022,7 +1022,7 @@ RollIndex:    0
 
 ```
 
-A reroll uses:
+A re-roll uses:
 
 ```text
 RollIndex: 1
@@ -1343,7 +1343,7 @@ Potential capabilities include:
 add die
 remove die
 step die up/down
-reroll
+re-roll
 replace die
 apply temporary stat modifier
 alter circumstances
@@ -1376,6 +1376,19 @@ The UI uses this evaluation to determine whether controls should appear enabled.
 The command handler performs the same authoritative validation before mutating anything.
 
 No duplicated UI validation logic.
+
+Intervention timing is part of that validation. Pre-roll operations such as stepping or replacing a
+die apply to a stable Influence before resolution rolls are produced. A re-roll targets an already
+produced roll and uses the next index in that roll's deterministic scoped stream (§15); it must occur
+before the outcome and its consequences are committed. Supporting a player-visible re-roll therefore
+requires an authoritative bounded pre-commit resolution state. That state snapshots the resolution
+inputs and produced rolls, persists across save/load, and has an unattended expiry/commit path so it
+cannot freeze unrelated simulation. A re-roll may never be implemented by undoing a resolved outcome.
+
+A replacement die is an authored deterministic die definition or roll profile, not an arbitrary
+client-provided result. It may change die size, face distribution, or even yield a fixed face, but the
+ordinary resolution policy still combines rolls and selects the outcome. The focused content and
+resource rules are owned by `Design/DecisionInterventions.md`.
 
 ---
 
@@ -3404,7 +3417,7 @@ These are the rules future code must preserve.
 89. Social AppraisalFields and Decision Considerations remain distinct Domain concepts over one shared deterministic fixed-point SignalField evaluator.
 90. SignalField evaluation preserves residual uncertainty through latent and bounded-output variance rather than collapsing uncertain inputs to point estimates.
 91. Decision reasons are option-relative and carry explicit polarity; supporting Influence rolls add to their Option and opposing Influence rolls subtract from it through a replaceable Decision-resolution policy.
-92. Player interventions change an Influence's die magnitude or roll state without changing its semantic polarity.
+92. Player interventions change an Influence's effective die definition/profile or roll state without changing its semantic polarity; re-rolls use the next deterministic scoped roll index before outcome commitment.
 93. Resolved authoritative outcomes retain sufficient evaluation-time evidence to explain the reasons that existed when they resolved; later World-state drift must not rewrite that explanation, and retained evidence follows the outcome's retention/compaction lifecycle.
 94. A Signal is explicitly known, uncertain, unknown, or not applicable; unknown and inapplicable inputs never enter numeric evaluation as neutral zeroes.
 95. An in-flight Decision owns a deep snapshot of its compiled typed reasoning program and semantic context; save/load preserves that authority, while Candidate Reasons and routing indexes remain rebuildable projections.
