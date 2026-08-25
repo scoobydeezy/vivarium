@@ -84,7 +84,8 @@ namespace Vivarium.Domain.Characters
             NeedRestRoutineDefinition restRoutine = null,
             NeedSatisfactionRoutineDefinition satisfactionRoutine = null,
             RecreationRoutineDefinition recreationRoutine = null,
-            SocializingRoutineDefinition socializingRoutine = null)
+            SocializingRoutineDefinition socializingRoutine = null,
+            NeedContinuationRoutineDefinition continuationRoutine = null)
         {
             if (!id.IsSet)
             {
@@ -102,6 +103,7 @@ namespace Vivarium.Domain.Characters
             SatisfactionRoutine = satisfactionRoutine;
             RecreationRoutine = recreationRoutine;
             SocializingRoutine = socializingRoutine;
+            ContinuationRoutine = continuationRoutine;
         }
 
         public AuthoredId Id { get; }
@@ -134,6 +136,9 @@ namespace Vivarium.Domain.Characters
 
         /// <summary>Optional ordinary Social Activity selected from a bounded shared context.</summary>
         public SocializingRoutineDefinition SocializingRoutine { get; }
+
+        /// <summary>Optional meaningful Rest/Continue branch while an authored Activity is underway.</summary>
+        public NeedContinuationRoutineDefinition ContinuationRoutine { get; }
 
         public override string ToString() => Id.ToString();
     }

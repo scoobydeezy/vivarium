@@ -208,7 +208,15 @@ namespace Vivarium.Infrastructure.Bootstrap
             var decisionResolution = new DecisionResolutionService();
             var decisionReevaluation = new DecisionReevaluationService();
             DecisionSignalProviderRegistry decisionSignals = DecisionSignalProviderRegistry.WithBuiltIns();
+            decisionSignals.Register(new SocialAppraisalSignalProvider(catalog));
+            decisionSignals.Register(new ActorNeedSignalProvider(catalog));
             var recreationRoutines = new RecreationRoutineService(catalog, transitions, decisionSignals);
+            var continuationRoutines = new NeedContinuationRoutineService(
+                catalog,
+                needs,
+                restRoutines,
+                transitions,
+                decisionSignals);
             var holdPolicy = new DecisionHoldPolicy(maxGlobalHeld: 12, maxHeldPerCharacter: 3);
             var interactionCandidates = new InteractionCandidateSelector(random);
             var socialBeliefs = new SocialBeliefUpdateService();
@@ -223,7 +231,7 @@ namespace Vivarium.Infrastructure.Bootstrap
                 ? new SocialInteractionRelevance(world, catalog, interactionPressure, AppraisalLenses.Affiliation)
                 : null;
             var interactions = new InteractionService(interactionCandidates, knowledgeDiscovery, interactionRelevance);
-            var socializingRoutines = new SocializingRoutineService(catalog, transitions, interactions);
+            var socializingRoutines = new SocializingRoutineService(catalog, transitions, interactions, decisionSignals);
             var commitmentLifecycle = new CommitmentLifecycleService();
 
             foreach (KeyValuePair<AuthoredId, DecisionDefinition> pair in catalog.Decisions)
@@ -258,6 +266,7 @@ namespace Vivarium.Infrastructure.Bootstrap
             domainHandlers.Register(new NeedRestActivityStartedHandler(restRoutines), 50);
             domainHandlers.Register(new NeedRestActivityCompletedHandler(restRoutines), 50);
             domainHandlers.Register(new NeedRestArrivalHandler(restRoutines), 50);
+            domainHandlers.Register(new NeedContinuationThresholdHandler(continuationRoutines), 55);
             domainHandlers.Register(new RecreationThresholdHandler(recreationRoutines), 60);
             domainHandlers.Register(new RecreationActivityStartedHandler(recreationRoutines), 60);
             domainHandlers.Register(new SocializingThresholdHandler(socializingRoutines), 70);
@@ -267,6 +276,8 @@ namespace Vivarium.Infrastructure.Bootstrap
             domainHandlers.Register(new CommitmentConflictDecisionGenerationHandler(catalog, decisionSignals), 100);
             domainHandlers.Register(new DecisionActivityOutcomeHandler(catalog, transitions), 100);
             domainHandlers.Register(new RecreationDecisionResolvedHandler(recreationRoutines), 105);
+            domainHandlers.Register(new SocialInvitationDecisionResolvedHandler(socializingRoutines), 106);
+            domainHandlers.Register(new NeedContinuationDecisionResolvedHandler(continuationRoutines), 107);
             domainHandlers.Register(new CommitmentConflictDecisionOutcomeHandler(commitmentLifecycle), 110);
             domainHandlers.Register(new CommitmentOutcomeConsequenceHandler(catalog, socialBeliefs), 100);
             domainHandlers.Register(new CommitmentStatusScheduleChangeHandler(), 200);
@@ -282,6 +293,7 @@ namespace Vivarium.Infrastructure.Bootstrap
                 maxWitnesses: 2), 200);
             domainHandlers.Register(new SocialBeliefDecisionHandler(decisionReevaluation), 300);
             domainHandlers.Register(new ActivityStartedDecisionReevaluationHandler(decisionReevaluation), 300);
+            domainHandlers.Register(new NeedChangedDecisionHandler(decisionReevaluation), 300);
             domainHandlers.Register(new DecisionRelationshipOutcomeHandler(catalog), 200);
             domainHandlers.Register(new DecisionCreatedHistoryHandler(), 900);
             domainHandlers.Register(new DecisionInterventionHistoryHandler(), 900);

@@ -264,6 +264,7 @@ namespace Vivarium.Unity.Authoring
             public SatisfactionRoutineEntry satisfactionRoutine;
             public RecreationRoutineEntry recreationRoutine;
             public SocializingRoutineEntry socializingRoutine;
+            public NeedContinuationRoutineEntry continuationRoutine;
 
             public Domain.Characters.NeedDefinition ToDefinition() => new Domain.Characters.NeedDefinition(
                 new AuthoredId(authoredId),
@@ -276,7 +277,8 @@ namespace Vivarium.Unity.Authoring
                 restRoutine.IsConfigured ? restRoutine.ToDefinition() : null,
                 satisfactionRoutine.IsConfigured ? satisfactionRoutine.ToDefinition() : null,
                 recreationRoutine.IsConfigured ? recreationRoutine.ToDefinition() : null,
-                socializingRoutine.IsConfigured ? socializingRoutine.ToDefinition() : null);
+                socializingRoutine.IsConfigured ? socializingRoutine.ToDefinition() : null,
+                continuationRoutine.IsConfigured ? continuationRoutine.ToDefinition() : null);
 
             private long[] ToBehaviouralThresholds()
             {
@@ -368,6 +370,7 @@ namespace Vivarium.Unity.Authoring
             public long activationThreshold;
             public long satisfactionOffset;
             public int maxCandidates;
+            public SocialInvitationRoutineEntry invitation;
 
             public bool IsConfigured => !string.IsNullOrWhiteSpace(activityDefinitionId);
 
@@ -375,7 +378,77 @@ namespace Vivarium.Unity.Authoring
                 new AuthoredId(activityDefinitionId),
                 activationThreshold,
                 satisfactionOffset,
-                maxCandidates <= 0 ? 4 : maxCandidates);
+                maxCandidates <= 0 ? 4 : maxCandidates,
+                invitation.IsConfigured ? invitation.ToDefinition() : null);
+        }
+
+        [System.Serializable]
+        public struct SocialInvitationRoutineEntry
+        {
+            public string decisionDefinitionId;
+            public string acceptOptionId;
+            public SocialInvitationPlanEntry[] plans;
+
+            public bool IsConfigured => !string.IsNullOrWhiteSpace(decisionDefinitionId);
+
+            public SocialInvitationRoutineDefinition ToDefinition()
+            {
+                var definitions = new SocialInvitationPlanDefinition[plans?.Length ?? 0];
+                for (int i = 0; i < definitions.Length; i++) definitions[i] = plans[i].ToDefinition();
+                return new SocialInvitationRoutineDefinition(
+                    new AuthoredId(decisionDefinitionId),
+                    new AuthoredId(acceptOptionId),
+                    definitions);
+            }
+        }
+
+        [System.Serializable]
+        public struct SocialInvitationPlanEntry
+        {
+            public string activityDefinitionId;
+            public string interestId;
+
+            public SocialInvitationPlanDefinition ToDefinition() => new SocialInvitationPlanDefinition(
+                new AuthoredId(activityDefinitionId),
+                new AuthoredId(interestId));
+        }
+
+        [System.Serializable]
+        public struct NeedContinuationRoutineEntry
+        {
+            public string decisionDefinitionId;
+            public string restOptionId;
+            public string continueOptionId;
+            public long activationThreshold;
+            public long continuationThresholdStep;
+            public NeedContinuationCandidateEntry[] candidates;
+
+            public bool IsConfigured => !string.IsNullOrWhiteSpace(decisionDefinitionId);
+
+            public NeedContinuationRoutineDefinition ToDefinition()
+            {
+                var definitions = new NeedContinuationCandidateDefinition[candidates?.Length ?? 0];
+                for (int i = 0; i < definitions.Length; i++) definitions[i] = candidates[i].ToDefinition();
+                return new NeedContinuationRoutineDefinition(
+                    new AuthoredId(decisionDefinitionId),
+                    new AuthoredId(restOptionId),
+                    new AuthoredId(continueOptionId),
+                    activationThreshold,
+                    continuationThresholdStep,
+                    definitions);
+            }
+        }
+
+        [System.Serializable]
+        public struct NeedContinuationCandidateEntry
+        {
+            public string activityDefinitionId;
+            public string interestId;
+
+            public NeedContinuationCandidateDefinition ToDefinition() =>
+                new NeedContinuationCandidateDefinition(
+                    new AuthoredId(activityDefinitionId),
+                    new AuthoredId(interestId));
         }
 
         [System.Serializable]

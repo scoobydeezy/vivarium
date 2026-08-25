@@ -32,6 +32,24 @@ namespace Vivarium.Domain.Characters
         public long Value { get; }
     }
 
+    /// <summary>One Need's authoritative progression or watched threshold changed.</summary>
+    public sealed class NeedChangedEvent : IDomainEvent
+    {
+        public static readonly AuthoredId Type = new AuthoredId("domain.need.changed");
+
+        public NeedChangedEvent(CharacterId characterId, AuthoredId needId, int revision)
+        {
+            CharacterId = characterId;
+            NeedId = needId;
+            Revision = revision;
+        }
+
+        public AuthoredId EventType => Type;
+        public CharacterId CharacterId { get; }
+        public AuthoredId NeedId { get; }
+        public int Revision { get; }
+    }
+
     /// <summary>
     /// Keeps analytical needs and their scheduled threshold crossings in step (§10.1, §10.2).
     /// <para>
@@ -120,6 +138,7 @@ namespace Vivarium.Domain.Characters
                 // Unreachable threshold: no event, and none is needed. The value still evolves
                 // analytically; nothing behavioural depends on a crossing that cannot happen.
                 character.SetNeed(need.WithPendingThresholdEvent(ScheduledEventId.None));
+                PublishChange(world, character, need.NeedId, revisionKey);
                 return;
             }
 
@@ -136,7 +155,18 @@ namespace Vivarium.Domain.Characters
                 new[] { new EventDependency(revisionKey, world.Revisions.Get(revisionKey)) });
 
             character.SetNeed(need.WithPendingThresholdEvent(scheduled.Id));
+            PublishChange(world, character, need.NeedId, revisionKey);
         }
+
+        private static void PublishChange(
+            WorldState world,
+            Character character,
+            AuthoredId needId,
+            RevisionKey revisionKey) =>
+            world.Publish(new NeedChangedEvent(
+                character.Id,
+                needId,
+                world.Revisions.Get(revisionKey)));
     }
 
     /// <summary>

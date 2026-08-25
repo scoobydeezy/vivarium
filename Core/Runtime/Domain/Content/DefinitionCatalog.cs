@@ -313,6 +313,94 @@ namespace Vivarium.Domain.Content
                         errors.Add($"need '{need.Id}' Socializing activation threshold must be a declared behavioural threshold");
                     if (need.MaxValue + socializing.SatisfactionOffset >= socializing.ActivationThreshold)
                         errors.Add($"need '{need.Id}' Socializing satisfaction offset must rearm below its activation threshold");
+                    SocialInvitationRoutineDefinition invitation = socializing.Invitation;
+                    if (invitation != null)
+                    {
+                        if (!catalog.Decisions.TryGetValue(
+                                invitation.DecisionDefinitionId,
+                                out DecisionDefinition invitationDecision))
+                        {
+                            errors.Add(
+                                $"need '{need.Id}' Social invitation references unknown decision '{invitation.DecisionDefinitionId}'");
+                        }
+                        else
+                        {
+                            bool accepts = false;
+                            for (int o = 0; o < invitationDecision.Options.Count; o++)
+                                if (invitationDecision.Options[o].Id == invitation.AcceptOptionId) accepts = true;
+                            if (!accepts)
+                                errors.Add(
+                                    $"need '{need.Id}' Social invitation references unknown accept Option '{invitation.AcceptOptionId}'");
+                            if (invitationDecision.Options.Count != 2)
+                                errors.Add(
+                                    $"need '{need.Id}' Social invitation v0 requires exactly two Decision Options");
+                            if (invitationDecision.ReasoningProgram == null)
+                                errors.Add(
+                                    $"need '{need.Id}' Social invitation decision requires compiled reasoning");
+                        }
+                        for (int p = 0; p < invitation.Plans.Count; p++)
+                        {
+                            if (!catalog.Activities.ContainsKey(invitation.Plans[p].ActivityDefinitionId))
+                                errors.Add(
+                                    $"need '{need.Id}' Social invitation plan references unknown Activity '{invitation.Plans[p].ActivityDefinitionId}'");
+                        }
+                    }
+                }
+
+                NeedContinuationRoutineDefinition continuation = need.ContinuationRoutine;
+                if (continuation != null)
+                {
+                    if (catalog.DecisionImportancePolicy == null)
+                        errors.Add($"need '{need.Id}' continuation routine requires a Decision Importance policy");
+                    if (need.RestRoutine == null)
+                        errors.Add($"need '{need.Id}' continuation routine requires a rest routine");
+                    if (need.DefaultRateNumerator >= 0)
+                        errors.Add($"need '{need.Id}' continuation routine requires a decreasing Need");
+                    if (continuation.ActivationThreshold < need.MinValue ||
+                        continuation.ActivationThreshold > need.MaxValue)
+                        errors.Add($"need '{need.Id}' continuation activation threshold falls outside its range");
+                    if (!ContainsThreshold(need.BehaviouralThresholds, continuation.ActivationThreshold))
+                        errors.Add($"need '{need.Id}' continuation activation threshold must be declared behavioural");
+                    if (need.RestRoutine != null &&
+                        continuation.ActivationThreshold != need.RestRoutine.ActivationThreshold)
+                        errors.Add($"need '{need.Id}' continuation and rest activation thresholds must match");
+                    long firstRearm = continuation.ActivationThreshold - continuation.ContinuationThresholdStep;
+                    if (firstRearm < need.MinValue || !ContainsThreshold(need.BehaviouralThresholds, firstRearm))
+                        errors.Add($"need '{need.Id}' continuation step must reach a declared lower threshold");
+
+                    if (!catalog.Decisions.TryGetValue(
+                            continuation.DecisionDefinitionId,
+                            out DecisionDefinition continuationDecision))
+                    {
+                        errors.Add(
+                            $"need '{need.Id}' continuation routine references unknown decision '{continuation.DecisionDefinitionId}'");
+                    }
+                    else
+                    {
+                        bool hasRest = false;
+                        bool hasContinue = false;
+                        for (int o = 0; o < continuationDecision.Options.Count; o++)
+                        {
+                            hasRest |= continuationDecision.Options[o].Id == continuation.RestOptionId;
+                            hasContinue |= continuationDecision.Options[o].Id == continuation.ContinueOptionId;
+                        }
+                        if (!hasRest || !hasContinue)
+                            errors.Add($"need '{need.Id}' continuation routine references unknown Rest/Continue Options");
+                        if (continuationDecision.Options.Count != 2)
+                            errors.Add($"need '{need.Id}' continuation v0 requires exactly two Decision Options");
+                        if (continuationDecision.ReasoningProgram == null)
+                            errors.Add($"need '{need.Id}' continuation decision requires compiled reasoning");
+                        if (continuationDecision.HoldEligible)
+                            errors.Add($"need '{need.Id}' continuation decision cannot be Hold-eligible without a context deadline");
+                        if (continuationDecision.ActivityOutcomes.Count > 0)
+                            errors.Add($"need '{need.Id}' continuation consequences are owned by the routine service");
+                    }
+                    for (int c = 0; c < continuation.Candidates.Count; c++)
+                    {
+                        if (!catalog.Activities.ContainsKey(continuation.Candidates[c].ActivityDefinitionId))
+                            errors.Add(
+                                $"need '{need.Id}' continuation candidate references unknown Activity '{continuation.Candidates[c].ActivityDefinitionId}'");
+                    }
                 }
             }
 

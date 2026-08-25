@@ -26,23 +26,24 @@ multiple habitats, and reciprocal autonomy.
 
 ## Current gate
 
-**Phases 0 and 1 are complete; Phase 2 is in progress.** The jointly locked
+**Phases 0–2 are complete; Phase 3 is next.** The jointly locked
 [`Minimum Playable Scenario`](MinimumPlayableScenario.md) and
 [`Player Agency Brief`](PlayerAgencyBrief.md) define the small world, meaningful character Decisions,
 supported player actions, and required Unity surfaces.
 
 The complete locked Need set now drives ordinary life through production routines: Energy rests,
 Hunger eats, Recreation selects available hobbies, and Social pressure selects bounded shared-context
-company. The immediate next work is the earliest unproven meaningful branch in Phase 2:
+company, and the five required circumstance branches now use production-shaped Decisions. The
+immediate next work begins player agency as a real game system:
 
-> **Social invitation/help versus an existing plan.**
+> **The authoritative Nudge economy.**
 
 Observable completion test:
 
-> A real social invitation or request reaches a character who already has a plausible plan; the
-> circumstance generates a compiled, Knowledge-sensitive Decision whose reasons can reevaluate, whose
-> resolution changes authoritative intent or Activity consequences, and whose explanation and
-> continuation remain deterministic across save/load.
+> A world begins with three Nudges, spends them only through valid Emphasize/Temper interventions,
+> regenerates one at each eight-hour world-time boundary without banking above the cap, refunds a
+> dissolved Decision's interventions, and projects the same eligibility/cost state across live,
+> offline, and save/load continuation.
 
 The Ordinary Hunger slice is complete: an authored satisfaction routine now turns analytical Hunger
 into Eating only at an explicit, reachable location Activity affordance. It carries snapshotted meal
@@ -57,6 +58,25 @@ and unusually important instances adopt the exact preflight reasons into the com
 Ordinary Socializing now completes that loop: active Social pressure waits for an actual co-located
 counterpart at a Socializing affordance, selects through the bounded interaction-candidate path, leaves
 the counterpart's primary Activity untouched, and reuses ordinary interaction and Need consequences.
+The first Phase 2 social branch is also complete: that bounded Social routine can invite a co-located
+character who is already pursuing an explicitly authored discretionary plan. The recipient's compiled
+Join/Keep Decision combines belief-relative interpersonal appraisal, shared-context availability, and
+the value of the existing plan; targeted belief or Activity changes reevaluate stable reasons.
+Acceptance interrupts the snapshotted plan through the authoritative Activity transition path, while
+refusal or invalidated context preserves it, with frozen explanation and save/load equivalence.
+The Energy continuation branch is complete as well: authored Recreation and Social Activities may
+surface a preflighted Rest/Continue choice at low Energy. Ordinary fatigue rests without allocating a
+Decision, while meaningful competing Interest adopts the exact compiled reasons. Continue preserves
+the exact Activity and rearms Energy only at the next strictly lower authored threshold; the finite
+threshold sequence ends in automatic rest, preventing same-threshold retrigger or unwatched reserve
+state. Need and Activity revisions reevaluate only their dependent living reasons, and the choice and
+continuation remain equivalent across save/load.
+The final Phase 2 branch is complete without a second conflict implementation: two independently
+feasible Employment patterns at different workplaces can materialize ordinary Commitments whose
+non-overlapping windows become jointly infeasible only after real Travel is included. Their normal
+schedule revisions generate the existing compiled Preserve/Relinquish Decision—without a
+`CommitmentBecomesKnown` scenario event—and resolution records a provenance-linked Relinquished
+outcome identically offline and across save/load.
 
 ## Ordered phases
 
@@ -64,7 +84,7 @@ the counterpart's primary Activity untouched, and reuses ordinary interaction an
 | --- | --- | --- |
 | 0. Lock playable intent | MPS and Player Agency briefs define one coherent playable world | Complete |
 | 1. Close the daily routine loop | Energy/Sleep/Wake, Employment obligations, ordinary Eating, discretionary Recreation, and Socializing support indefinite lives | Complete |
-| 2. Expand meaningful choice | Scenario-required branch points use compiled Considerations and production consequences | In progress |
+| 2. Expand meaningful choice | Scenario-required branch points use compiled Considerations and production consequences | Complete |
 | 3. Complete player agency | Nudge economy and Commons availability become real Commands; interactive Activity stays deferred | Pending |
 | 4. Build the small-cast world | 8–12 characters run 2–3 days through one durable headless acceptance scenario | Pending |
 | 5. Build playable Unity surfaces | Roster, character, Decision, schedule, Knowledge, world, and history views consume projections/Commands | Pending |
@@ -97,9 +117,10 @@ slice:
    availability. **Complete.**
 6. Ordinary Socializing through bounded shared-context selection. **Complete.**
 
-With the routine links complete, task selection proceeds through Phase 2's genuine branch-point list.
-Need-vs-obligation and two-desirable-Recreation branches already exist, making social invitation/help
-versus an existing plan the next unproven candidate.
+All five Phase 2 branch candidates now exist: Need-vs-obligation, two-desirable-Recreation,
+social-invitation-versus-plan, rest-versus-continuation, and a second commitment conflict produced by
+routine Employment rather than scenario input. Task selection therefore advances to Phase 3A's
+authoritative Nudge economy.
 
 This is sequencing guidance, not permission to implement all five as one subsystem project.
 

@@ -43,8 +43,10 @@ namespace Vivarium.SimRunner
         public static readonly AuthoredId ActivityTabletopGames = new AuthoredId("activity.tabletop_games");
         public static readonly AuthoredId ActivityReading = new AuthoredId("activity.reading");
         public static readonly AuthoredId ActivitySocializing = WellKnownActivities.Socializing;
+        public static readonly AuthoredId ActivityCafeHosting = new AuthoredId("activity.cafe_hosting");
         public static readonly AuthoredId InterestTabletopGames = new AuthoredId("interest.tabletop_games");
         public static readonly AuthoredId InterestReading = new AuthoredId("interest.reading");
+        public static readonly AuthoredId InterestSocializing = new AuthoredId("interest.socializing");
 
         public static readonly AuthoredId LocationKindWorld = new AuthoredId("location_kind.world");
         public static readonly AuthoredId LocationKindTown = new AuthoredId("location_kind.town");
@@ -55,15 +57,21 @@ namespace Vivarium.SimRunner
         public static readonly AuthoredId CommitmentWorkShift = new AuthoredId("commitment.work_shift");
         public static readonly AuthoredId CommitmentDinnerWithGlen = new AuthoredId("commitment.dinner_with_glen");
         public static readonly AuthoredId CommitmentHelpDariusCloseBakery = new AuthoredId("commitment.help_darius_close_bakery");
+        public static readonly AuthoredId CommitmentCafeHostingShift = new AuthoredId("commitment.cafe_hosting_shift");
         public static readonly AuthoredId TemplateBakeryShift = new AuthoredId("routine.bakery_shift");
         public static readonly AuthoredId TemplateBakeryClosingDuty = new AuthoredId("routine.bakery_closing_duty");
         public static readonly AuthoredId EmploymentBakeryWorker = new AuthoredId("employment.bakery_worker");
         public static readonly AuthoredId EmploymentRoleBaker = new AuthoredId("employment.role.baker");
+        public static readonly AuthoredId TemplateCafeHostingShift = new AuthoredId("routine.cafe_hosting_shift");
+        public static readonly AuthoredId EmploymentCafeHost = new AuthoredId("employment.cafe_host");
+        public static readonly AuthoredId EmploymentRoleCafeHost = new AuthoredId("employment.role.cafe_host");
 
         public static readonly AuthoredId DecisionJobOffer = new AuthoredId("decision.job_offer");
         public static readonly AuthoredId DecisionLeaveWork = new AuthoredId("decision.leave_work_early");
         public static readonly AuthoredId DecisionCommitmentConflict = new AuthoredId("decision.commitment_conflict");
         public static readonly AuthoredId DecisionChooseRecreation = new AuthoredId("decision.choose_recreation");
+        public static readonly AuthoredId DecisionSocialInvitation = new AuthoredId("decision.social_invitation");
+        public static readonly AuthoredId DecisionRestOrContinue = new AuthoredId("decision.rest_or_continue");
         public static readonly AuthoredId OptionAccept = new AuthoredId("option.accept");
         public static readonly AuthoredId OptionStay = new AuthoredId("option.stay");
         public static readonly AuthoredId OptionLeave = new AuthoredId("option.leave");
@@ -71,6 +79,10 @@ namespace Vivarium.SimRunner
         public static readonly AuthoredId OptionPreserveSecondCommitment = new AuthoredId("option.preserve_second_relinquish_first");
         public static readonly AuthoredId OptionTabletopGames = new AuthoredId("option.recreation.tabletop_games");
         public static readonly AuthoredId OptionReading = new AuthoredId("option.recreation.reading");
+        public static readonly AuthoredId OptionJoinInvitation = new AuthoredId("option.social_invitation.join");
+        public static readonly AuthoredId OptionKeepPlan = new AuthoredId("option.social_invitation.keep_plan");
+        public static readonly AuthoredId OptionRest = new AuthoredId("option.rest");
+        public static readonly AuthoredId OptionContinue = new AuthoredId("option.continue");
 
         public static readonly AuthoredId ConflictScopeEmployment = new AuthoredId("conflict_scope.employment");
 
@@ -87,6 +99,7 @@ namespace Vivarium.SimRunner
         public static readonly AuthoredId InfluenceBadWorkContext = new AuthoredId("influence.bad_work_context");
         public static readonly AuthoredId LeaveOptionMarker = new AuthoredId("decision.option_marker.leave_work");
         public static readonly AuthoredId StayOptionMarker = new AuthoredId("decision.option_marker.finish_shift");
+        public static readonly AuthoredId RestOptionMarker = new AuthoredId("decision.option_marker.rest");
         public static readonly AuthoredId SocialCalibrationStandard = new AuthoredId("social.calibration.standard");
         public static readonly AuthoredId SocialPressureSeekCompany = new AuthoredId("social.pressure.seek_company");
         public static readonly AuthoredId SocialEvidenceCommitmentFulfilled = new AuthoredId("social.action.commitment_fulfilled");
@@ -151,7 +164,15 @@ namespace Vivarium.SimRunner
                     ActivitySocializing,
                     7000,
                     -5000,
-                    4)));
+                    4,
+                    new SocialInvitationRoutineDefinition(
+                        DecisionSocialInvitation,
+                        OptionJoinInvitation,
+                        new[]
+                        {
+                            new SocialInvitationPlanDefinition(ActivityTabletopGames, InterestTabletopGames),
+                            new SocialInvitationPlanDefinition(ActivityReading, InterestReading),
+                        }))));
             builder.Add(new NeedDefinition(
                 NeedRecreation,
                 "Recreation",
@@ -176,13 +197,25 @@ namespace Vivarium.SimRunner
                 10000,
                 -10,
                 1,
-                new long[] { 2000, 8000 },
+                new long[] { 0, 1000, 2000, 8000 },
                 new NeedRestRoutineDefinition(
                     WellKnownActivities.Sleeping,
                     GroupKinds.Household,
                     2000,
                     8000,
-                    20)));
+                    20),
+                continuationRoutine: new NeedContinuationRoutineDefinition(
+                    DecisionRestOrContinue,
+                    OptionRest,
+                    OptionContinue,
+                    2000,
+                    1000,
+                    new[]
+                    {
+                        new NeedContinuationCandidateDefinition(ActivityTabletopGames, InterestTabletopGames),
+                        new NeedContinuationCandidateDefinition(ActivityReading, InterestReading),
+                        new NeedContinuationCandidateDefinition(ActivitySocializing, InterestSocializing),
+                    })));
 
             builder.Add(new ActivityDefinition(ActivityWorking, "Working", SimDuration.FromHours(6), true, true));
             builder.Add(new ActivityDefinition(ActivitySleeping, "Sleeping", SimDuration.FromHours(8), false));
@@ -194,6 +227,7 @@ namespace Vivarium.SimRunner
             builder.Add(new ActivityDefinition(ActivityTabletopGames, "Tabletop Games", SimDuration.FromMinutes(90), false));
             builder.Add(new ActivityDefinition(ActivityReading, "Reading", SimDuration.FromMinutes(60), false));
             builder.Add(new ActivityDefinition(ActivitySocializing, "Socializing", SimDuration.FromMinutes(30), false));
+            builder.Add(new ActivityDefinition(ActivityCafeHosting, "Hosting at the cafe", SimDuration.FromMinutes(90), false));
 
             builder.Add(new LocationKindDefinition(LocationKindWorld, "World"));
             builder.Add(new LocationKindDefinition(LocationKindTown, "Town"));
@@ -249,6 +283,29 @@ namespace Vivarium.SimRunner
                 SimDuration.FromMinutes(10),
                 new AuthoredId("conflict_scope.recreation"),
                 reasoningProgram: RecreationReasoningProgram()));
+
+            builder.Add(new DecisionDefinition(
+                DecisionSocialInvitation,
+                new[]
+                {
+                    SocialInvitationJoinOption(),
+                    SocialInvitationKeepOption(),
+                },
+                SimDuration.FromMinutes(10),
+                new AuthoredId("conflict_scope.social_invitation"),
+                reasoningProgram: SocialInvitationReasoningProgram()));
+
+            builder.Add(new DecisionDefinition(
+                DecisionRestOrContinue,
+                new[]
+                {
+                    MarkedOption(OptionRest, "Stop and rest", 0, RestOptionMarker),
+                    RecreationOption(OptionContinue, "Keep going", 1, InterestTabletopGames),
+                },
+                SimDuration.FromMinutes(10),
+                new AuthoredId("conflict_scope.current_activity"),
+                holdEligible: false,
+                reasoningProgram: RestOrContinueReasoningProgram()));
 
             builder.Add(new InterventionDefinition(InterventionStepUp, InterventionKind.StepDieUp, 1));
             builder.Add(new InterventionDefinition(InterventionReroll, InterventionKind.Reroll, 1));
@@ -316,6 +373,23 @@ namespace Vivarium.SimRunner
                         priority: 90,
                         activityDefinitionId: ActivityHelpingAtBakery,
                         startWindow: SimDuration.FromMinutes(10),
+                        accountabilityPolicy: socialCommitmentPolicy),
+                }));
+            builder.Add(new EmploymentDefinition(
+                EmploymentCafeHost,
+                EmploymentRoleCafeHost,
+                new[]
+                {
+                    new EmploymentObligationPattern(
+                        TemplateCafeHostingShift,
+                        CommitmentCafeHostingShift,
+                        cycleLengthDays: 7,
+                        activeDaysMask: 0b0011111,
+                        startMinuteOfDay: 14 * 60,
+                        duration: SimDuration.FromMinutes(90),
+                        priority: 80,
+                        activityDefinitionId: ActivityCafeHosting,
+                        startWindow: SimDuration.FromMinutes(5),
                         accountabilityPolicy: socialCommitmentPolicy),
                 }));
             builder.Add(new SocialPressureDefinition(SocialPressureSeekCompany, new SocialFactorRule[0]));
@@ -657,6 +731,218 @@ namespace Vivarium.SimRunner
                     new AuthoredId("influence.recreation.disinterest"),
                     InfluenceVisibility.Full),
             });
+        }
+
+        private static DecisionReasoningProgram RestOrContinueReasoningProgram()
+        {
+            var energy = new AuthoredId("decision.signal.rest_or_continue.energy");
+            var interest = new AuthoredId("decision.signal.rest_or_continue.interest");
+            var stillActive = new AuthoredId("decision.signal.rest_or_continue.current_activity");
+            return new DecisionReasoningProgram(new[]
+            {
+                new CompiledConsiderationBinding(
+                    new AuthoredId("binding.rest_or_continue.fatigue"),
+                    new AuthoredId("consideration.rest_or_continue.fatigue"),
+                    1,
+                    new[]
+                    {
+                        new ConsiderationParameter(RestOptionMarker, DecisionParameterKind.Integer),
+                        new ConsiderationParameter(DecisionReasoningParameters.NeedId, DecisionParameterKind.AuthoredId),
+                    },
+                    new[]
+                    {
+                        new CompiledParameterBinding(RestOptionMarker, ParameterBindingSource.OptionContext, RestOptionMarker),
+                        new CompiledParameterBinding(DecisionReasoningParameters.NeedId,
+                            ParameterBindingSource.DecisionContext, DecisionReasoningParameters.NeedId),
+                    },
+                    new[] { new DecisionSignalRequest(energy, DecisionSignalProviderIds.ActorNeed) },
+                    new SignalFieldDefinition(
+                        new AuthoredId("field.rest_or_continue.fatigue"),
+                        8000,
+                        new[] { new SignalLinearTerm(energy, -8000, new AuthoredId("reason.fatigue")) },
+                        null, null, null),
+                    new ReasonChannelDefinition(new AuthoredId("reason_channel.rest_or_continue.fatigue")),
+                    ReasonScaleProfile.Standard(),
+                    CategoryPersonalConcern,
+                    new AuthoredId("influence.needs_rest"),
+                    new AuthoredId("influence.feels_restored"),
+                    InfluenceVisibility.Full),
+                new CompiledConsiderationBinding(
+                    new AuthoredId("binding.rest_or_continue.interest"),
+                    new AuthoredId("consideration.rest_or_continue.interest"),
+                    1,
+                    new[]
+                    {
+                        new ConsiderationParameter(DecisionReasoningParameters.Actor, DecisionParameterKind.Entity),
+                        new ConsiderationParameter(DecisionReasoningParameters.InterestId, DecisionParameterKind.AuthoredId),
+                    },
+                    new[]
+                    {
+                        new CompiledParameterBinding(DecisionReasoningParameters.Actor, ParameterBindingSource.DecisionActor),
+                        new CompiledParameterBinding(DecisionReasoningParameters.InterestId,
+                            ParameterBindingSource.OptionContext, DecisionReasoningParameters.InterestId),
+                    },
+                    new[] { new DecisionSignalRequest(interest, DecisionSignalProviderIds.ActorInterest) },
+                    new SignalFieldDefinition(
+                        new AuthoredId("field.rest_or_continue.interest"),
+                        0,
+                        new[] { new SignalLinearTerm(interest, 24000, new AuthoredId("reason.engrossed")) },
+                        null, null, null),
+                    new ReasonChannelDefinition(new AuthoredId("reason_channel.rest_or_continue.interest")),
+                    ReasonScaleProfile.Standard(),
+                    CategoryPersonalConcern,
+                    new AuthoredId("influence.wants_to_continue"),
+                    new AuthoredId("influence.ready_to_stop"),
+                    InfluenceVisibility.Full),
+                new CompiledConsiderationBinding(
+                    new AuthoredId("binding.rest_or_continue.current_activity"),
+                    new AuthoredId("consideration.rest_or_continue.current_activity"),
+                    1,
+                    new[]
+                    {
+                        new ConsiderationParameter(DecisionReasoningParameters.InterestId, DecisionParameterKind.AuthoredId),
+                        new ConsiderationParameter(DecisionReasoningParameters.PlannedActivity, DecisionParameterKind.Entity),
+                    },
+                    new[]
+                    {
+                        new CompiledParameterBinding(DecisionReasoningParameters.InterestId,
+                            ParameterBindingSource.OptionContext, DecisionReasoningParameters.InterestId),
+                        new CompiledParameterBinding(DecisionReasoningParameters.PlannedActivity,
+                            ParameterBindingSource.DecisionContext, DecisionReasoningParameters.PlannedActivity),
+                    },
+                    new[] { new DecisionSignalRequest(stillActive, DecisionSignalProviderIds.CurrentActivityIdentity) },
+                    new SignalFieldDefinition(
+                        new AuthoredId("field.rest_or_continue.current_activity"),
+                        0,
+                        new[] { new SignalLinearTerm(stillActive, 2000, new AuthoredId("reason.current_activity")) },
+                        null, null, null),
+                    new ReasonChannelDefinition(new AuthoredId("reason_channel.rest_or_continue.current_activity")),
+                    ReasonScaleProfile.Standard(),
+                    CategoryPractical,
+                    new AuthoredId("influence.already_engaged"),
+                    new AuthoredId("influence.activity_ended"),
+                    InfluenceVisibility.Full),
+            });
+        }
+
+        private static DecisionReasoningProgram SocialInvitationReasoningProgram()
+        {
+            var comfort = new AuthoredId("decision.signal.social_invitation.comfort");
+            var available = new AuthoredId("decision.signal.social_invitation.shared_context");
+            var planInterest = new AuthoredId("decision.signal.social_invitation.plan_interest");
+            return new DecisionReasoningProgram(new[]
+            {
+                new CompiledConsiderationBinding(
+                    new AuthoredId("binding.social_invitation.comfort"),
+                    ConsiderationIds.InterpersonalComfort,
+                    1,
+                    new[]
+                    {
+                        new ConsiderationParameter(DecisionReasoningParameters.Actor, DecisionParameterKind.Entity),
+                        new ConsiderationParameter(DecisionReasoningParameters.Target, DecisionParameterKind.Entity),
+                        new ConsiderationParameter(DecisionReasoningParameters.AppraisalLensId, DecisionParameterKind.AuthoredId),
+                        new ConsiderationParameter(DecisionReasoningParameters.SocialPressureId, DecisionParameterKind.AuthoredId),
+                    },
+                    new[]
+                    {
+                        new CompiledParameterBinding(DecisionReasoningParameters.Actor, ParameterBindingSource.DecisionActor),
+                        new CompiledParameterBinding(DecisionReasoningParameters.Target, ParameterBindingSource.OptionContext,
+                            DecisionReasoningParameters.Target),
+                        new CompiledParameterBinding(DecisionReasoningParameters.AppraisalLensId, ParameterBindingSource.Literal,
+                            literal: DecisionParameterValue.FromAuthoredId(AppraisalLenses.Affiliation)),
+                        new CompiledParameterBinding(DecisionReasoningParameters.SocialPressureId, ParameterBindingSource.Literal,
+                            literal: DecisionParameterValue.FromAuthoredId(SocialPressureSeekCompany)),
+                    },
+                    new[] { new DecisionSignalRequest(comfort, DecisionSignalProviderIds.SocialAppraisal) },
+                    new SignalFieldDefinition(
+                        new AuthoredId("field.social_invitation.comfort"),
+                        0,
+                        new[] { new SignalLinearTerm(comfort, 10000, new AuthoredId("reason.social_comfort")) },
+                        null, null, null),
+                    new ReasonChannelDefinition(ReasonChannelIds.InterpersonalComfort),
+                    ReasonScaleProfile.Standard(),
+                    CategorySocial,
+                    new AuthoredId("influence.enjoys_inviter"),
+                    new AuthoredId("influence.uncomfortable_with_inviter"),
+                    InfluenceVisibility.Existence | InfluenceVisibility.Category | InfluenceVisibility.Magnitude),
+                new CompiledConsiderationBinding(
+                    new AuthoredId("binding.social_invitation.shared_context"),
+                    new AuthoredId("consideration.social_invitation.shared_context"),
+                    1,
+                    new[]
+                    {
+                        new ConsiderationParameter(DecisionReasoningParameters.Target, DecisionParameterKind.Entity),
+                        new ConsiderationParameter(DecisionReasoningParameters.PlannedActivity, DecisionParameterKind.Entity),
+                        new ConsiderationParameter(DecisionReasoningParameters.ActivityDefinitionId, DecisionParameterKind.AuthoredId),
+                    },
+                    new[]
+                    {
+                        new CompiledParameterBinding(DecisionReasoningParameters.Target, ParameterBindingSource.OptionContext,
+                            DecisionReasoningParameters.Target),
+                        new CompiledParameterBinding(DecisionReasoningParameters.PlannedActivity,
+                            ParameterBindingSource.DecisionContext, DecisionReasoningParameters.PlannedActivity),
+                        new CompiledParameterBinding(DecisionReasoningParameters.ActivityDefinitionId,
+                            ParameterBindingSource.Literal,
+                            literal: DecisionParameterValue.FromAuthoredId(ActivitySocializing)),
+                    },
+                    new[] { new DecisionSignalRequest(available, DecisionSignalProviderIds.SharedActivityContext) },
+                    new SignalFieldDefinition(
+                        new AuthoredId("field.social_invitation.shared_context"),
+                        0,
+                        new[] { new SignalLinearTerm(available, 8000, new AuthoredId("reason.shared_context")) },
+                        null, null, null),
+                    new ReasonChannelDefinition(new AuthoredId("reason_channel.social_invitation.shared_context")),
+                    ReasonScaleProfile.Standard(),
+                    CategoryPractical,
+                    new AuthoredId("influence.inviter_is_here"),
+                    new AuthoredId("influence.inviter_is_gone"),
+                    InfluenceVisibility.Full),
+                new CompiledConsiderationBinding(
+                    new AuthoredId("binding.social_invitation.existing_plan"),
+                    new AuthoredId("consideration.social_invitation.existing_plan"),
+                    1,
+                    new[]
+                    {
+                        new ConsiderationParameter(DecisionReasoningParameters.Actor, DecisionParameterKind.Entity),
+                        new ConsiderationParameter(DecisionReasoningParameters.InterestId, DecisionParameterKind.AuthoredId),
+                    },
+                    new[]
+                    {
+                        new CompiledParameterBinding(DecisionReasoningParameters.Actor, ParameterBindingSource.DecisionActor),
+                        new CompiledParameterBinding(DecisionReasoningParameters.InterestId, ParameterBindingSource.OptionContext,
+                            DecisionReasoningParameters.InterestId),
+                    },
+                    new[] { new DecisionSignalRequest(planInterest, DecisionSignalProviderIds.ActorInterest) },
+                    new SignalFieldDefinition(
+                        new AuthoredId("field.social_invitation.existing_plan"),
+                        0,
+                        new[] { new SignalLinearTerm(planInterest, 12000, new AuthoredId("reason.existing_plan")) },
+                        null, null, null),
+                    new ReasonChannelDefinition(new AuthoredId("reason_channel.social_invitation.existing_plan")),
+                    ReasonScaleProfile.Standard(),
+                    CategoryPersonalConcern,
+                    new AuthoredId("influence.values_existing_plan"),
+                    new AuthoredId("influence.dislikes_existing_plan"),
+                    InfluenceVisibility.Full),
+            });
+        }
+
+        private static DecisionOption SocialInvitationJoinOption()
+        {
+            var option = new DecisionOption(OptionJoinInvitation, "Join them", 0);
+            option.SetContext(
+                DecisionReasoningParameters.Target,
+                DecisionParameterValue.FromEntity(new EntityRef(EntityKind.Character, 0)));
+            return option;
+        }
+
+        private static DecisionOption SocialInvitationKeepOption()
+        {
+            var option = new DecisionOption(OptionKeepPlan, "Keep my plan", 1);
+            option.SetContext(
+                DecisionReasoningParameters.InterestId,
+                DecisionParameterValue.FromAuthoredId(InterestReading));
+            return option;
         }
 
     }

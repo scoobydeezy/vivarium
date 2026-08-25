@@ -125,6 +125,15 @@ Working implementations:
   threshold, wake into fallback planning, and continue identically through save/load and
   `OfflineCatchUp`. Optional travel continuation intent is snapshotted in the scheduled arrival payload;
   schema v7 preserves older arrivals as having no invented continuation.
+- **Energy Rest/Continue branch** — authored ongoing Recreation and Social Activities may turn the
+  Energy rest threshold into an immutable compiled preflight. Low-Importance fatigue rests directly;
+  significant competing Interest adopts the exact reasons into a normal persistent, non-holdable
+  Decision. Continue preserves the snapshotted Activity instance and rearms Energy through
+  `NeedProgressionService` at a strictly lower declared threshold (`2000 → 1000 → 0` in sample
+  content); exhausting that finite sequence rests automatically. Need and exact-Activity identity are
+  dependency-indexed signals, so only affected living routes reevaluate with stable Influence identity.
+  Option/context snapshots and existing Need persistence provide deterministic live, offline, and
+  save/load continuation without timers, polling, or parallel routine state.
 - **Ordinary Hunger / Eating routine** — an authored increasing-pressure Need may supply an ordinary
   satisfaction Activity, activation threshold, and instantaneous completion offset. Immutable locations
   own explicit Activity affordances indexed by Activity; the routine deterministically chooses the
@@ -155,6 +164,15 @@ Working implementations:
   character changes primary Activity, while the counterpart's Work, Recreation, or other Activity is
   left intact as a subordinate interaction. Target identity and Need satisfaction are snapshotted on the
   Activity, whose completion returns to Waiting identically live, offline, and after save/load.
+- **Social invitation versus an existing plan** — the same bounded Social routine may author a compiled
+  invitation Decision for a co-located counterpart already pursuing an explicitly listed discretionary
+  Activity. The recipient reasons between Join and Keep Plan using their Knowledge-relative social
+  appraisal, shared Activity context, and Interest in the current plan. Belief and Activity revisions
+  target only the affected compiled routes while stable Influence identity preserves interventions and
+  projection semantics. Acceptance abandons the snapshotted plan only through
+  `ActivityTransitionService` and starts Socializing for the recipient; refusal or stale context leaves
+  the plan untouched. Runtime Option/context snapshots, frozen resolution evidence, history, and
+  save/load continuation require no parallel invitation state or new persistence schema.
 - **Decisions** — living influence sets with stable influence identity, dependency-indexed
   reevaluation, deterministic dice resolution, bounded held decisions, one authority for intervention
   rules, one content-backed Need-threshold generation path with an Activity consequence, and targeted
@@ -270,6 +288,14 @@ Working implementations:
   The same content shape runs in the headless and Unity compositions. `DecisionProjector` translates
   the runtime plan into concrete Keep/Give-up text and identifies its feasibility cutoff as a hard
   deadline; Unity deterministically presents the highest-importance active Decision.
+- **Routine-produced commitment conflict** — a second authored Employment role supplies a recurring
+  cafe-hosting obligation. When one character holds both the Bakery shift and Cafe role, each
+  Employment materializes an independently feasible normal Commitment; their clock windows do not
+  overlap, but Bakery-to-Cafe Travel makes the set jointly infeasible. Ordinary schedule-change events
+  feed the same compiled Preserve/Relinquish generator without `CommitmentBecomesKnown` or a new
+  conflict type. Resolution creates the canonical provenance-linked Relinquished outcome and leaves
+  the preserved intent to routine planning, with identical deadline rolls, statuses, and pending work
+  through offline catch-up and save/load.
 - **Commands and queries** — deterministic ingress queue, dispatcher, projections published only at
   quiescent boundaries, knowledge-filtered decision views (§2.2.1, §26, §35).
 - **Persistence** — versioned DTOs, explicit payload codecs, revision persistence, index rebuilding on
@@ -326,7 +352,7 @@ Intentionally thin, pending game-design decisions:
   Socializing. Competing routine priority and broader circumstance combinations remain intentionally
   thin.
 - **Unity authoring/presentation.** `ContentPackAsset` converts authored Needs (including rest,
-  satisfaction, Recreation, and Socializing routines), the Decision admission policy, Activities, Employment
+  satisfaction, Recreation, Socializing, and Energy-continuation routines), the Decision admission policy, Activities, Employment
   definitions and obligation patterns, Decisions
   (including typed compiled reasoning, social triggers, and directional outcomes), appraisal calibration,
   social evidence/pressure, and interventions into the validated Domain catalog. Demo characters receive deterministic social
@@ -384,6 +410,8 @@ The test suite is organised around the §58 invariants rather than around classe
 | Observation reveals a generalized live influence | `WorkContextTests` |
 | Shared-context interaction leaves Activities intact | `InteractionTests` |
 | Social pressure waits for real shared context, Socializes without displacing its counterpart, and completes identically after reload/offline | `SocializingRoutineTests`, `GoldenScenarioTests` |
+| Social invitation reaches a character with an existing plan, reevaluates Knowledge/context reasons, and resolves with deterministic persistent Activity consequences | `SocialInvitationDecisionTests`, `GoldenScenarioTests` |
+| Energy continuation admits only important Rest/Continue choices, rearms a strictly lower threshold, reevaluates Need/exact-Activity reasons, persists, and terminates without thrash | `NeedContinuationDecisionTests` |
 | Shared travel segment interaction survives index rebuild/load | `InteractionTests` |
 | Watched interaction creates Knowledge; unwatched does not | `InteractionTests` |
 | Large shared context produces a bounded interaction outcome | `SimulationInvariantTests` |
@@ -401,6 +429,7 @@ The test suite is organised around the §58 invariants rather than around classe
 | Terminal Commitment transitions validate, mint one outcome, and survive expiration reload | `CommitmentOutcomeTests`, `CommitmentOutcomePersistenceTests` |
 | Accountability policy/stakeholder snapshots round-trip without persisting derived routing | `CommitmentOutcomePersistenceTests`, `GoldenScenarioTests` |
 | Employment derives workplace obligations, authority facts, attendance, and identical future behavior after reload | `EmploymentTests`, `GoldenScenarioTests`, `VivariumPlayModeTests` |
+| Two Employment routines naturally create a travel-only conflict and resolve authoritative intent identically offline and after reload | `RoutineCommitmentConflictTests` |
 | Routine fulfillment changes Reliance evidence without Trust/memory mutation | `GoldenScenarioTests` |
 | Breach attribution produces provenance-linked belief, memory, history, and channel effects once | `GoldenScenarioTests`, `VivariumPlayModeTests` |
 | Same initial world yields a weaker later Reliance Influence after breach, exactly across pre-conflict reload | `GoldenScenarioTests` |

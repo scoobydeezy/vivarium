@@ -290,6 +290,7 @@ namespace Vivarium.SimRunner
         {
             WorldState world = host.World;
             Character character = world.Characters.Get(characterId);
+            character.Interests.Set(SampleContent.InterestSocializing, 7000);
             NeedDefinition social = host.Catalog.Needs[WellKnownNeeds.Social];
             var state = new NeedState(
                 social.Id,

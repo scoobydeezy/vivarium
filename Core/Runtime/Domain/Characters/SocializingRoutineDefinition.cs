@@ -12,7 +12,8 @@ namespace Vivarium.Domain.Characters
             AuthoredId activityDefinitionId,
             long activationThreshold,
             long satisfactionOffset,
-            int maxCandidates = 4)
+            int maxCandidates = 4,
+            SocialInvitationRoutineDefinition invitation = null)
         {
             if (!activityDefinitionId.IsSet)
                 throw new ArgumentException("A Socializing routine needs an Activity definition id.", nameof(activityDefinitionId));
@@ -22,11 +23,13 @@ namespace Vivarium.Domain.Characters
             ActivationThreshold = activationThreshold;
             SatisfactionOffset = satisfactionOffset;
             MaxCandidates = maxCandidates;
+            Invitation = invitation;
         }
 
         public AuthoredId ActivityDefinitionId { get; }
         public long ActivationThreshold { get; }
         public long SatisfactionOffset { get; }
         public int MaxCandidates { get; }
+        public SocialInvitationRoutineDefinition Invitation { get; }
     }
 }

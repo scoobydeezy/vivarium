@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Numerics;
 using Vivarium.Domain.Activities;
 using Vivarium.Domain.Characters;
 using Vivarium.Domain.Common;
+using Vivarium.Domain.Content;
 using Vivarium.Domain.Evaluation;
 using Vivarium.Domain.Relationships;
 using Vivarium.Domain.Simulation;
@@ -71,6 +73,10 @@ namespace Vivarium.Domain.Decisions
         public static readonly AuthoredId PreservedCommitment = new AuthoredId("decision.parameter.preserved_commitment");
         public static readonly AuthoredId RelinquishedCommitment = new AuthoredId("decision.parameter.relinquished_commitment");
         public static readonly AuthoredId CommitmentConflict = new AuthoredId("decision.parameter.commitment_conflict");
+        public static readonly AuthoredId AppraisalLensId = new AuthoredId("decision.parameter.appraisal_lens_id");
+        public static readonly AuthoredId SocialPressureId = new AuthoredId("decision.parameter.social_pressure_id");
+        public static readonly AuthoredId PlannedActivity = new AuthoredId("decision.parameter.planned_activity");
+        public static readonly AuthoredId NextNeedThreshold = new AuthoredId("decision.parameter.next_need_threshold");
     }
 
     public enum ParameterBindingSource
@@ -459,6 +465,8 @@ namespace Vivarium.Domain.Decisions
             registry.Register(new TravelBurdenSignalProvider());
             registry.Register(new ActivityModifierSignalProvider());
             registry.Register(new CommitmentSignalProvider());
+            registry.Register(new SharedActivityContextSignalProvider());
+            registry.Register(new CurrentActivityIdentitySignalProvider());
             return registry;
         }
     }
@@ -473,11 +481,184 @@ namespace Vivarium.Domain.Decisions
         public static readonly AuthoredId TravelBurden = new AuthoredId("decision.signal_provider.travel_burden");
         public static readonly AuthoredId ActivityModifier = new AuthoredId("decision.signal_provider.activity_modifier");
         public static readonly AuthoredId Commitment = new AuthoredId("decision.signal_provider.commitment");
+        public static readonly AuthoredId SocialAppraisal = new AuthoredId("decision.signal_provider.social_appraisal");
+        public static readonly AuthoredId SharedActivityContext = new AuthoredId("decision.signal_provider.shared_activity_context");
+        public static readonly AuthoredId ActorNeed = new AuthoredId("decision.signal_provider.actor_need");
+        public static readonly AuthoredId CurrentActivityIdentity = new AuthoredId("decision.signal_provider.current_activity_identity");
         public static readonly AuthoredId[] BuiltIns =
         {
             DecisionContext, ActorValue, ActorInterest, TargetAvailability, RelationshipChannel, TravelBurden,
-            ActivityModifier, Commitment,
+            ActivityModifier, Commitment, SocialAppraisal, SharedActivityContext, ActorNeed, CurrentActivityIdentity,
         };
+    }
+
+    /// <summary>Normalizes one of the actor's analytically progressing Needs for compiled reasoning.</summary>
+    public sealed class ActorNeedSignalProvider : IDecisionSignalProvider
+    {
+        private readonly DefinitionCatalog _catalog;
+
+        public ActorNeedSignalProvider(DefinitionCatalog catalog) =>
+            _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
+
+        public AuthoredId Id => DecisionSignalProviderIds.ActorNeed;
+
+        public ResolvedDecisionSignal Resolve(
+            WorldState world, IDecisionReasoningContext decision, DecisionOption option,
+            DecisionSignalRequest request, BoundConsiderationParameters parameters)
+        {
+            if (!parameters.TryGet(DecisionReasoningParameters.NeedId, out DecisionParameterValue needValue) ||
+                needValue.Kind != DecisionParameterKind.AuthoredId ||
+                !_catalog.Needs.TryGetValue(needValue.AuthoredId, out NeedDefinition definition) ||
+                !world.Characters.TryGet(decision.CharacterId, out Character character) ||
+                !character.TryGetNeed(needValue.AuthoredId, out NeedState need))
+            {
+                return new ResolvedDecisionSignal(
+                    new SignalValue(request.SignalId, 0, 0, SignalApplicability.NotApplicable));
+            }
+
+            long range = definition.MaxValue - definition.MinValue;
+            long current = need.ValueAt(world.Clock.Now) - definition.MinValue;
+            long normalized = range <= 0
+                ? 0
+                : SignalNumeric.DivideRounded((BigInteger)current * SignalNumeric.Scale, range);
+            RevisionKey revision = need.RevisionKeyFor(decision.CharacterId);
+            var dependency = new DecisionDependencyKey(
+                RevisionAspects.Scoped(RevisionAspects.Need, need.NeedId),
+                decision.CharacterId.ToRef());
+            return new ResolvedDecisionSignal(
+                new SignalValue(
+                    request.SignalId,
+                    IntegerMath.Clamp(normalized, 0, SignalNumeric.Scale),
+                    0,
+                    SignalApplicability.Known,
+                    world.Revisions.Get(revision)),
+                new[] { dependency });
+        }
+    }
+
+    /// <summary>Whether the actor is still pursuing the exact Activity snapshotted by a Decision.</summary>
+    public sealed class CurrentActivityIdentitySignalProvider : IDecisionSignalProvider
+    {
+        public AuthoredId Id => DecisionSignalProviderIds.CurrentActivityIdentity;
+
+        public ResolvedDecisionSignal Resolve(
+            WorldState world, IDecisionReasoningContext decision, DecisionOption option,
+            DecisionSignalRequest request, BoundConsiderationParameters parameters)
+        {
+            if (!parameters.TryGet(DecisionReasoningParameters.PlannedActivity, out DecisionParameterValue planned) ||
+                planned.Kind != DecisionParameterKind.Entity ||
+                planned.Entity.Kind != EntityKind.ActivityInstance)
+            {
+                return new ResolvedDecisionSignal(
+                    new SignalValue(request.SignalId, 0, 0, SignalApplicability.NotApplicable));
+            }
+
+            bool current = world.Characters.TryGet(decision.CharacterId, out Character character) &&
+                character.IsActive && character.CurrentActivityId.Value == planned.Entity.RuntimeId;
+            return new ResolvedDecisionSignal(
+                new SignalValue(
+                    request.SignalId,
+                    current ? SignalNumeric.Scale : -SignalNumeric.Scale,
+                    0,
+                    SignalApplicability.Known),
+                new[] { new DecisionDependencyKey(RevisionAspects.Activity, decision.CharacterId.ToRef()) });
+        }
+    }
+
+    /// <summary>Belief-relative interpersonal appraisal for compiled social Considerations.</summary>
+    public sealed class SocialAppraisalSignalProvider : IDecisionSignalProvider
+    {
+        private readonly DefinitionCatalog _catalog;
+        private readonly SocialPressureEvaluator _evaluator = new SocialPressureEvaluator();
+
+        public SocialAppraisalSignalProvider(DefinitionCatalog catalog) =>
+            _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
+
+        public AuthoredId Id => DecisionSignalProviderIds.SocialAppraisal;
+
+        public ResolvedDecisionSignal Resolve(
+            WorldState world, IDecisionReasoningContext decision, DecisionOption option,
+            DecisionSignalRequest request, BoundConsiderationParameters parameters)
+        {
+            if (!DecisionSignalParameters.TryTarget(parameters, out CharacterId target) ||
+                !parameters.TryGet(DecisionReasoningParameters.AppraisalLensId, out DecisionParameterValue lens) ||
+                lens.Kind != DecisionParameterKind.AuthoredId ||
+                !parameters.TryGet(DecisionReasoningParameters.SocialPressureId, out DecisionParameterValue pressure) ||
+                pressure.Kind != DecisionParameterKind.AuthoredId ||
+                !_catalog.SocialPressures.TryGetValue(pressure.AuthoredId, out SocialPressureDefinition definition) ||
+                !world.Characters.TryGet(decision.CharacterId, out Character actor) ||
+                !actor.TryGetAppraisalField(lens.AuthoredId, out AppraisalField _))
+            {
+                return new ResolvedDecisionSignal(
+                    new SignalValue(request.SignalId, 0, 0, SignalApplicability.NotApplicable));
+            }
+
+            CompositeSocialEvaluationResult result = _evaluator.Evaluate(
+                world, decision.CharacterId, target, lens.AuthoredId,
+                new SocialEvaluationContext(), definition, _catalog);
+            int revision = world.Knowledge.TryGetSocialBelief(
+                Vivarium.Domain.Knowledge.ObserverRef.Character(decision.CharacterId),
+                target,
+                out BeliefDistribution belief)
+                ? belief.EvidenceRevision
+                : 0;
+            return new ResolvedDecisionSignal(
+                new SignalValue(
+                    request.SignalId,
+                    result.NormalizedAppraisal,
+                    result.OutputVariance,
+                    SignalApplicability.Known,
+                    revision),
+                new[]
+                {
+                    new DecisionDependencyKey(
+                        RevisionAspects.Scoped(
+                            SocialDecisionDependencies.BeliefContext,
+                            new AuthoredId("target." + target.Value)),
+                        decision.CharacterId.ToRef()),
+                });
+        }
+    }
+
+    /// <summary>Whether an invitation still connects the actor's snapshotted plan to a co-located inviter.</summary>
+    public sealed class SharedActivityContextSignalProvider : IDecisionSignalProvider
+    {
+        public AuthoredId Id => DecisionSignalProviderIds.SharedActivityContext;
+
+        public ResolvedDecisionSignal Resolve(
+            WorldState world, IDecisionReasoningContext decision, DecisionOption option,
+            DecisionSignalRequest request, BoundConsiderationParameters parameters)
+        {
+            if (!DecisionSignalParameters.TryTarget(parameters, out CharacterId target) ||
+                !parameters.TryGet(DecisionReasoningParameters.PlannedActivity, out DecisionParameterValue planned) ||
+                planned.Kind != DecisionParameterKind.Entity ||
+                planned.Entity.Kind != EntityKind.ActivityInstance ||
+                !parameters.TryGet(
+                    DecisionReasoningParameters.ActivityDefinitionId,
+                    out DecisionParameterValue targetActivityDefinition) ||
+                targetActivityDefinition.Kind != DecisionParameterKind.AuthoredId)
+            {
+                return new ResolvedDecisionSignal(
+                    new SignalValue(request.SignalId, 0, 0, SignalApplicability.NotApplicable));
+            }
+
+            bool shared = world.Characters.TryGet(decision.CharacterId, out Character actor) && actor.IsActive &&
+                actor.CurrentActivityId.Value == planned.Entity.RuntimeId &&
+                world.TryGetCurrentActivity(target, out ActivityInstance targetActivity) &&
+                targetActivity.DefinitionId == targetActivityDefinition.AuthoredId &&
+                world.TryGetSpatialContext(decision.CharacterId, out ActivitySpatialContext actorContext) &&
+                world.TryGetSpatialContext(target, out ActivitySpatialContext targetContext) &&
+                actorContext.IsLocated && targetContext.IsLocated &&
+                actorContext.LocationId == targetContext.LocationId;
+            return new ResolvedDecisionSignal(
+                new SignalValue(request.SignalId, shared ? SignalNumeric.Scale : -SignalNumeric.Scale, 0,
+                    SignalApplicability.Known),
+                new[]
+                {
+                    new DecisionDependencyKey(RevisionAspects.Activity, decision.CharacterId.ToRef()),
+                    new DecisionDependencyKey(RevisionAspects.Activity, target.ToRef()),
+                });
+        }
     }
 
     public static class CommitmentDecisionSignals

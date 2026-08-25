@@ -37,7 +37,7 @@ namespace Vivarium.SimRunner.Tests
         }
 
         [Fact]
-        public void ProductionRecreationSelectsTravelsCompletesAndReplansWithoutDecisionAdmission()
+        public void ProductionRecreationRetriesAfterAnAcceptedSocialInvitationInterruptsTheFirstPlan()
         {
             Fixture fixture = Create();
 
@@ -48,17 +48,30 @@ namespace Vivarium.SimRunner.Tests
             Assert.Equal(fixture.Layout.Cafe, travel.SpatialContext.Transit.DestinationLocationId);
             Assert.Empty(fixture.Host.World.Decisions.All);
 
-            fixture.Host.Session.Advance(SimDuration.FromMinutes(95));
+            fixture.Host.Session.Advance(SimDuration.FromMinutes(5));
 
-            Assert.True(fixture.Host.World.TryGetCurrentActivity(fixture.Layout.Glen, out ActivityInstance waiting));
-            Assert.Equal(WellKnownActivities.Waiting, waiting.DefinitionId);
-            Character glen = fixture.Host.World.Characters.Get(fixture.Layout.Glen);
-            Assert.True(glen.TryGetNeed(WellKnownNeeds.Recreation, out NeedState recreation));
-            Assert.True(recreation.ValueAt(fixture.Host.World.Clock.Now) < recreation.BehaviouralThreshold);
+            Assert.True(fixture.Host.World.TryGetCurrentActivity(fixture.Layout.Glen, out ActivityInstance firstPlan));
+            Assert.Equal(SampleContent.ActivityTabletopGames, firstPlan.DefinitionId);
+            Decision invitation = fixture.Host.World.Decisions.All.Single(
+                d => d.DefinitionId == SampleContent.DecisionSocialInvitation);
+
+            fixture.Host.Session.Advance(SimDuration.FromMinutes(10));
+
+            Assert.Equal(SampleContent.OptionJoinInvitation, invitation.Resolution.ChosenOptionId);
+            Assert.Equal(ActivityStatus.Abandoned, firstPlan.Status);
+            Assert.Equal(SampleContent.ActivitySocializing,
+                fixture.Host.World.Activities.Get(
+                    fixture.Host.World.Characters.Get(fixture.Layout.Glen).CurrentActivityId).DefinitionId);
+
+            fixture.Host.Session.Advance(SimDuration.FromMinutes(30));
+
+            Assert.True(fixture.Host.World.TryGetCurrentActivity(fixture.Layout.Glen, out ActivityInstance retriedPlan));
+            Assert.Equal(SampleContent.ActivityTabletopGames, retriedPlan.DefinitionId);
+            Assert.NotEqual(firstPlan.Id, retriedPlan.Id);
         }
 
         [Fact]
-        public void ProductionSocialNeedSelectsSharedContextWithoutDisplacingTheCounterpart()
+        public void ProductionSocialNeedInvitesACharacterWhoAlreadyHasAPlan()
         {
             Fixture fixture = Create();
 
@@ -71,12 +84,23 @@ namespace Vivarium.SimRunner.Tests
                 0));
             Assert.True(fixture.Host.World.TryGetCurrentActivity(fixture.Layout.Glen, out ActivityInstance tabletop));
             Assert.Equal(SampleContent.ActivityTabletopGames, tabletop.DefinitionId);
+            Decision invitation = fixture.Host.World.Decisions.All.Single(
+                d => d.DefinitionId == SampleContent.DecisionSocialInvitation);
+            Assert.Equal(fixture.Layout.Glen, invitation.CharacterId);
+            Assert.True(invitation.IsActive);
             Assert.True(fixture.Host.World.RelationshipIndex.TryGetBetween(
                 fixture.Layout.Lena,
                 fixture.Layout.Glen,
                 out RelationshipId _));
 
-            fixture.Host.Session.Advance(SimDuration.FromMinutes(30));
+            fixture.Host.Session.Advance(SimDuration.FromMinutes(10));
+
+            Assert.Equal(SampleContent.OptionJoinInvitation, invitation.Resolution.ChosenOptionId);
+            Assert.Equal(SampleContent.ActivitySocializing,
+                fixture.Host.World.Activities.Get(
+                    fixture.Host.World.Characters.Get(fixture.Layout.Glen).CurrentActivityId).DefinitionId);
+
+            fixture.Host.Session.Advance(SimDuration.FromMinutes(20));
 
             Assert.True(fixture.Host.World.TryGetCurrentActivity(fixture.Layout.Lena, out ActivityInstance waiting));
             Assert.Equal(WellKnownActivities.Waiting, waiting.DefinitionId);
