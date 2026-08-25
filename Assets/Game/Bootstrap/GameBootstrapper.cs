@@ -42,6 +42,8 @@ namespace Vivarium.Unity.Bootstrap
         private static readonly AuthoredId ActivityWorking = new AuthoredId("activity.working");
         private static readonly AuthoredId ActivityDining = new AuthoredId("activity.dining");
         private static readonly AuthoredId ActivityHelpingAtBakery = new AuthoredId("activity.helping_at_bakery");
+        private static readonly AuthoredId ActivityTabletopGames = new AuthoredId("activity.tabletop_games");
+        private static readonly AuthoredId ActivityReading = new AuthoredId("activity.reading");
         private static readonly AuthoredId ContextWorkPressure = new AuthoredId("decision_context.work_pressure");
         private static readonly AuthoredId ModifierDislikedColleague = new AuthoredId("activity_modifier.disliked_colleague_present");
         private static readonly AuthoredId SocialCalibrationStandard = new AuthoredId("social.calibration.standard");
@@ -146,8 +148,10 @@ namespace Vivarium.Unity.Bootstrap
             _demoCharacters.Clear();
             LocationId room = SeedDemoLocation(
                 "Demo Room",
-                new[] { WellKnownActivities.Eating });
-            LocationId cafe = SeedDemoLocation("Demo Cafe");
+                new[] { WellKnownActivities.Eating, ActivityReading });
+            LocationId cafe = SeedDemoLocation(
+                "Demo Cafe",
+                new[] { ActivityTabletopGames, ActivityReading });
             LocationId workshop = SeedDemoLocation("Demo Workshop");
 
             CharacterId mina = SeedDemoCharacter("Mina Test", room, 5592);

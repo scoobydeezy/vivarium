@@ -82,7 +82,8 @@ namespace Vivarium.Domain.Characters
             long defaultRateDenominator = 1,
             IReadOnlyList<long> behaviouralThresholds = null,
             NeedRestRoutineDefinition restRoutine = null,
-            NeedSatisfactionRoutineDefinition satisfactionRoutine = null)
+            NeedSatisfactionRoutineDefinition satisfactionRoutine = null,
+            RecreationRoutineDefinition recreationRoutine = null)
         {
             if (!id.IsSet)
             {
@@ -98,6 +99,7 @@ namespace Vivarium.Domain.Characters
             BehaviouralThresholds = behaviouralThresholds ?? new long[0];
             RestRoutine = restRoutine;
             SatisfactionRoutine = satisfactionRoutine;
+            RecreationRoutine = recreationRoutine;
         }
 
         public AuthoredId Id { get; }
@@ -125,6 +127,9 @@ namespace Vivarium.Domain.Characters
         /// <summary>Optional ordinary Activity that applies an instantaneous satisfying offset.</summary>
         public NeedSatisfactionRoutineDefinition SatisfactionRoutine { get; }
 
+        /// <summary>Optional discretionary candidate routine driven by Interests and availability.</summary>
+        public RecreationRoutineDefinition RecreationRoutine { get; }
+
         public override string ToString() => Id.ToString();
     }
 
@@ -132,5 +137,6 @@ namespace Vivarium.Domain.Characters
     public static class WellKnownNeeds
     {
         public static readonly AuthoredId Energy = new AuthoredId("need.energy");
+        public static readonly AuthoredId Recreation = new AuthoredId("need.recreation");
     }
 }

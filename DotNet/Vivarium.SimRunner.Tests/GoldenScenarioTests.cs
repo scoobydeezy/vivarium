@@ -37,6 +37,27 @@ namespace Vivarium.SimRunner.Tests
         }
 
         [Fact]
+        public void ProductionRecreationSelectsTravelsCompletesAndReplansWithoutDecisionAdmission()
+        {
+            Fixture fixture = Create();
+
+            fixture.Host.Session.Advance(SimDuration.FromMinutes(5));
+
+            Assert.True(fixture.Host.World.TryGetCurrentActivity(fixture.Layout.Glen, out ActivityInstance travel));
+            Assert.Equal(WellKnownActivities.Traveling, travel.DefinitionId);
+            Assert.Equal(fixture.Layout.Cafe, travel.SpatialContext.Transit.DestinationLocationId);
+            Assert.Empty(fixture.Host.World.Decisions.All);
+
+            fixture.Host.Session.Advance(SimDuration.FromMinutes(95));
+
+            Assert.True(fixture.Host.World.TryGetCurrentActivity(fixture.Layout.Glen, out ActivityInstance waiting));
+            Assert.Equal(WellKnownActivities.Waiting, waiting.DefinitionId);
+            Character glen = fixture.Host.World.Characters.Get(fixture.Layout.Glen);
+            Assert.True(glen.TryGetNeed(WellKnownNeeds.Recreation, out NeedState recreation));
+            Assert.True(recreation.ValueAt(fixture.Host.World.Clock.Now) < recreation.BehaviouralThreshold);
+        }
+
+        [Fact]
         public void GoldenScenarioConnectsTheWholeCausalChain()
         {
             Fixture fixture = Create();

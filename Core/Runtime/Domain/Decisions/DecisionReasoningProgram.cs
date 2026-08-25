@@ -61,6 +61,12 @@ namespace Vivarium.Domain.Decisions
         public static readonly AuthoredId SelfOption = new AuthoredId("decision.parameter.self_option");
         public static readonly AuthoredId WaitOption = new AuthoredId("decision.parameter.wait_option");
         public static readonly AuthoredId ActivityModifierId = new AuthoredId("decision.parameter.activity_modifier_id");
+        public static readonly AuthoredId InterestId = new AuthoredId("decision.parameter.interest_id");
+        public static readonly AuthoredId Destination = new AuthoredId("decision.parameter.destination");
+        public static readonly AuthoredId ActivityDefinitionId = new AuthoredId("decision.parameter.activity_definition_id");
+        public static readonly AuthoredId ActivityDurationMinutes = new AuthoredId("decision.parameter.activity_duration_minutes");
+        public static readonly AuthoredId NeedId = new AuthoredId("decision.parameter.need_id");
+        public static readonly AuthoredId NeedSatisfactionOffset = new AuthoredId("decision.parameter.need_satisfaction_offset");
         public static readonly AuthoredId Commitment = new AuthoredId("decision.parameter.commitment");
         public static readonly AuthoredId PreservedCommitment = new AuthoredId("decision.parameter.preserved_commitment");
         public static readonly AuthoredId RelinquishedCommitment = new AuthoredId("decision.parameter.relinquished_commitment");
@@ -267,6 +273,62 @@ namespace Vivarium.Domain.Decisions
         }
     }
 
+    /// <summary>
+    /// Read-only semantic input consumed by compiled reasoning. Runtime Decisions and immutable
+    /// preflight candidates share this contract so routine scoring never needs a disposable Decision.
+    /// </summary>
+    public interface IDecisionReasoningContext
+    {
+        DecisionId DecisionId { get; }
+        CharacterId CharacterId { get; }
+        IReadOnlyList<DecisionOption> Options { get; }
+        DecisionReasoningProgram ReasoningProgram { get; }
+        bool TryGetContextParameter(AuthoredId key, out DecisionParameterValue value);
+    }
+
+    /// <summary>Immutable, runtime-id-free reasoning input used before Decision admission.</summary>
+    public sealed class DecisionReasoningContext : IDecisionReasoningContext
+    {
+        private readonly DecisionOption[] _options;
+        private readonly SortedDictionary<AuthoredId, DecisionParameterValue> _context =
+            new SortedDictionary<AuthoredId, DecisionParameterValue>();
+
+        public DecisionReasoningContext(
+            CharacterId characterId,
+            IReadOnlyList<DecisionOption> options,
+            DecisionReasoningProgram reasoningProgram,
+            IReadOnlyDictionary<AuthoredId, DecisionParameterValue> context = null)
+        {
+            if (!characterId.IsSet) throw new ArgumentException("A reasoning context needs an actor.", nameof(characterId));
+            if (options == null || options.Count == 0)
+                throw new ArgumentException("A reasoning context needs at least one candidate Option.", nameof(options));
+            CharacterId = characterId;
+            _options = new DecisionOption[options.Count];
+            for (int i = 0; i < options.Count; i++) _options[i] = options[i].Copy();
+            Array.Sort(_options, (a, b) =>
+            {
+                int order = a.OrderIndex.CompareTo(b.OrderIndex);
+                return order != 0 ? order : a.Id.CompareTo(b.Id);
+            });
+            ReasoningProgram = reasoningProgram == null
+                ? throw new ArgumentNullException(nameof(reasoningProgram))
+                : new DecisionReasoningProgram(reasoningProgram.Bindings);
+            if (context != null)
+            {
+                foreach (KeyValuePair<AuthoredId, DecisionParameterValue> pair in context)
+                    _context[pair.Key] = pair.Value;
+            }
+        }
+
+        public CharacterId CharacterId { get; }
+        public DecisionId DecisionId => default;
+        public IReadOnlyList<DecisionOption> Options => _options;
+        public DecisionReasoningProgram ReasoningProgram { get; }
+        public IReadOnlyDictionary<AuthoredId, DecisionParameterValue> Context => _context;
+        public bool TryGetContextParameter(AuthoredId key, out DecisionParameterValue value) =>
+            _context.TryGetValue(key, out value);
+    }
+
     public sealed class BoundConsiderationParameters
     {
         private readonly SortedDictionary<AuthoredId, DecisionParameterValue> _values =
@@ -280,7 +342,7 @@ namespace Vivarium.Domain.Decisions
     public static class DecisionParameterBinder
     {
         public static bool TryBind(
-            Decision decision,
+            IDecisionReasoningContext decision,
             DecisionOption option,
             CompiledConsiderationBinding consideration,
             out BoundConsiderationParameters parameters)
@@ -313,7 +375,7 @@ namespace Vivarium.Domain.Decisions
         }
 
         private static bool TryResolve(
-            Decision decision,
+            IDecisionReasoningContext decision,
             DecisionOption option,
             CompiledParameterBinding binding,
             out DecisionParameterValue value)
@@ -354,7 +416,7 @@ namespace Vivarium.Domain.Decisions
         AuthoredId Id { get; }
         ResolvedDecisionSignal Resolve(
             WorldState world,
-            Decision decision,
+            IDecisionReasoningContext decision,
             DecisionOption option,
             DecisionSignalRequest request,
             BoundConsiderationParameters parameters);
@@ -374,7 +436,7 @@ namespace Vivarium.Domain.Decisions
 
         public ResolvedDecisionSignal Resolve(
             WorldState world,
-            Decision decision,
+            IDecisionReasoningContext decision,
             DecisionOption option,
             DecisionSignalRequest request,
             BoundConsiderationParameters parameters)
@@ -391,6 +453,7 @@ namespace Vivarium.Domain.Decisions
             var registry = new DecisionSignalProviderRegistry();
             registry.Register(new DecisionContextSignalProvider());
             registry.Register(new ActorValueSignalProvider());
+            registry.Register(new ActorInterestSignalProvider());
             registry.Register(new TargetAvailabilitySignalProvider());
             registry.Register(new RelationshipChannelSignalProvider());
             registry.Register(new TravelBurdenSignalProvider());
@@ -404,6 +467,7 @@ namespace Vivarium.Domain.Decisions
     {
         public static readonly AuthoredId DecisionContext = new AuthoredId("decision.signal_provider.context");
         public static readonly AuthoredId ActorValue = new AuthoredId("decision.signal_provider.actor_value");
+        public static readonly AuthoredId ActorInterest = new AuthoredId("decision.signal_provider.actor_interest");
         public static readonly AuthoredId TargetAvailability = new AuthoredId("decision.signal_provider.target_availability");
         public static readonly AuthoredId RelationshipChannel = new AuthoredId("decision.signal_provider.relationship_channel");
         public static readonly AuthoredId TravelBurden = new AuthoredId("decision.signal_provider.travel_burden");
@@ -411,7 +475,7 @@ namespace Vivarium.Domain.Decisions
         public static readonly AuthoredId Commitment = new AuthoredId("decision.signal_provider.commitment");
         public static readonly AuthoredId[] BuiltIns =
         {
-            DecisionContext, ActorValue, TargetAvailability, RelationshipChannel, TravelBurden,
+            DecisionContext, ActorValue, ActorInterest, TargetAvailability, RelationshipChannel, TravelBurden,
             ActivityModifier, Commitment,
         };
     }
@@ -444,20 +508,25 @@ namespace Vivarium.Domain.Decisions
         public AuthoredId Id => DecisionSignalProviderIds.DecisionContext;
 
         public ResolvedDecisionSignal Resolve(
-            WorldState world, Decision decision, DecisionOption option, DecisionSignalRequest request,
+            WorldState world, IDecisionReasoningContext decision, DecisionOption option, DecisionSignalRequest request,
             BoundConsiderationParameters parameters)
         {
-            return parameters.TryGet(request.SignalId, out DecisionParameterValue value) &&
-                   value.Kind == DecisionParameterKind.Integer
-                ? new ResolvedDecisionSignal(
-                    new SignalValue(request.SignalId, value.Integer, 0, SignalApplicability.Known),
-                    new[]
-                    {
-                        new DecisionDependencyKey(
-                            RevisionAspects.Scoped(RevisionAspects.DecisionContext, request.SignalId),
-                            decision.Id.ToRef()),
-                    })
-                : new ResolvedDecisionSignal(new SignalValue(request.SignalId, 0, 0, SignalApplicability.Unknown));
+            if (!parameters.TryGet(request.SignalId, out DecisionParameterValue value) ||
+                value.Kind != DecisionParameterKind.Integer)
+                return new ResolvedDecisionSignal(
+                    new SignalValue(request.SignalId, 0, 0, SignalApplicability.Unknown));
+
+            var dependencies = decision.DecisionId.IsSet
+                ? new[]
+                {
+                    new DecisionDependencyKey(
+                        RevisionAspects.Scoped(RevisionAspects.DecisionContext, request.SignalId),
+                        decision.DecisionId.ToRef()),
+                }
+                : new DecisionDependencyKey[0];
+            return new ResolvedDecisionSignal(
+                new SignalValue(request.SignalId, value.Integer, 0, SignalApplicability.Known),
+                dependencies);
         }
     }
 
@@ -467,7 +536,7 @@ namespace Vivarium.Domain.Decisions
         public AuthoredId Id => DecisionSignalProviderIds.ActivityModifier;
 
         public ResolvedDecisionSignal Resolve(
-            WorldState world, Decision decision, DecisionOption option, DecisionSignalRequest request,
+            WorldState world, IDecisionReasoningContext decision, DecisionOption option, DecisionSignalRequest request,
             BoundConsiderationParameters parameters)
         {
             var dependency = new DecisionDependencyKey(request.SignalId, decision.CharacterId.ToRef());
@@ -501,7 +570,7 @@ namespace Vivarium.Domain.Decisions
         public AuthoredId Id => DecisionSignalProviderIds.Commitment;
 
         public ResolvedDecisionSignal Resolve(
-            WorldState world, Decision decision, DecisionOption option, DecisionSignalRequest request,
+            WorldState world, IDecisionReasoningContext decision, DecisionOption option, DecisionSignalRequest request,
             BoundConsiderationParameters parameters)
         {
             var scheduleDependency = new DecisionDependencyKey(
@@ -590,7 +659,7 @@ namespace Vivarium.Domain.Decisions
         public AuthoredId Id => DecisionSignalProviderIds.ActorValue;
 
         public ResolvedDecisionSignal Resolve(
-            WorldState world, Decision decision, DecisionOption option, DecisionSignalRequest request,
+            WorldState world, IDecisionReasoningContext decision, DecisionOption option, DecisionSignalRequest request,
             BoundConsiderationParameters parameters)
         {
             if (!parameters.TryGet(DecisionReasoningParameters.ValueId, out DecisionParameterValue tag) ||
@@ -609,12 +678,41 @@ namespace Vivarium.Domain.Decisions
         }
     }
 
+    public sealed class ActorInterestSignalProvider : IDecisionSignalProvider
+    {
+        public AuthoredId Id => DecisionSignalProviderIds.ActorInterest;
+
+        public ResolvedDecisionSignal Resolve(
+            WorldState world, IDecisionReasoningContext decision, DecisionOption option, DecisionSignalRequest request,
+            BoundConsiderationParameters parameters)
+        {
+            if (!parameters.TryGet(DecisionReasoningParameters.InterestId, out DecisionParameterValue tag) ||
+                tag.Kind != DecisionParameterKind.AuthoredId)
+            {
+                return new ResolvedDecisionSignal(
+                    new SignalValue(request.SignalId, 0, 0, SignalApplicability.Unknown));
+            }
+            Character character = world.Characters.Get(decision.CharacterId);
+            var dependency = new DecisionDependencyKey(
+                RevisionAspects.Scoped(RevisionAspects.CharacterInterest, tag.AuthoredId),
+                decision.CharacterId.ToRef());
+            return new ResolvedDecisionSignal(
+                new SignalValue(
+                    request.SignalId,
+                    character.Interests.Intensity(tag.AuthoredId),
+                    0,
+                    SignalApplicability.Known,
+                    character.Interests.Revision),
+                new[] { dependency });
+        }
+    }
+
     public sealed class TargetAvailabilitySignalProvider : IDecisionSignalProvider
     {
         public AuthoredId Id => DecisionSignalProviderIds.TargetAvailability;
 
         public ResolvedDecisionSignal Resolve(
-            WorldState world, Decision decision, DecisionOption option, DecisionSignalRequest request,
+            WorldState world, IDecisionReasoningContext decision, DecisionOption option, DecisionSignalRequest request,
             BoundConsiderationParameters parameters)
         {
             if (!DecisionSignalParameters.TryTarget(parameters, out CharacterId target))
@@ -639,7 +737,7 @@ namespace Vivarium.Domain.Decisions
         public AuthoredId Id => DecisionSignalProviderIds.RelationshipChannel;
 
         public ResolvedDecisionSignal Resolve(
-            WorldState world, Decision decision, DecisionOption option, DecisionSignalRequest request,
+            WorldState world, IDecisionReasoningContext decision, DecisionOption option, DecisionSignalRequest request,
             BoundConsiderationParameters parameters)
         {
             if (!DecisionSignalParameters.TryTarget(parameters, out CharacterId target) ||
@@ -669,7 +767,7 @@ namespace Vivarium.Domain.Decisions
         public AuthoredId Id => DecisionSignalProviderIds.TravelBurden;
 
         public ResolvedDecisionSignal Resolve(
-            WorldState world, Decision decision, DecisionOption option, DecisionSignalRequest request,
+            WorldState world, IDecisionReasoningContext decision, DecisionOption option, DecisionSignalRequest request,
             BoundConsiderationParameters parameters)
         {
             if (!DecisionSignalParameters.TryTarget(parameters, out CharacterId target) ||
@@ -699,14 +797,51 @@ namespace Vivarium.Domain.Decisions
     {
         public DecisionReasoningEvaluation(
             IReadOnlyList<CandidateReason> reasons,
-            IReadOnlyList<DecisionReasoningDependencyRoute> dependencyRoutes)
+            IReadOnlyList<DecisionReasoningDependencyRoute> dependencyRoutes,
+            IReadOnlyDictionary<AuthoredId, long> optionScores)
         {
             Reasons = reasons;
             DependencyRoutes = dependencyRoutes;
+            OptionScores = optionScores;
         }
 
         public IReadOnlyList<CandidateReason> Reasons { get; }
         public IReadOnlyList<DecisionReasoningDependencyRoute> DependencyRoutes { get; }
+        public IReadOnlyDictionary<AuthoredId, long> OptionScores { get; }
+    }
+
+    /// <summary>Pure preflight output. No runtime id, Event, Domain Event, or World mutation is allocated.</summary>
+    public sealed class DecisionReasoningPreflightResult
+    {
+        public DecisionReasoningPreflightResult(
+            DecisionReasoningContext context,
+            DecisionReasoningEvaluation evaluation,
+            int importance)
+        {
+            Context = context ?? throw new ArgumentNullException(nameof(context));
+            Evaluation = evaluation ?? throw new ArgumentNullException(nameof(evaluation));
+            Importance = importance;
+            DecisionOption selected = context.Options[0];
+            long selectedScore = Score(selected.Id);
+            for (int i = 1; i < context.Options.Count; i++)
+            {
+                DecisionOption candidate = context.Options[i];
+                long score = Score(candidate.Id);
+                if (score > selectedScore)
+                {
+                    selected = candidate;
+                    selectedScore = score;
+                }
+            }
+            SelectedOptionId = selected.Id;
+        }
+
+        public DecisionReasoningContext Context { get; }
+        public DecisionReasoningEvaluation Evaluation { get; }
+        public int Importance { get; }
+        public AuthoredId SelectedOptionId { get; }
+        public long Score(AuthoredId optionId) =>
+            Evaluation.OptionScores.TryGetValue(optionId, out long score) ? score : 0;
     }
 
     public sealed class CompiledDecisionReasoningEvaluator
@@ -723,15 +858,33 @@ namespace Vivarium.Domain.Decisions
             WorldState world,
             Decision decision,
             DecisionSignalProviderRegistry providers,
-            IReadOnlyCollection<DecisionReasoningRoute> selectedRoutes = null)
+            IReadOnlyCollection<DecisionReasoningRoute> selectedRoutes = null) =>
+            EvaluateDetailed(world, decision, decision.Id, providers, selectedRoutes);
+
+        public DecisionReasoningEvaluation EvaluateDetailed(
+            WorldState world,
+            DecisionReasoningContext context,
+            DecisionSignalProviderRegistry providers) =>
+            EvaluateDetailed(world, context, DecisionId.None, providers, null);
+
+        private DecisionReasoningEvaluation EvaluateDetailed(
+            WorldState world,
+            IDecisionReasoningContext decision,
+            DecisionId decisionId,
+            DecisionSignalProviderRegistry providers,
+            IReadOnlyCollection<DecisionReasoningRoute> selectedRoutes)
         {
             if (decision.ReasoningProgram == null)
             {
                 return new DecisionReasoningEvaluation(
-                    new CandidateReason[0], new DecisionReasoningDependencyRoute[0]);
+                    new CandidateReason[0],
+                    new DecisionReasoningDependencyRoute[0],
+                    new SortedDictionary<AuthoredId, long>());
             }
             var candidates = new List<CandidateReason>();
             var routes = new List<DecisionReasoningDependencyRoute>();
+            var optionScores = new SortedDictionary<AuthoredId, long>();
+            for (int o = 0; o < decision.Options.Count; o++) optionScores[decision.Options[o].Id] = 0;
             SortedSet<DecisionReasoningRoute> selected = selectedRoutes == null
                 ? null
                 : new SortedSet<DecisionReasoningRoute>(selectedRoutes);
@@ -741,7 +894,7 @@ namespace Vivarium.Domain.Decisions
                 for (int o = 0; o < decision.Options.Count; o++)
                 {
                     DecisionOption option = decision.Options[o];
-                    var route = new DecisionReasoningRoute(decision.Id, binding.BindingId, option.Id);
+                    var route = new DecisionReasoningRoute(decisionId, binding.BindingId, option.Id);
                     if (selected != null && !selected.Contains(route)) continue;
                     if (!DecisionParameterBinder.TryBind(decision, option, binding, out BoundConsiderationParameters parameters))
                     {
@@ -776,6 +929,10 @@ namespace Vivarium.Domain.Decisions
                     if (!applicable) continue;
 
                     SignalFieldEvaluation result = _fields.Evaluate(vector, binding.Field);
+                    optionScores[option.Id] = IntegerMath.Clamp(
+                        optionScores[option.Id] + result.ExpectedBoundedScore,
+                        -SignalNumeric.Scale,
+                        SignalNumeric.Scale);
                     Die die = binding.Scale.Map(result.ExpectedBoundedScore);
                     if (!die.IsSet) continue;
                     InfluencePolarity polarity = result.ExpectedBoundedScore >= 0
@@ -823,7 +980,25 @@ namespace Vivarium.Domain.Decisions
                             signalEvidence, contributionEvidence)));
                 }
             }
-            return new DecisionReasoningEvaluation(_consolidator.Consolidate(candidates), routes);
+            return new DecisionReasoningEvaluation(_consolidator.Consolidate(candidates), routes, optionScores);
+        }
+    }
+
+    public sealed class CompiledDecisionReasoningPreflightService
+    {
+        private readonly CompiledDecisionReasoningEvaluator _evaluator = new CompiledDecisionReasoningEvaluator();
+        private readonly DecisionImportanceEvaluator _importance = new DecisionImportanceEvaluator();
+
+        public DecisionReasoningPreflightResult Evaluate(
+            WorldState world,
+            DecisionReasoningContext context,
+            DecisionSignalProviderRegistry providers)
+        {
+            DecisionReasoningEvaluation evaluation = _evaluator.EvaluateDetailed(world, context, providers);
+            return new DecisionReasoningPreflightResult(
+                context,
+                evaluation,
+                _importance.Evaluate(evaluation.Reasons));
         }
     }
 
@@ -860,6 +1035,26 @@ namespace Vivarium.Domain.Decisions
             DecisionReasoningEvaluation evaluation = _evaluator.EvaluateDetailed(world, decision, providers);
             world.DecisionDependencies.ReplaceReasoningRoutes(decision, evaluation.DependencyRoutes);
             return evaluation.DependencyRoutes.Count;
+        }
+
+        public int AdoptPreflight(
+            WorldState world,
+            Decision decision,
+            DecisionReasoningEvaluation evaluation)
+        {
+            var routes = new DecisionReasoningDependencyRoute[evaluation.DependencyRoutes.Count];
+            for (int i = 0; i < routes.Length; i++)
+            {
+                DecisionReasoningDependencyRoute source = evaluation.DependencyRoutes[i];
+                routes[i] = new DecisionReasoningDependencyRoute(
+                    source.Dependency,
+                    new DecisionReasoningRoute(
+                        decision.Id,
+                        source.Route.BindingId,
+                        source.Route.OptionId));
+            }
+            world.DecisionDependencies.ReplaceReasoningRoutes(decision, routes);
+            return _reconciler.Reconcile(decision, evaluation.Reasons);
         }
     }
 

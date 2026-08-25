@@ -16,7 +16,6 @@ namespace Vivarium.Domain.Activities
     /// </summary>
     public sealed class NeedSatisfactionRoutineService
     {
-        private const string SatisfactionParameterPrefix = "activity.param.need_satisfaction.";
         private readonly DefinitionCatalog _catalog;
         private readonly NeedProgressionService _needs;
         private readonly ActivityTransitionService _transitions;
@@ -66,7 +65,7 @@ namespace Vivarium.Domain.Activities
             for (int i = 0; i < needIds.Count; i++)
             {
                 AuthoredId needId = needIds[i];
-                AuthoredId parameter = SatisfactionParameter(needId);
+                AuthoredId parameter = ActivityNeedParameters.SatisfactionOffset(needId);
                 long offset = activity.CommittedParameterOr(parameter, 0);
                 if (offset != 0) _needs.ApplyOffset(context, character, needId, offset);
             }
@@ -82,7 +81,7 @@ namespace Vivarium.Domain.Activities
                 !world.TryGetCurrentActivity(character.Id, out ActivityInstance current) ||
                 current.DefinitionId != WellKnownActivities.Waiting ||
                 !current.SpatialContext.IsLocated ||
-                !TryFindNearestAffordingLocation(
+                !ActivityAffordanceSelector.TryFindNearest(
                     world,
                     current.SpatialContext.LocationId,
                     routine.ActivityDefinitionId,
@@ -92,7 +91,7 @@ namespace Vivarium.Domain.Activities
             ActivityDefinition activity = _catalog.Activities[routine.ActivityDefinitionId];
             var parameters = new SortedDictionary<AuthoredId, long>
             {
-                [SatisfactionParameter(definition.Id)] = routine.SatisfactionOffset,
+                [ActivityNeedParameters.SatisfactionOffset(definition.Id)] = routine.SatisfactionOffset,
             };
 
             if (current.SpatialContext.LocationId == destination)
@@ -117,29 +116,6 @@ namespace Vivarium.Domain.Activities
                 continuationCommittedParameters: parameters);
         }
 
-        private static bool TryFindNearestAffordingLocation(
-            WorldState world,
-            LocationId origin,
-            AuthoredId activityDefinitionId,
-            out LocationId locationId)
-        {
-            locationId = LocationId.None;
-            SimDuration bestCost = default;
-            foreach (LocationId candidate in world.Locations.Affording(activityDefinitionId))
-            {
-                LocationNode node = world.Locations.Get(candidate);
-                if (!node.IsOccupiable || !world.TravelNetwork.TryPlanRoute(origin, candidate, out TravelPlan plan))
-                    continue;
-                if (!locationId.IsSet || plan.TotalCost < bestCost ||
-                    (plan.TotalCost == bestCost && candidate.CompareTo(locationId) < 0))
-                {
-                    locationId = candidate;
-                    bestCost = plan.TotalCost;
-                }
-            }
-            return locationId.IsSet;
-        }
-
         private bool TryGet(
             WorldState world,
             CharacterId characterId,
@@ -153,8 +129,6 @@ namespace Vivarium.Domain.Activities
                 definition.SatisfactionRoutine != null;
         }
 
-        private static AuthoredId SatisfactionParameter(AuthoredId needId) =>
-            new AuthoredId(SatisfactionParameterPrefix + needId.Value);
     }
 
     public sealed class NeedSatisfactionThresholdHandler : DomainEventHandler<NeedThresholdReachedEvent>

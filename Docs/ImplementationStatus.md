@@ -134,6 +134,17 @@ Working implementations:
   Decision triggers may require an Activity context, keeping Mina's leave-work dilemma specific to
   Working while free characters eat without a Decision. In-flight Travel carries generic snapshotted
   continuation parameters through save/load and content drift.
+- **Discretionary Recreation routine** — an authored increasing-pressure Need maps Decision Options to
+  concrete Activities and Interests. At threshold, a free character filters candidates through the real
+  nearest-reachable Activity-affordance index and evaluates the remaining Options with the compiled
+  reasoning pipeline in an immutable preflight that allocates no identity, scheduler entry, or Domain
+  Event. A low-Importance result deterministically starts its selected local Activity or Travel directly;
+  a result at or above the catalog admission floor becomes a normal persistent Decision by adopting the
+  exact preflight reasons and Importance without reevaluation. Destination, Activity duration, and Need
+  satisfaction are snapshotted onto the selected Option/continuation, so completion and replanning remain
+  identical live, offline, and after save/load. Production content authors Tabletop Games and Reading;
+  focused tests cover ordinary selection, unavailable-affordance fallback, promoted admission, preflight
+  purity, and persistence equivalence.
 - **Decisions** — living influence sets with stable influence identity, dependency-indexed
   reevaluation, deterministic dice resolution, bounded held decisions, one authority for intervention
   rules, one content-backed Need-threshold generation path with an Activity consequence, and targeted
@@ -189,8 +200,9 @@ Working implementations:
   content, and Unity authoring. Full and targeted reason reconciliation recompute the value from the
   complete current reason set; intervention-modified dice do not affect it, and resolved Decisions retain
   their last value. The exact value round-trips in saves, while schema v10 replaces legacy authored values
-  with the strongest persisted active reason magnitude. All current generators remain admitted; the
-  Recreation slice will first apply an admission floor to a candidate with a real ordinary fallback.
+  with the strongest persisted active reason magnitude. Structural generators remain admitted;
+  discretionary Recreation is the first candidate generator to apply a catalog-owned admission floor
+  while retaining a real ordinary fallback.
 - **Frozen Decision explanations** — live compiled Influences retain their latest compact evaluation
   snapshot (signed expectation, output variance, Signal means/variance/applicability/source revisions,
   and contribution amounts). Resolution deep-copies that evidence plus semantic label/category/channel,
@@ -299,10 +311,12 @@ Intentionally thin, pending game-design decisions:
 - **Save serialization format.** Explicitly deferred (§57). `ISaveGameSerializer` is defined;
   `InMemorySaveGameStore` exercises mapping without committing to an encoding.
 - **Needs → behaviour breadth.** Threshold crossings can generate one Decision type, Energy drives a
-  Sleep/recovery routine, and Hunger drives ordinary affordance-gated Eating. Competing routine
-  priority, Recreation/Social satisfaction, and other behavioral reactions remain unimplemented.
-- **Unity authoring/presentation.** `ContentPackAsset` converts authored Needs (including rest and
-  satisfaction routines), Activities, Employment definitions and obligation patterns, Decisions
+  Sleep/recovery routine, Hunger drives ordinary affordance-gated Eating, and Recreation selects between
+  reachable discretionary Activities from Interests with per-instance Decision admission. Competing
+  routine priority, ordinary Social satisfaction, and other behavioral reactions remain unimplemented.
+- **Unity authoring/presentation.** `ContentPackAsset` converts authored Needs (including rest,
+  satisfaction, and Recreation routines), the Decision admission policy, Activities, Employment
+  definitions and obligation patterns, Decisions
   (including typed compiled reasoning, social triggers, and directional outcomes), appraisal calibration,
   social evidence/pressure, and interventions into the validated Domain catalog. Demo characters receive deterministic social
   profiles. The smoke scene creates Mina and Glen's Bakery Employments, whose shared shift Commitments

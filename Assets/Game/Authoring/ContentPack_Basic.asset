@@ -12,7 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: efa2c788149cc734eaa878ceb97ac2b0, type: 3}
   m_Name: ContentPack_Basic
   m_EditorClassIdentifier: Vivarium.Unity.Authoring::Vivarium.Unity.Authoring.ContentPackAsset
-  contentVersion: 6
+  contentVersion: 7
+  decisionAdmissionFloor: 6500
   traits:
   - {fileID: 11400000, guid: afe9983f40078e045a269c0c1854d889, type: 2}
   - {fileID: 11400000, guid: cf50c39fa4f24f64ca6fccdf406a2d68, type: 2}
@@ -33,6 +34,26 @@ MonoBehaviour:
       activityDefinitionId: activity.eating
       activationThreshold: 6000
       satisfactionOffset: -5000
+  - authoredId: need.recreation
+    displayName: Recreation
+    minValue: 0
+    maxValue: 10000
+    ratePerMinuteNumerator: 2
+    ratePerMinuteDenominator: 1
+    behaviouralThresholds:
+    behaviouralThresholdValues:
+    - 6000
+    recreationRoutine:
+      decisionDefinitionId: decision.choose_recreation
+      activationThreshold: 6000
+      satisfactionOffset: -5000
+      candidates:
+      - optionId: option.recreation.tabletop_games
+        activityDefinitionId: activity.tabletop_games
+        interestId: interest.tabletop_games
+      - optionId: option.recreation.reading
+        activityDefinitionId: activity.reading
+        interestId: interest.reading
   activities:
   - authoredId: activity.working
     displayName: Working
@@ -55,6 +76,18 @@ MonoBehaviour:
   - authoredId: activity.eating
     displayName: Eating
     defaultDurationMinutes: 30
+    producesOutcome: 0
+    supportsInteractiveResolution: 0
+    isTravel: 0
+  - authoredId: activity.tabletop_games
+    displayName: Tabletop Games
+    defaultDurationMinutes: 90
+    producesOutcome: 0
+    supportsInteractiveResolution: 0
+    isTravel: 0
+  - authoredId: activity.reading
+    displayName: Reading
+    defaultDurationMinutes: 60
     producesOutcome: 0
     supportsInteractiveResolution: 0
     isTravel: 0
@@ -427,6 +460,86 @@ MonoBehaviour:
     - optionId: option.avoid_company
       channelId: relationship.channel.resentment
       delta: 500
+  - authoredId: decision.choose_recreation
+    options:
+    - authoredId: option.recreation.tabletop_games
+      labelId: Play Tabletop Games
+      orderIndex: 0
+      context:
+      - key: decision.parameter.interest_id
+        kind: 1
+        integer: 0
+        authoredId: interest.tabletop_games
+        entityKind: 0
+        runtimeId: 0
+    - authoredId: option.recreation.reading
+      labelId: Read
+      orderIndex: 1
+      context:
+      - key: decision.parameter.interest_id
+        kind: 1
+        integer: 0
+        authoredId: interest.reading
+        entityKind: 0
+        runtimeId: 0
+    timeToResolveMinutes: 10
+    conflictScopeKindId: conflict_scope.recreation
+    holdEligible: 1
+    dependencies: []
+    influences: []
+    activityOutcomes: []
+    relationshipOutcomes: []
+    reasoningProgram:
+      bindings:
+      - bindingId: binding.recreation.interest
+        considerationId: consideration.recreation.interest
+        definitionVersion: 1
+        parameterSchema:
+        - parameterId: decision.parameter.actor
+          kind: 2
+          required: 1
+        - parameterId: decision.parameter.interest_id
+          kind: 1
+          required: 1
+        parameterBindings:
+        - parameterId: decision.parameter.actor
+          source: 0
+          sourceParameterId: ''
+        - parameterId: decision.parameter.interest_id
+          source: 2
+          sourceParameterId: decision.parameter.interest_id
+        signals:
+        - signalId: decision.signal.recreation.interest
+          providerId: decision.signal_provider.actor_interest
+        field:
+          authoredId: field.recreation.interest
+          bias: 0
+          revision: 1
+          linearTerms:
+          - signalId: decision.signal.recreation.interest
+            coefficient: 30000
+            provenanceId: reason.recreation.interest
+          pairwiseTerms: []
+          idealPoint: []
+          idealFactors: []
+        reasonChannelId: reason_channel.recreation.interest
+        consolidationPolicy: 0
+        scaleId: decision.reason_scale.recreation
+        scaleThresholds:
+        - minimumMagnitude: 1000
+          dieSides: 4
+        - minimumMagnitude: 2500
+          dieSides: 6
+        - minimumMagnitude: 4500
+          dieSides: 8
+        - minimumMagnitude: 6500
+          dieSides: 10
+        - minimumMagnitude: 8500
+          dieSides: 12
+        categoryId: influence_category.personal_concern
+        positiveLabelId: influence.recreation.interest
+        negativeLabelId: influence.recreation.disinterest
+        visibility: 31
   interventions:
   - authoredId: intervention.encourage
     kind: 2

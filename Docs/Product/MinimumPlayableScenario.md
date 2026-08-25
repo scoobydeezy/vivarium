@@ -1567,15 +1567,15 @@ The slice is complete only when:
 
 Based on the current repository status and the joint Phase 0 review, the implementation order is:
 
-1. **Energy → Sleeping → waking → replanning**
-2. **Employment v0 → workplace authority + recurring shift/closing-duty Commitments**
-3. **ordinary Hunger → Eating behavior governed by location/Activity affordances**
-4. **discretionary Recreation → Tabletop Games / Reading selection from Interests and availability**
-5. **ordinary Socializing behavior**
+1. **Energy → Sleeping → waking → replanning** — complete
+2. **Employment v0 → workplace authority + recurring shift/closing-duty Commitments** — complete
+3. **ordinary Hunger → Eating behavior governed by location/Activity affordances** — complete
+4. **discretionary Recreation → Tabletop Games / Reading selection from Interests and availability** — complete
+5. **ordinary Socializing behavior** — next
 6. **Nudge economy + Commons availability management**
 7. **Unity surfaces for following approximately ten simultaneous lives**
 
-The immediate next slice is **Energy → Sleeping → waking → replanning**. Revalidate later ordering after
+The immediate next slice is **ordinary Socializing behavior**. Revalidate later ordering after
 each completed causal link; do not implement all routine links as one subsystem project.
 
 ---

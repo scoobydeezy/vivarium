@@ -75,6 +75,7 @@ namespace Vivarium.Domain.Common
 
         /// <summary>A character's authored Value intensity. Scope with the Value id.</summary>
         public static readonly AuthoredId CharacterValue = new AuthoredId("revision.character.value");
+        public static readonly AuthoredId CharacterInterest = new AuthoredId("revision.character.interest");
 
         /// <summary>A character entering or leaving active simulation.</summary>
         public static readonly AuthoredId CharacterLifecycle = new AuthoredId("revision.character.lifecycle");

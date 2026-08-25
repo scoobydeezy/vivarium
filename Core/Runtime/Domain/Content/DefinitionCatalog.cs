@@ -38,7 +38,8 @@ namespace Vivarium.Domain.Content
             IReadOnlyDictionary<AuthoredId, SocialEvidenceDefinition> socialEvidence,
             IReadOnlyDictionary<AuthoredId, CommitmentAccountabilityPolicy> commitmentAccountabilityPolicies,
             IReadOnlyDictionary<AuthoredId, SocialPressureDefinition> socialPressures,
-            IReadOnlyDictionary<AuthoredId, EmploymentDefinition> employmentDefinitions)
+            IReadOnlyDictionary<AuthoredId, EmploymentDefinition> employmentDefinitions,
+            DecisionImportancePolicyDefinition decisionImportancePolicy)
         {
             ContentVersion = contentVersion;
             Traits = traits;
@@ -53,6 +54,7 @@ namespace Vivarium.Domain.Content
             CommitmentAccountabilityPolicies = commitmentAccountabilityPolicies;
             SocialPressures = socialPressures;
             EmploymentDefinitions = employmentDefinitions;
+            DecisionImportancePolicy = decisionImportancePolicy;
         }
 
         /// <summary>Recorded in saves and traces so version-scoped reproduction is diagnosable (§39.1, §53).</summary>
@@ -82,6 +84,8 @@ namespace Vivarium.Domain.Content
 
         public IReadOnlyDictionary<AuthoredId, EmploymentDefinition> EmploymentDefinitions { get; }
 
+        public DecisionImportancePolicyDefinition DecisionImportancePolicy { get; }
+
         /// <summary>Mutable builder. Validate before building — see <see cref="ContentValidator"/>.</summary>
         public sealed class Builder
         {
@@ -98,6 +102,7 @@ namespace Vivarium.Domain.Content
             private readonly Dictionary<AuthoredId, SocialPressureDefinition> _socialPressures = new Dictionary<AuthoredId, SocialPressureDefinition>();
             private readonly Dictionary<AuthoredId, EmploymentDefinition> _employmentDefinitions = new Dictionary<AuthoredId, EmploymentDefinition>();
             private readonly List<string> _errors = new List<string>();
+            private DecisionImportancePolicyDefinition _decisionImportancePolicy;
 
             public int ContentVersion { get; set; } = 1;
 
@@ -129,6 +134,15 @@ namespace Vivarium.Domain.Content
 
             public Builder Add(EmploymentDefinition definition) => AddTo(_employmentDefinitions, definition.Id, definition, "employment");
 
+            public Builder SetDecisionImportancePolicy(DecisionImportancePolicyDefinition definition)
+            {
+                if (_decisionImportancePolicy != null)
+                    _errors.Add("decision importance policy is declared more than once");
+                else
+                    _decisionImportancePolicy = definition ?? throw new ArgumentNullException(nameof(definition));
+                return this;
+            }
+
             public DefinitionCatalog Build()
             {
                 if (_errors.Count > 0)
@@ -150,7 +164,8 @@ namespace Vivarium.Domain.Content
                     _socialEvidence,
                     _commitmentAccountabilityPolicies,
                     _socialPressures,
-                    _employmentDefinitions);
+                    _employmentDefinitions,
+                    _decisionImportancePolicy);
             }
 
             private Builder AddTo<TDefinition>(Dictionary<AuthoredId, TDefinition> target, AuthoredId id, TDefinition definition, string kind)
@@ -179,6 +194,7 @@ namespace Vivarium.Domain.Content
         public static IReadOnlyList<string> Validate(DefinitionCatalog catalog)
         {
             var errors = new List<string>();
+            var recreationDecisions = new HashSet<AuthoredId>();
 
             foreach (KeyValuePair<AuthoredId, NeedDefinition> pair in catalog.Needs)
             {
@@ -245,6 +261,43 @@ namespace Vivarium.Domain.Content
                         errors.Add($"need '{need.Id}' satisfaction activation threshold must be a declared behavioural threshold");
                     if (need.MaxValue + satisfaction.SatisfactionOffset >= satisfaction.ActivationThreshold)
                         errors.Add($"need '{need.Id}' satisfaction offset must rearm the routine below its activation threshold even from maximum");
+                }
+
+                RecreationRoutineDefinition recreation = need.RecreationRoutine;
+                if (recreation != null)
+                {
+                    if (!recreationDecisions.Add(recreation.DecisionDefinitionId))
+                        errors.Add($"Recreation decision '{recreation.DecisionDefinitionId}' is assigned to more than one Need");
+                    if (catalog.DecisionImportancePolicy == null)
+                        errors.Add($"need '{need.Id}' Recreation routine requires a Decision Importance policy");
+                    if (need.DefaultRateNumerator <= 0)
+                        errors.Add($"need '{need.Id}' Recreation routine requires a positive ordinary rate");
+                    if (recreation.ActivationThreshold < need.MinValue || recreation.ActivationThreshold > need.MaxValue)
+                        errors.Add($"need '{need.Id}' Recreation activation threshold falls outside its range");
+                    if (!ContainsThreshold(need.BehaviouralThresholds, recreation.ActivationThreshold))
+                        errors.Add($"need '{need.Id}' Recreation activation threshold must be a declared behavioural threshold");
+                    if (need.MaxValue + recreation.SatisfactionOffset >= recreation.ActivationThreshold)
+                        errors.Add($"need '{need.Id}' Recreation satisfaction offset must rearm below its activation threshold");
+                    if (!catalog.Decisions.TryGetValue(recreation.DecisionDefinitionId, out DecisionDefinition recreationDecision))
+                    {
+                        errors.Add($"need '{need.Id}' Recreation routine references unknown decision '{recreation.DecisionDefinitionId}'");
+                    }
+                    else
+                    {
+                        if (recreationDecision.ReasoningProgram == null)
+                            errors.Add($"need '{need.Id}' Recreation decision requires compiled reasoning");
+                        for (int c = 0; c < recreation.Candidates.Count; c++)
+                        {
+                            RecreationCandidateDefinition candidate = recreation.Candidates[c];
+                            if (!catalog.Activities.ContainsKey(candidate.ActivityDefinitionId))
+                                errors.Add($"need '{need.Id}' Recreation candidate references unknown activity '{candidate.ActivityDefinitionId}'");
+                            bool optionExists = false;
+                            for (int o = 0; o < recreationDecision.Options.Count; o++)
+                                if (recreationDecision.Options[o].Id == candidate.OptionId) optionExists = true;
+                            if (!optionExists)
+                                errors.Add($"need '{need.Id}' Recreation candidate references unknown Option '{candidate.OptionId}'");
+                        }
+                    }
                 }
             }
 

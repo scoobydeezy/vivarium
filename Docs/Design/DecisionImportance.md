@@ -183,6 +183,11 @@ schema v10 migrates older authored values from persisted reason evidence.
 
 ### Slice B — Recreation proves candidate admission
 
+**Implemented.** Recreation evaluates only real reachable Activity affordances through an immutable,
+runtime-ID-free compiled-reasoning preflight. Ordinary instances start their selected Activity or Travel
+directly; instances at or above the catalog admission floor adopt the exact preflight reasons and
+Importance into a persistent Decision without reevaluation.
+
 1. Introduce the immutable preflight reasoning context/result without allocating runtime identity.
 2. Score available Tabletop Games / Reading candidates from Interests and availability.
 3. Resolve ordinary low-Importance Recreation automatically.
@@ -191,7 +196,7 @@ schema v10 migrates older authored values from persisted reason evidence.
 
 ### Slice C — Attention consumers
 
-1. Add the catalog-owned threshold policy and validation.
+1. Extend the catalog-owned admission policy with separately tunable feed and Auto-Hold floors.
 2. Build the feed query from all admitted Decisions using Importance plus Normal/Follow/Watch/Quiet policy.
 3. Implement Auto-Hold against `HoldEligible`, the same Importance value, and its own threshold.
 4. Add bounded ordering and overflow tests using live Importance, resolve time, then Decision ID, including

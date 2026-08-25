@@ -11,6 +11,7 @@ using Vivarium.Domain.History;
 using Vivarium.Domain.Characters;
 using Vivarium.Domain.Groups;
 using Vivarium.Domain.Employment;
+using Vivarium.Domain.Evaluation;
 
 namespace Vivarium.Unity.Authoring
 {
@@ -31,6 +32,9 @@ namespace Vivarium.Unity.Authoring
     {
         [Tooltip("Bumped whenever content changes. Recorded in saves and traces (§38, §53).")]
         [SerializeField] private int contentVersion = 1;
+
+        [Header("Decision importance")]
+        [SerializeField] private int decisionAdmissionFloor = 6500;
 
         [SerializeField] private TraitDefinitionAsset[] traits = new TraitDefinitionAsset[0];
 
@@ -62,6 +66,8 @@ namespace Vivarium.Unity.Authoring
         public DefinitionCatalog Build()
         {
             var builder = new DefinitionCatalog.Builder { ContentVersion = contentVersion };
+            builder.SetDecisionImportancePolicy(
+                new DecisionImportancePolicyDefinition(decisionAdmissionFloor));
 
             for (int i = 0; i < traits.Length; i++)
             {
@@ -172,6 +178,11 @@ namespace Vivarium.Unity.Authoring
             var problems = new List<string>();
             var seenIds = new HashSet<string>();
 
+            if (decisionAdmissionFloor < 0 || decisionAdmissionFloor > SignalNumeric.Scale)
+            {
+                problems.Add($"Decision admission floor must be between 0 and {SignalNumeric.Scale}");
+            }
+
             for (int i = 0; i < traits.Length; i++)
             {
                 if (traits[i] == null)
@@ -251,6 +262,7 @@ namespace Vivarium.Unity.Authoring
             public int[] behaviouralThresholdValues;
             public RestRoutineEntry restRoutine;
             public SatisfactionRoutineEntry satisfactionRoutine;
+            public RecreationRoutineEntry recreationRoutine;
 
             public Domain.Characters.NeedDefinition ToDefinition() => new Domain.Characters.NeedDefinition(
                 new AuthoredId(authoredId),
@@ -261,7 +273,8 @@ namespace Vivarium.Unity.Authoring
                 ratePerMinuteDenominator <= 0 ? 1 : ratePerMinuteDenominator,
                 ToBehaviouralThresholds(),
                 restRoutine.IsConfigured ? restRoutine.ToDefinition() : null,
-                satisfactionRoutine.IsConfigured ? satisfactionRoutine.ToDefinition() : null);
+                satisfactionRoutine.IsConfigured ? satisfactionRoutine.ToDefinition() : null,
+                recreationRoutine.IsConfigured ? recreationRoutine.ToDefinition() : null);
 
             private long[] ToBehaviouralThresholds()
             {
@@ -309,6 +322,41 @@ namespace Vivarium.Unity.Authoring
                 new AuthoredId(activityDefinitionId),
                 activationThreshold,
                 satisfactionOffset);
+        }
+
+        [System.Serializable]
+        public struct RecreationRoutineEntry
+        {
+            public string decisionDefinitionId;
+            public long activationThreshold;
+            public long satisfactionOffset;
+            public RecreationCandidateEntry[] candidates;
+
+            public bool IsConfigured => !string.IsNullOrWhiteSpace(decisionDefinitionId);
+
+            public RecreationRoutineDefinition ToDefinition()
+            {
+                var definitions = new RecreationCandidateDefinition[candidates?.Length ?? 0];
+                for (int i = 0; i < definitions.Length; i++) definitions[i] = candidates[i].ToDefinition();
+                return new RecreationRoutineDefinition(
+                    new AuthoredId(decisionDefinitionId),
+                    activationThreshold,
+                    satisfactionOffset,
+                    definitions);
+            }
+        }
+
+        [System.Serializable]
+        public struct RecreationCandidateEntry
+        {
+            public string optionId;
+            public string activityDefinitionId;
+            public string interestId;
+
+            public RecreationCandidateDefinition ToDefinition() => new RecreationCandidateDefinition(
+                new AuthoredId(optionId),
+                new AuthoredId(activityDefinitionId),
+                new AuthoredId(interestId));
         }
 
         [System.Serializable]

@@ -31,17 +31,16 @@ multiple habitats, and reciprocal autonomy.
 [`Player Agency Brief`](PlayerAgencyBrief.md) define the small world, meaningful character Decisions,
 supported player actions, and required Unity surfaces.
 
-The derived Decision Importance foundation is complete. The immediate next work is the routine slice it
-was built to support:
+The derived Decision Importance foundation and its first candidate-admission consumer are complete. The
+immediate next work is the remaining ordinary routine link:
 
-> **Discretionary Recreation admission and automatic selection.**
+> **Ordinary Socializing through bounded shared-context selection.**
 
 Observable completion test:
 
-> A free character evaluates real available Recreation affordances from Interests and availability; an
-> ordinary instance selects, travels, completes, and replans automatically, while an unusually important
-> instance is promoted into the same compiled Decision pipeline, identically across uninterrupted and
-> save/load runs.
+> A free character selects a bounded eligible partner from real shared context, performs a concrete
+> Socializing Activity without displacing unrelated obligations, applies the established interaction
+> consequences, and returns to ordinary planning identically live, offline, and after save/load.
 
 The Ordinary Hunger slice is complete: an authored satisfaction routine now turns analytical Hunger
 into Eating only at an explicit, reachable location Activity affordance. It carries snapshotted meal
@@ -50,9 +49,10 @@ live, offline, and across save/load. Work-context eligibility preserves Mina's N
 Decision rather than inventing a Bakery meal break. The focused
 [`Decision Importance brief`](../Design/DecisionImportance.md) places one small derived-importance
 foundation ahead of Recreation so discretionary alternatives do not introduce a second, routine-only
-choice model. That foundation now derives each existing Decision's living magnitude from its strongest
-active consolidated reason. Recreation remains the earliest missing link in the Phase 1 daily-routine
-loop and the first proof of preflight per-instance Decision admission.
+choice model. Recreation now proves that architecture end to end: a runtime-ID-free preflight scores
+reachable Tabletop Games and Reading affordances from Interests, ordinary instances execute directly,
+and unusually important instances adopt the exact preflight reasons into the compiled Decision pipeline.
+Socializing is now the earliest missing link in the Phase 1 daily-routine loop.
 
 ## Ordered phases
 
@@ -90,8 +90,8 @@ slice:
 3. Ordinary Hunger → Eating governed by location and Activity affordances. **Complete.**
 4. Derived Decision Importance foundation. **Complete.**
 5. Recreation admission and automatic Tabletop Games / Reading selection from Interests and
-   availability. **Next.**
-6. Ordinary Socializing through bounded shared-context selection.
+   availability. **Complete.**
+6. Ordinary Socializing through bounded shared-context selection. **Next.**
 
 This is sequencing guidance, not permission to implement all five as one subsystem project.
 

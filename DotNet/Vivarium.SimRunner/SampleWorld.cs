@@ -56,9 +56,14 @@ namespace Vivarium.SimRunner
                 layout.Town,
                 SampleContent.LocationKindBuilding,
                 "Mina's flat",
-                new[] { WellKnownActivities.Eating });
+                new[] { WellKnownActivities.Eating, SampleContent.ActivityReading });
             layout.Bakery = AddLocation(world, layout.Town, SampleContent.LocationKindBuilding, "East Market Bakery");
-            layout.Cafe = AddLocation(world, layout.Town, SampleContent.LocationKindBuilding, "Corner cafe");
+            layout.Cafe = AddLocation(
+                world,
+                layout.Town,
+                SampleContent.LocationKindBuilding,
+                "Corner cafe",
+                new[] { SampleContent.ActivityTabletopGames, SampleContent.ActivityReading });
 
             // --- travel topology, separate from containment (§28) ---
             world.TravelNetwork.ConnectBidirectional(layout.Home, layout.Bakery, SimDuration.FromMinutes(12), SampleContent.TravelModeWalking);
@@ -69,6 +74,7 @@ namespace Vivarium.SimRunner
             layout.Mina = AddCharacter(host, "Mina Cairn", layout.Home, new[] { SampleContent.TraitAmbitious, SampleContent.TraitEnjoysBaking }, 2000);
             layout.Glen = AddCharacter(host, "Glen Ashby", layout.Home, new[] { SampleContent.TraitHomebound }, 2000);
             layout.Darius = AddCharacter(host, "Darius Vale", layout.Bakery, new[] { SampleContent.TraitAmbitious }, 1000);
+            AddRecreationRoutine(host, layout.Glen, 5990, tabletopInterest: 4500, readingInterest: 2500);
 
             var employer = new Group(
                 world.RuntimeIds.Groups.Next(),
@@ -241,6 +247,32 @@ namespace Vivarium.SimRunner
                 SimDuration.FromHours(1));
 
             return character.Id;
+        }
+
+        private static void AddRecreationRoutine(
+            SimulationHost host,
+            CharacterId characterId,
+            long initialRecreation,
+            long tabletopInterest,
+            long readingInterest)
+        {
+            WorldState world = host.World;
+            Character character = world.Characters.Get(characterId);
+            character.Interests.Set(SampleContent.InterestTabletopGames, tabletopInterest);
+            character.Interests.Set(SampleContent.InterestReading, readingInterest);
+            NeedDefinition recreation = host.Catalog.Needs[WellKnownNeeds.Recreation];
+            var state = new NeedState(
+                recreation.Id,
+                AnalyticalProgression.Linear(
+                    initialRecreation,
+                    world.Clock.Now,
+                    recreation.DefaultRateNumerator,
+                    recreation.DefaultRateDenominator,
+                    recreation.MinValue,
+                    recreation.MaxValue),
+                recreation.RecreationRoutine.ActivationThreshold);
+            character.SetNeed(state);
+            host.Needs.Rearm(host.Simulation, character, state);
         }
     }
 }

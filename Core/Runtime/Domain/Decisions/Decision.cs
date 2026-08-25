@@ -38,7 +38,7 @@ namespace Vivarium.Domain.Decisions
     /// <see cref="ConflictScope"/> (§17.1).
     /// </para>
     /// </summary>
-    public sealed class Decision
+    public sealed class Decision : IDecisionReasoningContext
     {
         private static readonly CharacterId[] NoParticipants = new CharacterId[0];
 
@@ -93,6 +93,8 @@ namespace Vivarium.Domain.Decisions
         }
 
         public DecisionId Id { get; }
+
+        DecisionId IDecisionReasoningContext.DecisionId => Id;
 
         /// <summary>The character whose choice this is.</summary>
         public CharacterId CharacterId { get; }

@@ -62,6 +62,23 @@ namespace Vivarium.Domain.Decisions
         }
 
         public Decision Generate(WorldState world, CompiledDecisionGenerationRequest request)
+            => Generate(world, request, null);
+
+        public Decision GenerateFromPreflight(
+            WorldState world,
+            CompiledDecisionGenerationRequest request,
+            DecisionReasoningPreflightResult preflight)
+        {
+            if (preflight == null) throw new ArgumentNullException(nameof(preflight));
+            if (preflight.Context.CharacterId != request.Actor)
+                throw new InvalidOperationException("Preflight actor does not match the generation request.");
+            return Generate(world, request, preflight);
+        }
+
+        private Decision Generate(
+            WorldState world,
+            CompiledDecisionGenerationRequest request,
+            DecisionReasoningPreflightResult preflight)
         {
             foreach (Decision existing in world.Decisions.All)
             {
@@ -73,19 +90,26 @@ namespace Vivarium.Domain.Decisions
                 }
             }
 
+            IReadOnlyList<DecisionOption> options = preflight?.Context.Options ?? request.Options;
+            DecisionReasoningProgram program = preflight?.Context.ReasoningProgram ?? request.ReasoningProgram;
+            IReadOnlyDictionary<AuthoredId, DecisionParameterValue> context =
+                preflight?.Context.Context ?? request.Context;
             var decision = new Decision(
                 world.RuntimeIds.Decisions.Next(), request.Actor, request.DefinitionId,
-                world.Clock.Now, request.AbsoluteResolveAt ?? world.Clock.Now.Plus(request.TimeToResolve), request.Options,
+                world.Clock.Now, request.AbsoluteResolveAt ?? world.Clock.Now.Plus(request.TimeToResolve), options,
                 request.ConflictScope);
             if (request.CommitmentConflictKey != null)
                 decision.SetCommitmentConflict(request.CommitmentConflictKey, decision.ResolveAt);
-            foreach (KeyValuePair<AuthoredId, DecisionParameterValue> parameter in request.Context)
+            foreach (KeyValuePair<AuthoredId, DecisionParameterValue> parameter in context)
             {
                 decision.SetContextParameter(parameter.Key, parameter.Value);
             }
-            decision.SnapshotReasoningProgram(request.ReasoningProgram);
+            decision.SnapshotReasoningProgram(program);
             world.Decisions.Add(decision.Id, decision);
-            _reasoning.EvaluateAndReconcile(world, decision, _providers);
+            if (preflight == null)
+                _reasoning.EvaluateAndReconcile(world, decision, _providers);
+            else
+                _reasoning.AdoptPreflight(world, decision, preflight.Evaluation);
 
             ScheduledEvent scheduled = world.Scheduler.Schedule(
                 decision.ResolveAt,

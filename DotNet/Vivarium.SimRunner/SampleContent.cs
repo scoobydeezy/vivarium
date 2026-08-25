@@ -34,11 +34,16 @@ namespace Vivarium.SimRunner
 
         public static readonly AuthoredId NeedHunger = new AuthoredId("need.hunger");
         public static readonly AuthoredId NeedSocial = new AuthoredId("need.social");
+        public static readonly AuthoredId NeedRecreation = WellKnownNeeds.Recreation;
 
         public static readonly AuthoredId ActivityWorking = new AuthoredId("activity.working");
         public static readonly AuthoredId ActivitySleeping = WellKnownActivities.Sleeping;
         public static readonly AuthoredId ActivityDining = new AuthoredId("activity.dining");
         public static readonly AuthoredId ActivityHelpingAtBakery = new AuthoredId("activity.helping_at_bakery");
+        public static readonly AuthoredId ActivityTabletopGames = new AuthoredId("activity.tabletop_games");
+        public static readonly AuthoredId ActivityReading = new AuthoredId("activity.reading");
+        public static readonly AuthoredId InterestTabletopGames = new AuthoredId("interest.tabletop_games");
+        public static readonly AuthoredId InterestReading = new AuthoredId("interest.reading");
 
         public static readonly AuthoredId LocationKindWorld = new AuthoredId("location_kind.world");
         public static readonly AuthoredId LocationKindTown = new AuthoredId("location_kind.town");
@@ -57,11 +62,14 @@ namespace Vivarium.SimRunner
         public static readonly AuthoredId DecisionJobOffer = new AuthoredId("decision.job_offer");
         public static readonly AuthoredId DecisionLeaveWork = new AuthoredId("decision.leave_work_early");
         public static readonly AuthoredId DecisionCommitmentConflict = new AuthoredId("decision.commitment_conflict");
+        public static readonly AuthoredId DecisionChooseRecreation = new AuthoredId("decision.choose_recreation");
         public static readonly AuthoredId OptionAccept = new AuthoredId("option.accept");
         public static readonly AuthoredId OptionStay = new AuthoredId("option.stay");
         public static readonly AuthoredId OptionLeave = new AuthoredId("option.leave");
         public static readonly AuthoredId OptionPreserveFirstCommitment = new AuthoredId("option.preserve_first_relinquish_second");
         public static readonly AuthoredId OptionPreserveSecondCommitment = new AuthoredId("option.preserve_second_relinquish_first");
+        public static readonly AuthoredId OptionTabletopGames = new AuthoredId("option.recreation.tabletop_games");
+        public static readonly AuthoredId OptionReading = new AuthoredId("option.recreation.reading");
 
         public static readonly AuthoredId ConflictScopeEmployment = new AuthoredId("conflict_scope.employment");
 
@@ -95,6 +103,7 @@ namespace Vivarium.SimRunner
         public static DefinitionCatalog Build(int contentVersion = 1)
         {
             var builder = new DefinitionCatalog.Builder { ContentVersion = contentVersion };
+            builder.SetDecisionImportancePolicy(new DecisionImportancePolicyDefinition(6500));
 
             builder.Add(new TraitDefinition(
                 TraitAmbitious,
@@ -131,6 +140,23 @@ namespace Vivarium.SimRunner
                     -5000)));
             builder.Add(new NeedDefinition(NeedSocial, "Social", 0, 10000, 4, 1, new long[] { 7000 }));
             builder.Add(new NeedDefinition(
+                NeedRecreation,
+                "Recreation",
+                0,
+                10000,
+                2,
+                1,
+                new long[] { 6000 },
+                recreationRoutine: new RecreationRoutineDefinition(
+                    DecisionChooseRecreation,
+                    6000,
+                    -5000,
+                    new[]
+                    {
+                        new RecreationCandidateDefinition(OptionTabletopGames, ActivityTabletopGames, InterestTabletopGames),
+                        new RecreationCandidateDefinition(OptionReading, ActivityReading, InterestReading),
+                    })));
+            builder.Add(new NeedDefinition(
                 WellKnownNeeds.Energy,
                 "Energy",
                 0,
@@ -152,6 +178,8 @@ namespace Vivarium.SimRunner
             builder.Add(new ActivityDefinition(WellKnownActivities.Eating, "Eating", SimDuration.FromMinutes(30), false));
             builder.Add(new ActivityDefinition(WellKnownActivities.Waiting, "Waiting", SimDuration.FromHours(1), false));
             builder.Add(new ActivityDefinition(WellKnownActivities.Traveling, "Traveling", SimDuration.FromMinutes(10), false, false, true));
+            builder.Add(new ActivityDefinition(ActivityTabletopGames, "Tabletop Games", SimDuration.FromMinutes(90), false));
+            builder.Add(new ActivityDefinition(ActivityReading, "Reading", SimDuration.FromMinutes(60), false));
 
             builder.Add(new LocationKindDefinition(LocationKindWorld, "World"));
             builder.Add(new LocationKindDefinition(LocationKindTown, "Town"));
@@ -196,6 +224,17 @@ namespace Vivarium.SimRunner
                     new DecisionActivityOutcome(OptionLeave, WellKnownActivities.Waiting, SimDuration.FromHours(1)),
                 },
                 reasoningProgram: LeaveWorkReasoningProgram()));
+
+            builder.Add(new DecisionDefinition(
+                DecisionChooseRecreation,
+                new[]
+                {
+                    RecreationOption(OptionTabletopGames, "Play Tabletop Games", 0, InterestTabletopGames),
+                    RecreationOption(OptionReading, "Read", 1, InterestReading),
+                },
+                SimDuration.FromMinutes(10),
+                new AuthoredId("conflict_scope.recreation"),
+                reasoningProgram: RecreationReasoningProgram()));
 
             builder.Add(new InterventionDefinition(InterventionStepUp, InterventionKind.StepDieUp, 1));
             builder.Add(new InterventionDefinition(InterventionReroll, InterventionKind.Reroll, 1));
@@ -553,6 +592,58 @@ namespace Vivarium.SimRunner
                     new AuthoredId("influence.unreliable"),
                     InfluenceVisibility.Full),
             });
+
+        private static DecisionOption RecreationOption(
+            AuthoredId optionId,
+            AuthoredId labelId,
+            int order,
+            AuthoredId interestId)
+        {
+            var option = new DecisionOption(optionId, labelId, order);
+            option.SetContext(
+                DecisionReasoningParameters.InterestId,
+                DecisionParameterValue.FromAuthoredId(interestId));
+            return option;
+        }
+
+        private static DecisionReasoningProgram RecreationReasoningProgram()
+        {
+            var signal = new AuthoredId("decision.signal.recreation.interest");
+            return new DecisionReasoningProgram(new[]
+            {
+                new CompiledConsiderationBinding(
+                    new AuthoredId("binding.recreation.interest"),
+                    new AuthoredId("consideration.recreation.interest"),
+                    1,
+                    new[]
+                    {
+                        new ConsiderationParameter(DecisionReasoningParameters.Actor, DecisionParameterKind.Entity),
+                        new ConsiderationParameter(DecisionReasoningParameters.InterestId, DecisionParameterKind.AuthoredId),
+                    },
+                    new[]
+                    {
+                        new CompiledParameterBinding(DecisionReasoningParameters.Actor, ParameterBindingSource.DecisionActor),
+                        new CompiledParameterBinding(
+                            DecisionReasoningParameters.InterestId,
+                            ParameterBindingSource.OptionContext,
+                            DecisionReasoningParameters.InterestId),
+                    },
+                    new[] { new DecisionSignalRequest(signal, DecisionSignalProviderIds.ActorInterest) },
+                    new SignalFieldDefinition(
+                        new AuthoredId("field.recreation.interest"),
+                        0,
+                        new[] { new SignalLinearTerm(signal, 30000, new AuthoredId("reason.recreation.interest")) },
+                        null,
+                        null,
+                        null),
+                    new ReasonChannelDefinition(new AuthoredId("reason_channel.recreation.interest")),
+                    ReasonScaleProfile.Standard(),
+                    CategoryPersonalConcern,
+                    new AuthoredId("influence.recreation.interest"),
+                    new AuthoredId("influence.recreation.disinterest"),
+                    InfluenceVisibility.Full),
+            });
+        }
 
     }
 }
