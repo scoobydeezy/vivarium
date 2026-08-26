@@ -188,7 +188,7 @@ namespace Vivarium.Infrastructure.Bootstrap
                 throw new ArgumentNullException(nameof(catalog));
             }
 
-            IReadOnlyList<string> contentErrors = ContentValidator.Validate(catalog);
+            IReadOnlyList<string> contentErrors = ContentValidator.ValidateForSimulation(catalog);
             if (contentErrors.Count > 0)
             {
                 // Content problems must surface before gameplay, not as a null reference three

@@ -420,7 +420,10 @@ Intentionally thin, pending game-design decisions:
   builds through a deterministically sorted baked index. A stale
   index is a build error. Immutable `DefinitionSet` contributions and the Application resolver enforce
   same-pack uniqueness, declared full-record cross-pack replacement, load order, final catalog
-  validation, and resolution provenance. The BaseGame Commitment Accountability policy is also an
+  validation, engine-required Waiting/Traveling presence, and resolution provenance. The Unity
+  BaseGame composition separately preflights its required Energy/Sleeping definitions. Direct tests
+  cover builder/catalog snapshot isolation, missing override targets, and invalid override reordering.
+  The BaseGame Commitment Accountability policy is also an
   independent indexed asset; Employment and Commitment Template references bind after overlay to the
   effective policy, including a declared cross-pack replacement. Synthetic headless tests exercise
   those semantics. `ContentPackAsset` has been removed: Unity Bootstrap consumes the baked index and

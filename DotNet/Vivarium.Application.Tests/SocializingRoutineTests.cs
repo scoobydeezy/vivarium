@@ -141,6 +141,7 @@ namespace Vivarium.Application.Tests
         {
             var builder = new DefinitionCatalog.Builder();
             builder.Add(new ActivityDefinition(WellKnownActivities.Waiting, "Waiting", SimDuration.FromHours(1), false));
+            builder.Add(new ActivityDefinition(WellKnownActivities.Traveling, "Traveling", SimDuration.FromMinutes(10), false, false, true));
             builder.Add(new ActivityDefinition(WellKnownActivities.Socializing, "Socializing", SimDuration.FromMinutes(30), false));
             builder.Add(new LocationKindDefinition(Building, "Building"));
             builder.Add(new NeedDefinition(

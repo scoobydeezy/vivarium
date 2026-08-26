@@ -15,75 +15,57 @@ namespace Vivarium.Unity.Authoring
             if (index.Manifest == null)
                 throw new System.InvalidOperationException("Content pack index needs a manifest.");
             var builder = new DefinitionCatalog.Builder { ContentVersion = index.Manifest.PackVersion };
-            if (index != null && index.DecisionImportancePolicy != null)
+            if (index.DecisionImportancePolicy != null)
                 builder.SetDecisionImportancePolicy(index.DecisionImportancePolicy.ToDefinition());
 
-            TraitDefinitionAsset[] traitAssets = index != null
-                ? index.Traits
-                : new TraitDefinitionAsset[0];
+            TraitDefinitionAsset[] traitAssets = index.Traits;
             for (int i = 0; i < traitAssets.Length; i++)
             {
                 if (traitAssets[i] != null) builder.Add(traitAssets[i].ToDefinition());
             }
 
-            NeedDefinitionAsset[] needAssets = index != null
-                ? index.Needs
-                : new NeedDefinitionAsset[0];
+            NeedDefinitionAsset[] needAssets = index.Needs;
             for (int i = 0; i < needAssets.Length; i++)
             {
                 if (needAssets[i] != null) builder.Add(needAssets[i].ToDefinition());
             }
 
-            ActivityDefinitionAsset[] activityAssets = index != null
-                ? index.Activities
-                : new ActivityDefinitionAsset[0];
+            ActivityDefinitionAsset[] activityAssets = index.Activities;
             for (int i = 0; i < activityAssets.Length; i++)
             {
                 if (activityAssets[i] != null) builder.Add(activityAssets[i].ToDefinition());
             }
 
-            LocationKindDefinitionAsset[] locationKindAssets = index != null
-                ? index.LocationKinds
-                : new LocationKindDefinitionAsset[0];
+            LocationKindDefinitionAsset[] locationKindAssets = index.LocationKinds;
             for (int i = 0; i < locationKindAssets.Length; i++)
             {
                 if (locationKindAssets[i] != null) builder.Add(locationKindAssets[i].ToDefinition());
             }
 
-            DecisionDefinitionAsset[] decisionAssets = index != null
-                ? index.Decisions
-                : new DecisionDefinitionAsset[0];
+            DecisionDefinitionAsset[] decisionAssets = index.Decisions;
             for (int i = 0; i < decisionAssets.Length; i++)
             {
                 if (decisionAssets[i] != null) builder.Add(decisionAssets[i].ToDefinition());
             }
 
-            InterventionDefinitionAsset[] interventionAssets = index != null
-                ? index.Interventions
-                : new InterventionDefinitionAsset[0];
+            InterventionDefinitionAsset[] interventionAssets = index.Interventions;
             for (int i = 0; i < interventionAssets.Length; i++)
             {
                 if (interventionAssets[i] != null) builder.Add(interventionAssets[i].ToDefinition());
             }
 
-            AppraisalCalibrationAsset[] calibrationAssets = index != null
-                ? index.AppraisalCalibrations
-                : new AppraisalCalibrationAsset[0];
+            AppraisalCalibrationAsset[] calibrationAssets = index.AppraisalCalibrations;
             for (int i = 0; i < calibrationAssets.Length; i++)
             {
                 if (calibrationAssets[i] != null) builder.Add(calibrationAssets[i].ToDefinition());
             }
-            SocialEvidenceAsset[] evidenceAssets = index != null
-                ? index.SocialEvidence
-                : new SocialEvidenceAsset[0];
+            SocialEvidenceAsset[] evidenceAssets = index.SocialEvidence;
             for (int i = 0; i < evidenceAssets.Length; i++)
             {
                 if (evidenceAssets[i] != null) builder.Add(evidenceAssets[i].ToDefinition());
             }
             var accountabilityPolicies = new Dictionary<AuthoredId, CommitmentAccountabilityPolicy>();
-            CommitmentAccountabilityPolicyAsset[] accountabilityPolicyAssets = index != null
-                ? index.CommitmentAccountabilityPolicies
-                : new CommitmentAccountabilityPolicyAsset[0];
+            CommitmentAccountabilityPolicyAsset[] accountabilityPolicyAssets = index.CommitmentAccountabilityPolicies;
             for (int i = 0; i < accountabilityPolicyAssets.Length; i++)
             {
                 if (accountabilityPolicyAssets[i] == null) continue;
@@ -91,17 +73,13 @@ namespace Vivarium.Unity.Authoring
                 accountabilityPolicies.Add(policy.Id, policy);
                 builder.Add(policy);
             }
-            EmploymentDefinitionAsset[] employmentAssets = index != null
-                ? index.Employments
-                : new EmploymentDefinitionAsset[0];
+            EmploymentDefinitionAsset[] employmentAssets = index.Employments;
             for (int i = 0; i < employmentAssets.Length; i++)
             {
                 if (employmentAssets[i] != null)
                     builder.Add(employmentAssets[i].ToDefinition(accountabilityPolicies));
             }
-            SocialPressureAsset[] pressureAssets = index != null
-                ? index.SocialPressures
-                : new SocialPressureAsset[0];
+            SocialPressureAsset[] pressureAssets = index.SocialPressures;
             for (int i = 0; i < pressureAssets.Length; i++)
             {
                 if (pressureAssets[i] != null) builder.Add(pressureAssets[i].ToDefinition());
@@ -123,12 +101,10 @@ namespace Vivarium.Unity.Authoring
             }
             if (index.Manifest == null) problems.Add("content pack manifest is missing");
 
-            if (index != null && index.DecisionImportancePolicy != null)
+            if (index.DecisionImportancePolicy != null)
                 foreach (string problem in index.DecisionImportancePolicy.Validate()) problems.Add(problem);
 
-            TraitDefinitionAsset[] traitAssets = index != null
-                ? index.Traits
-                : new TraitDefinitionAsset[0];
+            TraitDefinitionAsset[] traitAssets = index.Traits;
             for (int i = 0; i < traitAssets.Length; i++)
             {
                 if (traitAssets[i] == null)
@@ -148,9 +124,7 @@ namespace Vivarium.Unity.Authoring
                 }
             }
 
-            NeedDefinitionAsset[] needAssets = index != null
-                ? index.Needs
-                : new NeedDefinitionAsset[0];
+            NeedDefinitionAsset[] needAssets = index.Needs;
             for (int i = 0; i < needAssets.Length; i++)
             {
                 if (needAssets[i] == null)
@@ -163,9 +137,7 @@ namespace Vivarium.Unity.Authoring
                     problems.Add($"duplicate need id '{needAssets[i].AuthoredId}'");
             }
 
-            DecisionDefinitionAsset[] decisionAssets = index != null
-                ? index.Decisions
-                : new DecisionDefinitionAsset[0];
+            DecisionDefinitionAsset[] decisionAssets = index.Decisions;
             for (int i = 0; i < decisionAssets.Length; i++)
             {
                 if (decisionAssets[i] == null)
@@ -178,9 +150,7 @@ namespace Vivarium.Unity.Authoring
                     problems.Add($"duplicate decision id '{decisionAssets[i].AuthoredId}'");
             }
 
-            InterventionDefinitionAsset[] interventionAssets = index != null
-                ? index.Interventions
-                : new InterventionDefinitionAsset[0];
+            InterventionDefinitionAsset[] interventionAssets = index.Interventions;
             for (int i = 0; i < interventionAssets.Length; i++)
             {
                 if (interventionAssets[i] == null)
@@ -193,9 +163,7 @@ namespace Vivarium.Unity.Authoring
                     problems.Add($"duplicate intervention id '{interventionAssets[i].AuthoredId}'");
             }
 
-            ActivityDefinitionAsset[] activityAssets = index != null
-                ? index.Activities
-                : new ActivityDefinitionAsset[0];
+            ActivityDefinitionAsset[] activityAssets = index.Activities;
             for (int i = 0; i < activityAssets.Length; i++)
             {
                 if (activityAssets[i] == null)
@@ -208,9 +176,7 @@ namespace Vivarium.Unity.Authoring
                     problems.Add($"duplicate activity id '{activityAssets[i].AuthoredId}'");
             }
 
-            LocationKindDefinitionAsset[] locationKindAssets = index != null
-                ? index.LocationKinds
-                : new LocationKindDefinitionAsset[0];
+            LocationKindDefinitionAsset[] locationKindAssets = index.LocationKinds;
             for (int i = 0; i < locationKindAssets.Length; i++)
             {
                 if (locationKindAssets[i] == null)
@@ -223,9 +189,7 @@ namespace Vivarium.Unity.Authoring
                     problems.Add($"duplicate location kind id '{locationKindAssets[i].AuthoredId}'");
             }
 
-            AppraisalCalibrationAsset[] calibrationAssets = index != null
-                ? index.AppraisalCalibrations
-                : new AppraisalCalibrationAsset[0];
+            AppraisalCalibrationAsset[] calibrationAssets = index.AppraisalCalibrations;
             for (int i = 0; i < calibrationAssets.Length; i++)
             {
                 if (calibrationAssets[i] == null)
@@ -238,9 +202,7 @@ namespace Vivarium.Unity.Authoring
                     problems.Add($"duplicate appraisal calibration id '{calibrationAssets[i].AuthoredId}'");
             }
 
-            SocialEvidenceAsset[] evidenceAssets = index != null
-                ? index.SocialEvidence
-                : new SocialEvidenceAsset[0];
+            SocialEvidenceAsset[] evidenceAssets = index.SocialEvidence;
             for (int i = 0; i < evidenceAssets.Length; i++)
             {
                 if (evidenceAssets[i] == null)
@@ -253,9 +215,7 @@ namespace Vivarium.Unity.Authoring
                     problems.Add($"duplicate social evidence id '{evidenceAssets[i].AuthoredId}'");
             }
 
-            SocialPressureAsset[] pressureAssets = index != null
-                ? index.SocialPressures
-                : new SocialPressureAsset[0];
+            SocialPressureAsset[] pressureAssets = index.SocialPressures;
             for (int i = 0; i < pressureAssets.Length; i++)
             {
                 if (pressureAssets[i] == null)
@@ -268,9 +228,7 @@ namespace Vivarium.Unity.Authoring
                     problems.Add($"duplicate social pressure id '{pressureAssets[i].AuthoredId}'");
             }
 
-            EmploymentDefinitionAsset[] employmentAssets = index != null
-                ? index.Employments
-                : new EmploymentDefinitionAsset[0];
+            EmploymentDefinitionAsset[] employmentAssets = index.Employments;
             for (int i = 0; i < employmentAssets.Length; i++)
             {
                 if (employmentAssets[i] == null)
@@ -283,9 +241,7 @@ namespace Vivarium.Unity.Authoring
                     problems.Add($"duplicate employment id '{employmentAssets[i].AuthoredId}'");
             }
 
-            CommitmentAccountabilityPolicyAsset[] accountabilityPolicyAssets = index != null
-                ? index.CommitmentAccountabilityPolicies
-                : new CommitmentAccountabilityPolicyAsset[0];
+            CommitmentAccountabilityPolicyAsset[] accountabilityPolicyAssets = index.CommitmentAccountabilityPolicies;
             for (int i = 0; i < accountabilityPolicyAssets.Length; i++)
             {
                 if (accountabilityPolicyAssets[i] == null)

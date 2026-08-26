@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using Vivarium.Application.Content;
 using Vivarium.Domain.Activities;
+using Vivarium.Domain.Characters;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Content;
 using Vivarium.Domain.Employment;
@@ -28,15 +30,28 @@ namespace Vivarium.Application.Tests
         }
 
         [Fact]
+        public void Definition_catalog_is_a_snapshot_of_its_builder()
+        {
+            var builder = new DefinitionCatalog.Builder();
+            builder.Add(Activity(Working, "Original", 5));
+            DefinitionCatalog catalog = builder.Build();
+
+            builder.Add(Activity(new AuthoredId("activity.later"), "Later", 10));
+
+            Assert.Single(catalog.Activities);
+            Assert.False(catalog.Activities.ContainsKey(new AuthoredId("activity.later")));
+        }
+
+        [Fact]
         public void Packs_add_distinct_definitions_in_load_order()
         {
             ResolvedContent resolved = ContentPackResolver.Resolve(new[]
             {
-                Pack("vivarium.base", Activity(Working, "Working", 5)),
+                BasePack("vivarium.base", Activity(Working, "Working", 5)),
                 Pack("mod.example", Activity(new AuthoredId("mod.example.activity.painting"), "Painting", 60)),
             });
 
-            Assert.Equal(2, resolved.Catalog.Activities.Count);
+            Assert.Equal(4, resolved.Catalog.Activities.Count);
             Assert.Equal("vivarium.base", resolved.Manifest.PacksInLoadOrder[0].PackId);
             Assert.Equal("mod.example", resolved.Manifest.PacksInLoadOrder[1].PackId);
         }
@@ -47,7 +62,7 @@ namespace Vivarium.Application.Tests
             InvalidOperationException error = Assert.Throws<InvalidOperationException>(() =>
                 ContentPackResolver.Resolve(new[]
                 {
-                    Pack("vivarium.base", Activity(Working, "Working", 5)),
+                    BasePack("vivarium.base", Activity(Working, "Working", 5)),
                     Pack("mod.example", Activity(Working, "Changed", 90)),
                 }));
 
@@ -67,7 +82,7 @@ namespace Vivarium.Application.Tests
 
             ResolvedContent resolved = ContentPackResolver.Resolve(new[]
             {
-                Pack("vivarium.base", Activity(Working, "Working", 5)),
+                BasePack("vivarium.base", Activity(Working, "Working", 5)),
                 replacement,
             });
 
@@ -90,7 +105,7 @@ namespace Vivarium.Application.Tests
             InvalidOperationException error = Assert.Throws<InvalidOperationException>(() =>
                 ContentPackResolver.Resolve(new[]
                 {
-                    Pack("vivarium.base", Activity(Working, "Working", 5)),
+                    BasePack("vivarium.base", Activity(Working, "Working", 5)),
                     replacement,
                 }));
 
@@ -99,10 +114,87 @@ namespace Vivarium.Application.Tests
         }
 
         [Fact]
+        public void Override_declaration_requires_a_definition_that_replaces_an_earlier_target()
+        {
+            ContentPackContribution invalid = Pack(
+                "mod.example",
+                Activity(new AuthoredId("mod.example.activity.painting"), "Painting", 60),
+                new ContentOverrideDeclaration(
+                    ContentDefinitionFamily.Activity,
+                    new AuthoredId("activity.missing"),
+                    "vivarium.base"));
+
+            InvalidOperationException error = Assert.Throws<InvalidOperationException>(() =>
+                ContentPackResolver.Resolve(new[]
+                {
+                    BasePack("vivarium.base", Activity(Working, "Working", 5)),
+                    invalid,
+                }));
+
+            Assert.Contains("no matching earlier definition was replaced", error.Message);
+        }
+
+        [Fact]
+        public void Reversing_a_declared_override_order_is_rejected_instead_of_changing_the_winner()
+        {
+            ContentPackContribution replacement = Pack(
+                "mod.example",
+                Activity(Working, "Changed", 90),
+                new ContentOverrideDeclaration(
+                    ContentDefinitionFamily.Activity,
+                    Working,
+                    "vivarium.base"));
+
+            InvalidOperationException error = Assert.Throws<InvalidOperationException>(() =>
+                ContentPackResolver.Resolve(new[]
+                {
+                    replacement,
+                    BasePack("vivarium.base", Activity(Working, "Working", 5)),
+                }));
+
+            Assert.Contains("without declaring an override", error.Message);
+        }
+
+        [Fact]
+        public void Resolved_runtime_catalog_requires_waiting_and_traveling()
+        {
+            InvalidOperationException error = Assert.Throws<InvalidOperationException>(() =>
+                ContentPackResolver.Resolve(new[]
+                {
+                    Pack("vivarium.base", Activity(Working, "Working", 5)),
+                }));
+
+            Assert.Contains(WellKnownActivities.Waiting.ToString(), error.Message);
+            Assert.Contains(WellKnownActivities.Traveling.ToString(), error.Message);
+        }
+
+        [Fact]
+        public void Composition_requirements_report_missing_basegame_definitions()
+        {
+            DefinitionCatalog catalog = new DefinitionCatalog.Builder()
+                .Add(Activity(WellKnownActivities.Waiting, "Waiting", 60))
+                .Add(Activity(WellKnownActivities.Traveling, "Traveling", 10))
+                .Build();
+
+            IReadOnlyList<string> errors = ContentValidator.ValidateRequiredDefinitions(
+                catalog,
+                new[]
+                {
+                    new ContentDefinitionKey(ContentDefinitionFamily.Need, WellKnownNeeds.Energy),
+                    new ContentDefinitionKey(ContentDefinitionFamily.Activity, WellKnownActivities.Sleeping),
+                });
+
+            Assert.Equal(2, errors.Count);
+            Assert.Contains(WellKnownNeeds.Energy.ToString(), errors[0]);
+            Assert.Contains(WellKnownActivities.Sleeping.ToString(), errors[1]);
+        }
+
+        [Fact]
         public void Employment_reference_binds_to_policy_from_another_pack_after_overlay()
         {
             var policy = new CommitmentAccountabilityPolicy(id: Accountability);
             var baseBuilder = new DefinitionCatalog.Builder();
+            AddSimulationActivities(baseBuilder);
             baseBuilder.Add(Activity(Working, "Working", 5));
             baseBuilder.Add(policy);
 
@@ -125,6 +217,7 @@ namespace Vivarium.Application.Tests
             var original = new CommitmentAccountabilityPolicy(id: Accountability);
             var replacement = new CommitmentAccountabilityPolicy(id: Accountability);
             var baseBuilder = new DefinitionCatalog.Builder();
+            AddSimulationActivities(baseBuilder);
             baseBuilder.Add(Activity(Working, "Working", 5));
             baseBuilder.Add(original);
             baseBuilder.Add(Employment(original));
@@ -153,6 +246,7 @@ namespace Vivarium.Application.Tests
         {
             var policy = new CommitmentAccountabilityPolicy(id: Accountability);
             var baseBuilder = new DefinitionCatalog.Builder();
+            AddSimulationActivities(baseBuilder);
             baseBuilder.Add(Activity(Working, "Working", 5));
             baseBuilder.Add(policy);
 
@@ -177,6 +271,20 @@ namespace Vivarium.Application.Tests
             var builder = new DefinitionCatalog.Builder();
             builder.Add(activity);
             return new ContentPackContribution(packId, packId, 1, builder.BuildSet(), overrides);
+        }
+
+        private static ContentPackContribution BasePack(string packId, ActivityDefinition activity)
+        {
+            var builder = new DefinitionCatalog.Builder();
+            AddSimulationActivities(builder);
+            builder.Add(activity);
+            return new ContentPackContribution(packId, packId, 1, builder.BuildSet());
+        }
+
+        private static void AddSimulationActivities(DefinitionCatalog.Builder builder)
+        {
+            builder.Add(Activity(WellKnownActivities.Waiting, "Waiting", 60));
+            builder.Add(Activity(WellKnownActivities.Traveling, "Traveling", 10));
         }
 
         private static ContentPackContribution Contribution(

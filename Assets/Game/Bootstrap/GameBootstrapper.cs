@@ -40,6 +40,12 @@ namespace Vivarium.Unity.Bootstrap
     /// </summary>
     public sealed class GameBootstrapper : MonoBehaviour
     {
+        private static readonly ContentDefinitionKey[] BaseGameRequirements =
+        {
+            new ContentDefinitionKey(ContentDefinitionFamily.Need, WellKnownNeeds.Energy),
+            new ContentDefinitionKey(ContentDefinitionFamily.Activity, WellKnownActivities.Sleeping),
+        };
+
         private static readonly AuthoredId ActivityWorking = new AuthoredId("activity.working");
         private static readonly AuthoredId ActivityDining = new AuthoredId("activity.dining");
         private static readonly AuthoredId ActivityHelpingAtBakery = new AuthoredId("activity.helping_at_bakery");
@@ -125,6 +131,12 @@ namespace Vivarium.Unity.Bootstrap
                     overrides),
             });
             _catalog = _resolvedContent.Catalog;
+
+            IReadOnlyList<string> baseGameErrors =
+                ContentValidator.ValidateRequiredDefinitions(_catalog, BaseGameRequirements);
+            if (baseGameErrors.Count > 0)
+                throw new System.InvalidOperationException(
+                    "BaseGame content requirements failed: " + string.Join("; ", baseGameErrors));
 
             _saveStore = new InMemorySaveGameStore();
 

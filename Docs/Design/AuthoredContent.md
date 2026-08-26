@@ -137,6 +137,9 @@ independent pack builders must not each inject fallback copies.
   availability-policy record.
 - The BaseGame manifest/index, deterministic bake, stale-index build validation, immutable
   contribution/resolution seams, and synthetic multi-pack resolver tests are active.
+- Simulation-ready resolution rejects catalogs missing the engine-addressed Waiting or Traveling
+  Activities. Composition-owned requirements remain separate: the current Unity BaseGame bootstrap
+  additionally requires explicit Energy and Sleeping definitions before it creates the world.
 - The legacy `ContentPackAsset` has been removed. Unity Bootstrap references the baked index directly;
   its manifest supplies pack identity/version. All populated catalog families are independently
   authored and baked; BaseGame currently contributes no Commitment Templates.

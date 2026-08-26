@@ -167,7 +167,7 @@ namespace Vivarium.Application.Content
             if (importance != null) builder.SetDecisionImportancePolicy(importance);
 
             DefinitionCatalog catalog = builder.Build();
-            IReadOnlyList<string> errors = ContentValidator.Validate(catalog);
+            IReadOnlyList<string> errors = ContentValidator.ValidateForSimulation(catalog);
             if (errors.Count > 0)
                 throw new InvalidOperationException("Content validation failed after pack resolution: " + string.Join("; ", errors));
 

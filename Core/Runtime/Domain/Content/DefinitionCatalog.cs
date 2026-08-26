@@ -194,6 +194,12 @@ namespace Vivarium.Domain.Content
     /// </summary>
     public static class ContentValidator
     {
+        private static readonly ContentDefinitionKey[] SimulationRequirements =
+        {
+            new ContentDefinitionKey(ContentDefinitionFamily.Activity, WellKnownActivities.Waiting),
+            new ContentDefinitionKey(ContentDefinitionFamily.Activity, WellKnownActivities.Traveling),
+        };
+
         public static IReadOnlyList<string> Validate(DefinitionCatalog catalog)
         {
             var errors = new List<string>();
@@ -594,6 +600,59 @@ namespace Vivarium.Domain.Content
             }
 
             return errors;
+        }
+
+        /// <summary>
+        /// Validates both authored references and the definitions the generic simulation engine
+        /// addresses directly. Product- or scenario-specific requirements belong at composition.
+        /// </summary>
+        public static IReadOnlyList<string> ValidateForSimulation(DefinitionCatalog catalog)
+        {
+            var errors = new List<string>(Validate(catalog));
+            errors.AddRange(ValidateRequiredDefinitions(catalog, SimulationRequirements));
+            return errors;
+        }
+
+        /// <summary>Checks an ordered set of requirements owned by a particular composition.</summary>
+        public static IReadOnlyList<string> ValidateRequiredDefinitions(
+            DefinitionCatalog catalog,
+            IReadOnlyList<ContentDefinitionKey> requirements)
+        {
+            if (catalog == null) throw new ArgumentNullException(nameof(catalog));
+            if (requirements == null) throw new ArgumentNullException(nameof(requirements));
+
+            var errors = new List<string>();
+            for (int i = 0; i < requirements.Count; i++)
+            {
+                ContentDefinitionKey requirement = requirements[i];
+                if (!Contains(catalog, requirement))
+                    errors.Add($"required definition '{requirement}' is missing");
+            }
+            return errors;
+        }
+
+        private static bool Contains(DefinitionCatalog catalog, ContentDefinitionKey key)
+        {
+            switch (key.Family)
+            {
+                case ContentDefinitionFamily.Trait: return catalog.Traits.ContainsKey(key.Id);
+                case ContentDefinitionFamily.Need: return catalog.Needs.ContainsKey(key.Id);
+                case ContentDefinitionFamily.Activity: return catalog.Activities.ContainsKey(key.Id);
+                case ContentDefinitionFamily.Decision: return catalog.Decisions.ContainsKey(key.Id);
+                case ContentDefinitionFamily.Intervention: return catalog.Interventions.ContainsKey(key.Id);
+                case ContentDefinitionFamily.LocationKind: return catalog.LocationKinds.ContainsKey(key.Id);
+                case ContentDefinitionFamily.CommitmentTemplate: return catalog.CommitmentTemplates.ContainsKey(key.Id);
+                case ContentDefinitionFamily.AppraisalCalibration: return catalog.AppraisalCalibrations.ContainsKey(key.Id);
+                case ContentDefinitionFamily.SocialEvidence: return catalog.SocialEvidence.ContainsKey(key.Id);
+                case ContentDefinitionFamily.CommitmentAccountabilityPolicy:
+                    return catalog.CommitmentAccountabilityPolicies.ContainsKey(key.Id);
+                case ContentDefinitionFamily.SocialPressure: return catalog.SocialPressures.ContainsKey(key.Id);
+                case ContentDefinitionFamily.Employment: return catalog.EmploymentDefinitions.ContainsKey(key.Id);
+                case ContentDefinitionFamily.DecisionImportancePolicy:
+                    return catalog.DecisionImportancePolicy != null;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(key), key.Family, "Unknown content definition family.");
+            }
         }
 
         private static bool ContainsThreshold(IReadOnlyList<long> thresholds, long expected)
