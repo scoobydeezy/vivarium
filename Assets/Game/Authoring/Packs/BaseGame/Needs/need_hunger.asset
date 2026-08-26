@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2661b3da490746f0aa9a729846053661, type: 3}
+  m_Name: need_hunger
+  m_EditorClassIdentifier: Vivarium.Unity.Authoring::Vivarium.Unity.Authoring.NeedDefinitionAsset
+  authoredId: need.hunger
+  displayName: Hunger
+  minValue: 0
+  maxValue: 10000
+  ratePerMinuteNumerator: 12
+  ratePerMinuteDenominator: 1
+  behaviouralThresholds:
+  - 6000
+  - 8000
+  - 9500
+  satisfactionRoutine:
+    activityDefinitionId: activity.eating
+    activationThreshold: 6000
+    satisfactionOffset: -5000

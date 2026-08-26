@@ -28,34 +28,22 @@ namespace Vivarium.Domain.Content
     {
         private DefinitionCatalog(
             int contentVersion,
-            IReadOnlyDictionary<AuthoredId, TraitDefinition> traits,
-            IReadOnlyDictionary<AuthoredId, NeedDefinition> needs,
-            IReadOnlyDictionary<AuthoredId, ActivityDefinition> activities,
-            IReadOnlyDictionary<AuthoredId, DecisionDefinition> decisions,
-            IReadOnlyDictionary<AuthoredId, InterventionDefinition> interventions,
-            IReadOnlyDictionary<AuthoredId, LocationKindDefinition> locationKinds,
-            IReadOnlyDictionary<AuthoredId, CommitmentTemplate> commitmentTemplates,
-            IReadOnlyDictionary<AuthoredId, AppraisalCalibrationProfile> appraisalCalibrations,
-            IReadOnlyDictionary<AuthoredId, SocialEvidenceDefinition> socialEvidence,
-            IReadOnlyDictionary<AuthoredId, CommitmentAccountabilityPolicy> commitmentAccountabilityPolicies,
-            IReadOnlyDictionary<AuthoredId, SocialPressureDefinition> socialPressures,
-            IReadOnlyDictionary<AuthoredId, EmploymentDefinition> employmentDefinitions,
-            DecisionImportancePolicyDefinition decisionImportancePolicy)
+            DefinitionSet definitions)
         {
             ContentVersion = contentVersion;
-            Traits = traits;
-            Needs = needs;
-            Activities = activities;
-            Decisions = decisions;
-            Interventions = interventions;
-            LocationKinds = locationKinds;
-            CommitmentTemplates = commitmentTemplates;
-            AppraisalCalibrations = appraisalCalibrations;
-            SocialEvidence = socialEvidence;
-            CommitmentAccountabilityPolicies = commitmentAccountabilityPolicies;
-            SocialPressures = socialPressures;
-            EmploymentDefinitions = employmentDefinitions;
-            DecisionImportancePolicy = decisionImportancePolicy;
+            Traits = definitions.Traits;
+            Needs = definitions.Needs;
+            Activities = definitions.Activities;
+            Decisions = definitions.Decisions;
+            Interventions = definitions.Interventions;
+            LocationKinds = definitions.LocationKinds;
+            CommitmentTemplates = definitions.CommitmentTemplates;
+            AppraisalCalibrations = definitions.AppraisalCalibrations;
+            SocialEvidence = definitions.SocialEvidence;
+            CommitmentAccountabilityPolicies = definitions.CommitmentAccountabilityPolicies;
+            SocialPressures = definitions.SocialPressures;
+            EmploymentDefinitions = definitions.EmploymentDefinitions;
+            DecisionImportancePolicy = definitions.DecisionImportancePolicy;
         }
 
         /// <summary>Recorded in saves and traces so version-scoped reproduction is diagnosable (§39.1, §53).</summary>
@@ -86,6 +74,12 @@ namespace Vivarium.Domain.Content
         public IReadOnlyDictionary<AuthoredId, EmploymentDefinition> EmploymentDefinitions { get; }
 
         public DecisionImportancePolicyDefinition DecisionImportancePolicy { get; }
+
+        public static DefinitionCatalog FromDefinitionSet(int contentVersion, DefinitionSet definitions)
+        {
+            if (definitions == null) throw new ArgumentNullException(nameof(definitions));
+            return new DefinitionCatalog(contentVersion, definitions);
+        }
 
         /// <summary>Mutable builder. Validate before building — see <see cref="ContentValidator"/>.</summary>
         public sealed class Builder
@@ -146,14 +140,22 @@ namespace Vivarium.Domain.Content
 
             public DefinitionCatalog Build()
             {
+                return new DefinitionCatalog(ContentVersion, BuildSet());
+            }
+
+            /// <summary>
+            /// Snapshots the accumulated definitions without requiring catalog-wide completeness.
+            /// Pack resolution validates the complete catalog after all contributions are combined.
+            /// </summary>
+            public DefinitionSet BuildSet()
+            {
                 if (_errors.Count > 0)
                 {
                     throw new InvalidOperationException(
                         "Content validation failed before entering gameplay (§42): " + string.Join("; ", _errors.ToArray()));
                 }
 
-                return new DefinitionCatalog(
-                    ContentVersion,
+                return new DefinitionSet(
                     _traits,
                     _needs,
                     _activities,
@@ -512,6 +514,11 @@ namespace Vivarium.Domain.Content
                 if (template.ActivityDefinitionId.IsSet && !catalog.Activities.ContainsKey(template.ActivityDefinitionId))
                 {
                     errors.Add($"commitment template '{template.Id}' references unknown activity '{template.ActivityDefinitionId}'");
+                }
+                if (template.AccountabilityPolicy.Id.IsSet &&
+                    !catalog.CommitmentAccountabilityPolicies.ContainsKey(template.AccountabilityPolicy.Id))
+                {
+                    errors.Add($"commitment template '{template.Id}' references unknown accountability policy '{template.AccountabilityPolicy.Id}'");
                 }
             }
 

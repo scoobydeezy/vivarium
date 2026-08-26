@@ -1,0 +1,26 @@
+{
+    "name": "Vivarium.Unity.EditModeTests",
+    "rootNamespace": "Vivarium.Unity.Tests",
+    "references": [
+        "Vivarium.Domain",
+        "Vivarium.Application",
+        "Vivarium.Unity.Authoring",
+        "Vivarium.Unity.Editor"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false,
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ]
+}

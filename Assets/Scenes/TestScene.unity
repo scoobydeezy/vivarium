@@ -653,7 +653,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 102e194719f9bbb4e84dc90a3e8e10c0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Vivarium.Unity.Bootstrap::Vivarium.Unity.Bootstrap.GameBootstrapper
-  contentPack: {fileID: 11400000, guid: 9a6ed1ec33bf8e64cb1793e0597ee9b9, type: 2}
+  contentPackIndex: {fileID: 11400000, guid: 14647f5823a64feaa84e1b6917254561, type: 2}
   worldSeed: 827119
   simulationRulesVersion: 1
   startDay: 0

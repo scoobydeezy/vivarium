@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e09f56e9506a453aabe19894ac48fc75, type: 3}
+  m_Name: employment_bakery_worker
+  m_EditorClassIdentifier: Vivarium.Unity.Authoring::Vivarium.Unity.Authoring.EmploymentDefinitionAsset
+  authoredId: employment.bakery_worker
+  roleId: employment_role.baker
+  obligationPatterns:
+  - authoredId: routine.bakery_shift
+    commitmentKindId: commitment.demo_work_shift
+    cycleLengthDays: 7
+    activeDaysMask: 1
+    startMinuteOfDay: 452
+    durationMinutes: 120
+    priority: 100
+    activityDefinitionId: activity.working
+    startWindowMinutes: 5
+    accountabilityPolicyId: accountability.social_commitment
+  - authoredId: routine.bakery_closing_duty
+    commitmentKindId: commitment.help_darius_close_bakery
+    cycleLengthDays: 7
+    activeDaysMask: 1
+    startMinuteOfDay: 572
+    durationMinutes: 90
+    priority: 90
+    activityDefinitionId: activity.helping_at_bakery
+    startWindowMinutes: 2
+    accountabilityPolicyId: accountability.social_commitment

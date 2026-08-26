@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 027192ff5b554adf84eafbbf8a560444, type: 3}
+  m_Name: intervention_re_roll
+  m_EditorClassIdentifier: Vivarium.Unity.Authoring::Vivarium.Unity.Authoring.InterventionDefinitionAsset
+  authoredId: intervention.re_roll
+  kind: 4
+  cost: 1
+  resourceKind: 2
+  replacementDieSides: 0
+  fixedResult: 0
+  initialBalance: 1
+  availabilityCap: 1
+  refreshAmount: 1
+  refreshPeriodMinutes: 1440

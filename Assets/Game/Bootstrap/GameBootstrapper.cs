@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using Vivarium.Application.Commands;
+using Vivarium.Application.Content;
 using Vivarium.Application.Persistence;
 using Vivarium.Application.Session;
 using Vivarium.Domain.Activities;
@@ -53,7 +54,7 @@ namespace Vivarium.Unity.Bootstrap
         private static readonly AuthoredId PatternBakeryShift = new AuthoredId("routine.bakery_shift");
         private static readonly AuthoredId PatternBakeryClosingDuty = new AuthoredId("routine.bakery_closing_duty");
         [Header("Content")]
-        [SerializeField] private ContentPackAsset contentPack;
+        [SerializeField] private ContentPackIndexAsset contentPackIndex;
 
         [Header("World")]
         [Tooltip("Seed for every random stream in the world (§14).")]
@@ -83,6 +84,7 @@ namespace Vivarium.Unity.Bootstrap
 
         private SimulationHost _host;
         private DefinitionCatalog _catalog;
+        private ResolvedContent _resolvedContent;
         private InMemorySaveGameStore _saveStore;
         private float _accumulatedMinutes;
         private readonly List<LocationId> _demoLocations = new List<LocationId>();
@@ -98,9 +100,31 @@ namespace Vivarium.Unity.Bootstrap
                 timeDisplay = FindAnyObjectByType<TimeDisplay>();
             }
 
-            _catalog = contentPack != null
-                ? contentPack.Build()
-                : throw new System.InvalidOperationException("GameBootstrapper needs a content pack.");
+            if (contentPackIndex == null)
+                throw new System.InvalidOperationException("GameBootstrapper needs a content pack index.");
+            if (contentPackIndex.Manifest == null)
+                throw new System.InvalidOperationException("GameBootstrapper content pack index needs a manifest.");
+
+            ContentPackManifestAsset manifest = contentPackIndex.Manifest;
+            ContentOverrideEntry[] authoredOverrides = manifest.Overrides;
+            var overrides = new ContentOverrideDeclaration[authoredOverrides.Length];
+            for (int i = 0; i < overrides.Length; i++)
+            {
+                overrides[i] = new ContentOverrideDeclaration(
+                    authoredOverrides[i].family,
+                    new AuthoredId(authoredOverrides[i].authoredId),
+                    authoredOverrides[i].expectedSourcePackId);
+            }
+            _resolvedContent = ContentPackResolver.Resolve(new[]
+            {
+                new ContentPackContribution(
+                    manifest.PackId,
+                    manifest.DisplayName,
+                    manifest.PackVersion,
+                    contentPackIndex.BuildDefinitionSet(),
+                    overrides),
+            });
+            _catalog = _resolvedContent.Catalog;
 
             _saveStore = new InMemorySaveGameStore();
 

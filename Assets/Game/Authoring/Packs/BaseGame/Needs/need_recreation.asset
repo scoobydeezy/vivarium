@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2661b3da490746f0aa9a729846053661, type: 3}
+  m_Name: need_recreation
+  m_EditorClassIdentifier: Vivarium.Unity.Authoring::Vivarium.Unity.Authoring.NeedDefinitionAsset
+  authoredId: need.recreation
+  displayName: Recreation
+  minValue: 0
+  maxValue: 10000
+  ratePerMinuteNumerator: 2
+  ratePerMinuteDenominator: 1
+  behaviouralThresholds:
+  - 6000
+  recreationRoutine:
+    decisionDefinitionId: decision.choose_recreation
+    activationThreshold: 6000
+    satisfactionOffset: -5000
+    candidates:
+    - optionId: option.recreation.tabletop_games
+      activityDefinitionId: activity.tabletop_games
+      interestId: interest.tabletop_games
+    - optionId: option.recreation.reading
+      activityDefinitionId: activity.reading
+      interestId: interest.reading

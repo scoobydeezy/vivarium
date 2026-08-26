@@ -17,28 +17,31 @@ namespace Vivarium.Unity.EditorTools
         [MenuItem("Vivarium/Validate Content Packs")]
         public static void ValidateAll()
         {
-            string[] guids = AssetDatabase.FindAssets("t:" + nameof(ContentPackAsset));
+            List<string> indexProblems = ContentPackBaker.ValidateAllFresh();
+            for (int i = 0; i < indexProblems.Count; i++) Debug.LogError(indexProblems[i]);
+
+            string[] guids = AssetDatabase.FindAssets("t:" + nameof(ContentPackIndexAsset));
 
             if (guids.Length == 0)
             {
-                Debug.LogWarning("No ContentPackAsset found to validate.");
+                Debug.LogWarning("No ContentPackIndexAsset found to validate.");
                 return;
             }
 
-            int failed = 0;
+            int failed = indexProblems.Count;
 
             for (int i = 0; i < guids.Length; i++)
             {
                 string path = AssetDatabase.GUIDToAssetPath(guids[i]);
-                var pack = AssetDatabase.LoadAssetAtPath<ContentPackAsset>(path);
+                var index = AssetDatabase.LoadAssetAtPath<ContentPackIndexAsset>(path);
 
-                List<string> problems = pack.Validate();
+                List<string> problems = index.ValidateContent();
 
-                // Building is itself a validation pass: catalog construction rejects duplicates, and
-                // ContentValidator checks ranges and cross-references.
+                // Contribution construction rejects same-pack duplicates. Catalog-wide reference
+                // validation occurs only after configured load-order resolution.
                 try
                 {
-                    pack.Build();
+                    index.BuildDefinitionSet();
                 }
                 catch (System.Exception exception)
                 {
@@ -47,7 +50,7 @@ namespace Vivarium.Unity.EditorTools
 
                 if (problems.Count == 0)
                 {
-                    Debug.Log($"{path}: content valid (version {pack.ContentVersion}).");
+                    Debug.Log($"{path}: pack contribution valid (version {index.Manifest.PackVersion}).");
                     continue;
                 }
 

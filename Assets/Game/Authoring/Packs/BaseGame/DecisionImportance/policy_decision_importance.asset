@@ -1,0 +1,12 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ebc2a7d04fb54df2b3bf7eb41f5219d3, type: 3}
+  m_Name: policy_decision_importance
+  m_EditorClassIdentifier: Vivarium.Unity.Authoring::Vivarium.Unity.Authoring.DecisionImportancePolicyAsset
+  admissionFloor: 6500
+  prioritizedFeedFloor: 6500
+  normalFeedFloor: 7000
+  autoHoldFloor: 7000

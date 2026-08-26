@@ -2586,16 +2586,23 @@ Pipeline:
 
 ```text
 ScriptableObject Authoring Assets
-             ↓
-Validation / Conversion
-             ↓
-Immutable Domain Definition Catalog
+             ↓ deterministic editor bake
+Build-included Pack Indexes
+             ↓ validation / conversion
+Immutable Definition Contributions
+             ↓ explicit ordered resolution
+Immutable Domain Definition Catalog + provenance
              ↓
 Simulation
 
 ```
 
 This preserves designer-friendly Inspector workflows while keeping Domain independent of Unity.
+
+Per-entity assets, pack identity, bake freshness, and explicit full-record override semantics are owned
+by [`../Design/AuthoredContent.md`](../Design/AuthoredContent.md). Runtime pack resolution is
+Unity-independent. Same-pack duplicate ids and undeclared cross-pack collisions are errors; filesystem
+or asset-database enumeration order never determines effective content.
 
 ---
 

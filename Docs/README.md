@@ -38,6 +38,7 @@ whole set.
 | Per-instance Decision Importance, admission, feed, and Auto-Hold gates | [`Design/DecisionImportance.md`](Design/DecisionImportance.md) |
 | Joint commitment feasibility, plans, deadlines, and Dissolution | [`Design/CommitmentConflict.md`](Design/CommitmentConflict.md) |
 | Commitment outcomes, attribution, stakeholders, and accountability | [`Design/CommitmentAccountability.md`](Design/CommitmentAccountability.md) |
+| Per-entity authoring assets, deterministic pack baking, and ordered content resolution | [`Design/AuthoredContent.md`](Design/AuthoredContent.md) |
 
 The implementation stages inside completed design briefs are historical design rationale, not the
 current roadmap. Use [`Product/Roadmap.md`](Product/Roadmap.md) for present sequencing and

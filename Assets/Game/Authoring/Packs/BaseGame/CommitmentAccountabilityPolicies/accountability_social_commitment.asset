@@ -1,0 +1,63 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 37b169e3f37f4a15b0852879cb8a3f17, type: 3}
+  m_Name: accountability_social_commitment
+  m_EditorClassIdentifier: Vivarium.Unity.Authoring::Vivarium.Unity.Authoring.CommitmentAccountabilityPolicyAsset
+  authoredId: accountability.social_commitment
+  defaultConsequences:
+    hasMemory: 0
+    memoryKind:
+    memoryExplanationId:
+    memoryRetentionTier: 0
+    evidenceActionId:
+    channelDeltas: []
+  byOutcome:
+  - outcome: 0
+    consequences:
+      hasMemory: 0
+      memoryKind:
+      memoryExplanationId:
+      memoryRetentionTier: 0
+      evidenceActionId: social.action.commitment_fulfilled
+      channelDeltas: []
+  - outcome: 1
+    consequences:
+      hasMemory: 1
+      memoryKind: relationship.memory.commitment_breach
+      memoryExplanationId: relationship.explanation.commitment_breach
+      memoryRetentionTier: 2
+      evidenceActionId: social.action.commitment_breach
+      channelDeltas:
+      - authoredId: relationship.channel.trust_judgment
+        value: -1200
+      - authoredId: relationship.channel.resentment
+        value: 900
+  - outcome: 2
+    consequences:
+      hasMemory: 1
+      memoryKind: relationship.memory.commitment_breach
+      memoryExplanationId: relationship.explanation.commitment_breach
+      memoryRetentionTier: 2
+      evidenceActionId: social.action.commitment_breach
+      channelDeltas:
+      - authoredId: relationship.channel.trust_judgment
+        value: -1200
+      - authoredId: relationship.channel.resentment
+        value: 900
+  - outcome: 3
+    consequences:
+      hasMemory: 1
+      memoryKind: relationship.memory.commitment_breach
+      memoryExplanationId: relationship.explanation.commitment_breach
+      memoryRetentionTier: 2
+      evidenceActionId: social.action.commitment_breach
+      channelDeltas:
+      - authoredId: relationship.channel.trust_judgment
+        value: -1200
+      - authoredId: relationship.channel.resentment
+        value: 900
+  byRole: []
+  specificOverrides: []

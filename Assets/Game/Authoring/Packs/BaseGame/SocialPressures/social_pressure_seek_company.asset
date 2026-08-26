@@ -1,0 +1,10 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 72a5fe36f4b24b7a81552bdfb7e33fb4, type: 3}
+  m_Name: social_pressure_seek_company
+  m_EditorClassIdentifier: Vivarium.Unity.Authoring::Vivarium.Unity.Authoring.SocialPressureAsset
+  authoredId: social.pressure.seek_company
+  rules: []

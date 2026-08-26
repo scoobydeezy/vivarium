@@ -1,0 +1,14 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 49642c4fd0d14c14a25529209ef6ddce, type: 3}
+  m_Name: activity_working
+  m_EditorClassIdentifier: Vivarium.Unity.Authoring::Vivarium.Unity.Authoring.ActivityDefinitionAsset
+  authoredId: activity.working
+  displayName: Working
+  defaultDurationMinutes: 5
+  producesOutcome: 1
+  supportsInteractiveResolution: 1
+  isTravel: 0

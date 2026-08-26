@@ -1,0 +1,61 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6c808590f4fb4c429da953663cd1de9b, type: 3}
+  m_Name: pack.index
+  m_EditorClassIdentifier: Vivarium.Unity.Authoring::Vivarium.Unity.Authoring.ContentPackIndexAsset
+  manifest: {fileID: 11400000, guid: e7c046ff24624cf098aa8297638881bb, type: 2}
+  traits:
+  - {fileID: 11400000, guid: afe9983f40078e045a269c0c1854d889, type: 2}
+  - {fileID: 11400000, guid: cf50c39fa4f24f64ca6fccdf406a2d68, type: 2}
+  - {fileID: 11400000, guid: 4468f27faf43b5949bbf2a8be776698f, type: 2}
+  needs:
+  - {fileID: 11400000, guid: 92f0e057993c4fccbfca02da12c89c84, type: 2}
+  - {fileID: 11400000, guid: f70db2df455e420cb3c3004035f32d0e, type: 2}
+  - {fileID: 11400000, guid: 87c78c50b8bd41b0a6f595844ed45c9c, type: 2}
+  - {fileID: 11400000, guid: 3919f747790b4b00bd9d0c18fbb2231c, type: 2}
+  activities:
+  - {fileID: 11400000, guid: c6df252c21fb45138c4fa5743d5b5bc5, type: 2}
+  - {fileID: 11400000, guid: 67f077e847834497b7812122c3b17d53, type: 2}
+  - {fileID: 11400000, guid: bfc3b49dbcd54b4794c8dd2df0c76106, type: 2}
+  - {fileID: 11400000, guid: 55ca70b03067456cb4fc3d7a7f3cd235, type: 2}
+  - {fileID: 11400000, guid: e2d7a3eb077c433eb875ea0d3d989722, type: 2}
+  - {fileID: 11400000, guid: 5be2952eae6149c8bad603e90c49a7ef, type: 2}
+  - {fileID: 11400000, guid: 674596e2121b41998586684b18f451a3, type: 2}
+  - {fileID: 11400000, guid: 04d0242bc72d47a9bd61d65e3478a776, type: 2}
+  - {fileID: 11400000, guid: 40ccb4388cb44a229ac47f24c653ca55, type: 2}
+  - {fileID: 11400000, guid: ea59bdfd621c4b248c147901977dfaa0, type: 2}
+  decisions:
+  - {fileID: 11400000, guid: 2d4a807e0ac44521a4619994e7e092ee, type: 2}
+  - {fileID: 11400000, guid: 2d2a9e3ce83a4080a23f67df55b0bf44, type: 2}
+  - {fileID: 11400000, guid: 2d1b21ee15fb4732ae21cc16772da793, type: 2}
+  - {fileID: 11400000, guid: 2d3f2cfc91bd467792ad620be41a1f28, type: 2}
+  interventions:
+  - {fileID: 11400000, guid: 3e19f957a9574a5a86fb7b275294465d, type: 2}
+  - {fileID: 11400000, guid: 3e3e2be03bb14c1ba7eea1e00374775d, type: 2}
+  - {fileID: 11400000, guid: 3e2e8101b6684840b6a0b5abeb89edba, type: 2}
+  locationKinds:
+  - {fileID: 11400000, guid: 71c6c6f1d3d84f8da0078312f9675f0d, type: 2}
+  appraisalCalibrations:
+  - {fileID: 11400000, guid: e6a1f1ddd1c2499c9c1a5f321e8e938f, type: 2}
+  socialEvidence:
+  - {fileID: 11400000, guid: 5a5af93326c34eff8eead57270eebfb7, type: 2}
+  - {fileID: 11400000, guid: 5a4cbbbd1d0348a797609d4483f623ed, type: 2}
+  - {fileID: 11400000, guid: 5a3d43586484416bbf91a6d95e15786f, type: 2}
+  decisionImportancePolicy: {fileID: 11400000, guid: d1a64bdc574a4cb98c7928a7082593c0, type: 2}
+  commitmentAccountabilityPolicies:
+  - {fileID: 11400000, guid: 94420e057fac4a93bd8739e0beb4cad0, type: 2}
+  employments:
+  - {fileID: 11400000, guid: 6e32b01b2ea143e39ac7ad7a1f95e2e9, type: 2}
+  socialPressures:
+  - {fileID: 11400000, guid: 74b005db8dbe46bea042d95d6d02cf8e, type: 2}
+  - {fileID: 11400000, guid: 73ad8259c8fa45a2a4700e930bcdbcc1, type: 2}
+  bakeFingerprint: aafdcb2b4cc91c02

@@ -1,0 +1,88 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f7dcb9b1d78b41a68afbe34f3c3f0ef1, type: 3}
+  m_Name: decision_choose_recreation
+  m_EditorClassIdentifier: Vivarium.Unity.Authoring::Vivarium.Unity.Authoring.DecisionDefinitionAsset
+  authoredId: decision.choose_recreation
+  options:
+  - authoredId: option.recreation.tabletop_games
+    labelId: Play Tabletop Games
+    orderIndex: 0
+    context:
+    - key: decision.parameter.interest_id
+      kind: 1
+      integer: 0
+      authoredId: interest.tabletop_games
+      entityKind: 0
+      runtimeId: 0
+  - authoredId: option.recreation.reading
+    labelId: Read
+    orderIndex: 1
+    context:
+    - key: decision.parameter.interest_id
+      kind: 1
+      integer: 0
+      authoredId: interest.reading
+      entityKind: 0
+      runtimeId: 0
+  timeToResolveMinutes: 10
+  conflictScopeKindId: conflict_scope.recreation
+  holdEligible: 1
+  dependencies: []
+  influences: []
+  activityOutcomes: []
+  relationshipOutcomes: []
+  reasoningProgram:
+    bindings:
+    - bindingId: binding.recreation.interest
+      considerationId: consideration.recreation.interest
+      definitionVersion: 1
+      parameterSchema:
+      - parameterId: decision.parameter.actor
+        kind: 2
+        required: 1
+      - parameterId: decision.parameter.interest_id
+        kind: 1
+        required: 1
+      parameterBindings:
+      - parameterId: decision.parameter.actor
+        source: 0
+        sourceParameterId: ''
+      - parameterId: decision.parameter.interest_id
+        source: 2
+        sourceParameterId: decision.parameter.interest_id
+      signals:
+      - signalId: decision.signal.recreation.interest
+        providerId: decision.signal_provider.actor_interest
+      field:
+        authoredId: field.recreation.interest
+        bias: 0
+        revision: 1
+        linearTerms:
+        - signalId: decision.signal.recreation.interest
+          coefficient: 30000
+          provenanceId: reason.recreation.interest
+        pairwiseTerms: []
+        idealPoint: []
+        idealFactors: []
+      reasonChannelId: reason_channel.recreation.interest
+      consolidationPolicy: 0
+      scaleId: decision.reason_scale.recreation
+      scaleThresholds:
+      - minimumMagnitude: 1000
+        dieSides: 4
+      - minimumMagnitude: 2500
+        dieSides: 6
+      - minimumMagnitude: 4500
+        dieSides: 8
+      - minimumMagnitude: 6500
+        dieSides: 10
+      - minimumMagnitude: 8500
+        dieSides: 12
+      categoryId: influence_category.personal_concern
+      positiveLabelId: influence.recreation.interest
+      negativeLabelId: influence.recreation.disinterest
+      visibility: 31

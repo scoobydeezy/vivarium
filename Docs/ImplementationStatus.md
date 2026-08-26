@@ -411,11 +411,22 @@ Intentionally thin, pending game-design decisions:
   Interests with per-instance Decision admission, and Social pressure starts bounded co-located
   Socializing. Competing routine priority and broader circumstance combinations remain intentionally
   thin.
-- **Unity authoring/presentation.** `ContentPackAsset` converts authored Needs (including rest,
-  satisfaction, Recreation, Socializing, and Energy-continuation routines), the Decision admission policy, Activities, Employment
-  definitions and obligation patterns, Decisions
-  (including typed compiled reasoning, social triggers, and directional outcomes), appraisal calibration,
-  social evidence/pressure, and interventions with authored resource policies into the validated Domain catalog. Demo characters receive deterministic social
+- **Unity authoring/presentation.** The authored-content migration now covers Traits, Needs,
+  Activities, Employment definitions, Commitment Accountability policies, and the singleton Decision
+  Importance policy, plus Location Kinds, Appraisal Calibrations, Social Evidence, and Social
+  Pressures, Decisions, and Interventions. BaseGame
+  definitions, including explicit Energy, required Waiting/Traveling/Sleeping content, and Bakery
+  Employment obligation patterns, are independent assets under a manifest-owned pack folder and enter
+  builds through a deterministically sorted baked index. A stale
+  index is a build error. Immutable `DefinitionSet` contributions and the Application resolver enforce
+  same-pack uniqueness, declared full-record cross-pack replacement, load order, final catalog
+  validation, and resolution provenance. The BaseGame Commitment Accountability policy is also an
+  independent indexed asset; Employment and Commitment Template references bind after overlay to the
+  effective policy, including a declared cross-pack replacement. Synthetic headless tests exercise
+  those semantics. `ContentPackAsset` has been removed: Unity Bootstrap consumes the baked index and
+  its manifest directly, while final cross-reference validation remains post-resolution. Decision
+  assets retain typed compiled reasoning, social triggers, and directional outcomes; Intervention
+  assets retain their authored resource policies. Demo characters receive deterministic social
   profiles. The smoke scene creates Mina and Glen's Bakery Employments, whose shared shift Commitments
   interact while travelling, Mina arrives beside a disliked working colleague and gains Work pressure,
   then a real hunger crossing generates the compiled, explainable leave-work Decision. Leaving Work now

@@ -1,0 +1,178 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f7dcb9b1d78b41a68afbe34f3c3f0ef1, type: 3}
+  m_Name: decision_leave_work_early
+  m_EditorClassIdentifier: Vivarium.Unity.Authoring::Vivarium.Unity.Authoring.DecisionDefinitionAsset
+  authoredId: decision.leave_work_early
+  options:
+  - authoredId: option.leave
+    labelId: Leave work early
+    orderIndex: 0
+    context:
+    - key: decision.option_marker.leave_work
+      kind: 0
+      integer: 1
+      authoredId: ''
+      entityKind: 0
+      runtimeId: 0
+  - authoredId: option.stay
+    labelId: Finish the shift
+    orderIndex: 1
+    context:
+    - key: decision.option_marker.finish_shift
+      kind: 0
+      integer: 1
+      authoredId: ''
+      entityKind: 0
+      runtimeId: 0
+  timeToResolveMinutes: 10
+  conflictScopeKindId: conflict_scope.current_activity
+  holdEligible: 1
+  dependencies: []
+  trigger:
+    needId: need.hunger
+    threshold: 6000
+    requiredActivityDefinitionId: activity.working
+  influences: []
+  activityOutcomes:
+  - optionId: option.leave
+    activityDefinitionId: activity.waiting
+    durationMinutes: 60
+  reasoningProgram:
+    bindings:
+    - bindingId: binding.leave_work.hunger
+      considerationId: consideration.need_urgency
+      definitionVersion: 1
+      parameterSchema:
+      - parameterId: decision.option_marker.leave_work
+        kind: 0
+        required: 1
+      - parameterId: decision.parameter.actor
+        kind: 2
+        required: 1
+      - parameterId: decision.parameter.urgency
+        kind: 0
+        required: 1
+      parameterBindings:
+      - parameterId: decision.option_marker.leave_work
+        source: 2
+        sourceParameterId: decision.option_marker.leave_work
+      - parameterId: decision.parameter.actor
+        source: 0
+        sourceParameterId: ''
+      - parameterId: decision.parameter.urgency
+        source: 1
+        sourceParameterId: decision.parameter.urgency
+      signals:
+      - signalId: decision.parameter.urgency
+        providerId: decision.signal_provider.context
+      field:
+        authoredId: field.leave_work.hunger
+        bias: 0
+        revision: 1
+        linearTerms:
+        - signalId: decision.parameter.urgency
+          coefficient: 10000
+          provenanceId: reason.hunger
+        pairwiseTerms: []
+        idealPoint: []
+        idealFactors: []
+      reasonChannelId: reason_channel.physical_urgency
+      consolidationPolicy: 0
+      scaleId: reason_scale.hunger
+      scaleThresholds:
+      - minimumMagnitude: 0
+        dieSides: 20
+      categoryId: influence_category.personal_concern
+      positiveLabelId: Hunger
+      negativeLabelId: Not hungry
+      visibility: 31
+    - bindingId: binding.leave_work.work_context
+      considerationId: consideration.activity_context
+      definitionVersion: 1
+      parameterSchema:
+      - parameterId: decision.option_marker.leave_work
+        kind: 0
+        required: 1
+      - parameterId: decision.parameter.actor
+        kind: 2
+        required: 1
+      - parameterId: decision.parameter.activity_modifier_id
+        kind: 1
+        required: 1
+      parameterBindings:
+      - parameterId: decision.option_marker.leave_work
+        source: 2
+        sourceParameterId: decision.option_marker.leave_work
+      - parameterId: decision.parameter.actor
+        source: 0
+        sourceParameterId: ''
+      - parameterId: decision.parameter.activity_modifier_id
+        source: 3
+        sourceParameterId: ''
+        literal:
+          key: ''
+          kind: 1
+          integer: 0
+          authoredId: activity_modifier.disliked_colleague_present
+          entityKind: 0
+          runtimeId: 0
+      signals:
+      - signalId: decision_context.work_pressure
+        providerId: decision.signal_provider.activity_modifier
+      field:
+        authoredId: field.leave_work.work_context
+        bias: 0
+        revision: 1
+        linearTerms:
+        - signalId: decision_context.work_pressure
+          coefficient: 10000
+          provenanceId: reason.difficult_work_context
+        pairwiseTerms: []
+        idealPoint: []
+        idealFactors: []
+      reasonChannelId: reason_channel.work_context
+      consolidationPolicy: 0
+      scaleId: reason_scale.work_context
+      scaleThresholds:
+      - minimumMagnitude: 0
+        dieSides: 6
+      - minimumMagnitude: 4000
+        dieSides: 10
+      categoryId: influence_category.social
+      positiveLabelId: Difficult work context
+      negativeLabelId: Supportive work context
+      visibility: 11
+    - bindingId: binding.leave_work.reliability
+      considerationId: consideration.reliability
+      definitionVersion: 1
+      parameterSchema:
+      - parameterId: decision.option_marker.finish_shift
+        kind: 0
+        required: 1
+      parameterBindings:
+      - parameterId: decision.option_marker.finish_shift
+        source: 2
+        sourceParameterId: decision.option_marker.finish_shift
+      signals: []
+      field:
+        authoredId: field.leave_work.reliability
+        bias: 1000
+        revision: 1
+        linearTerms: []
+        pairwiseTerms: []
+        idealPoint: []
+        idealFactors: []
+      reasonChannelId: reason_channel.reliability
+      consolidationPolicy: 0
+      scaleId: reason_scale.reliability
+      scaleThresholds:
+      - minimumMagnitude: 0
+        dieSides: 6
+      categoryId: influence_category.practical
+      positiveLabelId: Reliability
+      negativeLabelId: Unreliability
+      visibility: 31

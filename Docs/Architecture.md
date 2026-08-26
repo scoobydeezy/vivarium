@@ -59,6 +59,12 @@ boundary. The headless runner is the second guard against Unity leakage.
 `DefinitionCatalog` belongs to Domain because immutable definitions are Domain input and Unity
 Authoring may depend on Domain without depending on Application.
 
+An immutable `DefinitionSet` represents a possibly incomplete contribution before resolution. Unity
+Authoring converts baked pack indexes to those sets; Application resolves configured pack order and
+returns the validated `DefinitionCatalog` with immutable provenance. Unity Editor owns folder discovery,
+deterministic baking, and stale-index build rejection. See
+[`Design/AuthoredContent.md`](Design/AuthoredContent.md).
+
 ## Language contract
 
 Core targets `netstandard2.1` with C# 9, matching the Unity compatibility surface. Nullable reference

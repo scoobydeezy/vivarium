@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 027192ff5b554adf84eafbbf8a560444, type: 3}
+  m_Name: intervention_loaded_twenty
+  m_EditorClassIdentifier: Vivarium.Unity.Authoring::Vivarium.Unity.Authoring.InterventionDefinitionAsset
+  authoredId: intervention.loaded_twenty
+  kind: 5
+  cost: 1
+  resourceKind: 3
+  replacementDieSides: 20
+  fixedResult: 20
+  initialBalance: 1
+  availabilityCap: 1
+  refreshAmount: 0
+  refreshPeriodMinutes: 0
