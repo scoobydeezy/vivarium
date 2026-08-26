@@ -483,7 +483,7 @@ Author approximately 8–12 characters (target: about 10) with deliberately inte
 The scenario should run at least **2–3 simulated days** in acceptance coverage.
 
 **Complete.** The integration authors all ten locked MPS roles in the production
-`SampleWorld`, with shared households, six production Employments across Bakery and Commons, distinct
+`MinimumPlayableWorld`, with shared households, six production Employments across Bakery and Commons, distinct
 Needs/Interests, and staggered Eating, Working, Sleeping, Travel, and routine starting states. A
 deterministic two-day acceptance now proves continuous primary Activities, Sleep/wake completion for
 every character, and routine diversity across Eating, Work, Travel, Tabletop Games, Reading, and

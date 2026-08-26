@@ -7,25 +7,25 @@ MonoBehaviour:
   m_Name: employment_bakery_worker
   m_EditorClassIdentifier: Vivarium.Unity.Authoring::Vivarium.Unity.Authoring.EmploymentDefinitionAsset
   authoredId: employment.bakery_worker
-  roleId: employment_role.baker
+  roleId: employment.role.baker
   obligationPatterns:
   - authoredId: routine.bakery_shift
-    commitmentKindId: commitment.demo_work_shift
+    commitmentKindId: commitment.work_shift
     cycleLengthDays: 7
-    activeDaysMask: 1
-    startMinuteOfDay: 452
-    durationMinutes: 120
+    activeDaysMask: 31
+    startMinuteOfDay: 540
+    durationMinutes: 300
     priority: 100
     activityDefinitionId: activity.working
-    startWindowMinutes: 5
+    startWindowMinutes: 30
     accountabilityPolicyId: accountability.social_commitment
   - authoredId: routine.bakery_closing_duty
     commitmentKindId: commitment.help_darius_close_bakery
     cycleLengthDays: 7
     activeDaysMask: 1
-    startMinuteOfDay: 572
+    startMinuteOfDay: 840
     durationMinutes: 90
     priority: 90
     activityDefinitionId: activity.helping_at_bakery
-    startWindowMinutes: 2
+    startWindowMinutes: 10
     accountabilityPolicyId: accountability.social_commitment

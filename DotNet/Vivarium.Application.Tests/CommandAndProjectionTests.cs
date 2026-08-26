@@ -392,6 +392,66 @@ namespace Vivarium.Application.Tests
         }
 
         [Fact]
+        public void RosterCombinesObservedActivityAttentionPolicyAndAuthoritativeDecisionSurfacing()
+        {
+            TestWorld fixture = TestWorld.Create();
+            fixture.Host.Session.Execute(new FollowCharacterCommand(fixture.Mina, true));
+            fixture.Host.Session.Execute(new SetAttentionPolicyCommand(fixture.Mina, AttentionPolicy.AutoHold));
+            Decision decision = fixture.CreateDecision(importance: 8000);
+
+            var projector = new CharacterRosterProjector(
+                fixture.Host.Catalog.DecisionImportancePolicy,
+                fixture.Host.HoldPolicy);
+            CharacterRosterEntryView entry = Assert.Single(projector.Project(fixture.Host.World));
+
+            Assert.Equal("Mina Cairn", entry.DisplayName);
+            Assert.Equal(WellKnownActivities.Waiting.Value, entry.CurrentActivityLabel);
+            Assert.Equal("Home", entry.LocationLabel);
+            Assert.Equal(nameof(AttentionPolicy.AutoHold), entry.AttentionPolicyLabel);
+            Assert.True(entry.IsFollowed);
+            Assert.True(entry.NeedsDecisionAttention);
+            Assert.False(entry.HasHeldDecision);
+            Assert.Equal(decision.CharacterId.Value, entry.CharacterId);
+        }
+
+        [Fact]
+        public void RosterDoesNotRevealLiveActivityForAnUnobservedCharacter()
+        {
+            TestWorld fixture = TestWorld.Create();
+            var projector = new CharacterRosterProjector(
+                fixture.Host.Catalog.DecisionImportancePolicy,
+                fixture.Host.HoldPolicy);
+
+            CharacterRosterEntryView entry = Assert.Single(projector.Project(fixture.Host.World));
+
+            Assert.Equal("Unknown", entry.CurrentActivityLabel);
+            Assert.Equal("Not currently observed", entry.LocationLabel);
+        }
+
+        [Fact]
+        public void SimulationStatusProjectsPausedFastForwardAndOfflineReturnWithoutMutatingWorld()
+        {
+            TestWorld fixture = TestWorld.Create();
+            var projector = new SimulationStatusProjector();
+            long before = fixture.Host.World.Clock.Now.TotalMinutes;
+
+            SimulationStatusView paused = projector.Project(
+                fixture.Host.World, SimulationMode.Live, speedPercent: 0);
+            SimulationStatusView fast = projector.Project(
+                fixture.Host.World, SimulationMode.PlayerFastForward, speedPercent: 400);
+            SimulationStatusView offline = projector.Project(
+                fixture.Host.World, SimulationMode.OfflineCatchUp, speedPercent: 100, offlineElapsedMinutes: 150);
+
+            Assert.True(paused.IsPaused);
+            Assert.Equal("Paused", paused.StatusLabel);
+            Assert.Equal("Fast-forward", fast.StatusLabel);
+            Assert.Equal("4x", fast.SpeedLabel);
+            Assert.True(offline.IsOfflineReturn);
+            Assert.Equal("2h 30m elapsed", offline.OfflineElapsedLabel);
+            Assert.Equal(before, fixture.Host.World.Clock.Now.TotalMinutes);
+        }
+
+        [Fact]
         public void CharacterAttentionPolicyRejectsDecisionOnlyHold()
         {
             TestWorld fixture = TestWorld.Create();

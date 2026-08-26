@@ -4,11 +4,11 @@
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_Script: {fileID: 11500000, guid: 49642c4fd0d14c14a25529209ef6ddce, type: 3}
-  m_Name: activity_working
+  m_Name: activity_cafe_hosting
   m_EditorClassIdentifier: Vivarium.Unity.Authoring::Vivarium.Unity.Authoring.ActivityDefinitionAsset
-  authoredId: activity.working
-  displayName: Working
-  defaultDurationMinutes: 360
-  producesOutcome: 1
-  supportsInteractiveResolution: 1
+  authoredId: activity.cafe_hosting
+  displayName: Hosting at the cafe
+  defaultDurationMinutes: 90
+  producesOutcome: 0
+  supportsInteractiveResolution: 0
   isTravel: 0

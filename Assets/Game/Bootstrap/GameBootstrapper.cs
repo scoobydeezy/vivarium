@@ -3,6 +3,7 @@ using UnityEngine;
 using Vivarium.Application.Commands;
 using Vivarium.Application.Content;
 using Vivarium.Application.Persistence;
+using Vivarium.Application.Queries;
 using Vivarium.Application.Session;
 using Vivarium.Domain.Activities;
 using Vivarium.Domain.Characters;
@@ -46,19 +47,6 @@ namespace Vivarium.Unity.Bootstrap
             new ContentDefinitionKey(ContentDefinitionFamily.Activity, WellKnownActivities.Sleeping),
         };
 
-        private static readonly AuthoredId ActivityWorking = new AuthoredId("activity.working");
-        private static readonly AuthoredId ActivityDining = new AuthoredId("activity.dining");
-        private static readonly AuthoredId ActivityHelpingAtBakery = new AuthoredId("activity.helping_at_bakery");
-        private static readonly AuthoredId ActivityTabletopGames = new AuthoredId("activity.tabletop_games");
-        private static readonly AuthoredId ActivityReading = new AuthoredId("activity.reading");
-        private static readonly AuthoredId ActivitySocializing = WellKnownActivities.Socializing;
-        private static readonly AuthoredId ContextWorkPressure = new AuthoredId("decision_context.work_pressure");
-        private static readonly AuthoredId ModifierDislikedColleague = new AuthoredId("activity_modifier.disliked_colleague_present");
-        private static readonly AuthoredId SocialCalibrationStandard = new AuthoredId("social.calibration.standard");
-        private static readonly AuthoredId AccountabilitySocialCommitment = new AuthoredId("accountability.social_commitment");
-        private static readonly AuthoredId EmploymentBakeryWorker = new AuthoredId("employment.bakery_worker");
-        private static readonly AuthoredId PatternBakeryShift = new AuthoredId("routine.bakery_shift");
-        private static readonly AuthoredId PatternBakeryClosingDuty = new AuthoredId("routine.bakery_closing_duty");
         [Header("Content")]
         [SerializeField] private ContentPackIndexAsset contentPackIndex;
 
@@ -79,8 +67,8 @@ namespace Vivarium.Unity.Bootstrap
 
         [SerializeField] private float speedMultiplier = 1f;
 
-        [Header("Demo Test")]
-        [Tooltip("Seeds followed characters so the Unity presentation pipeline can be smoke-tested.")]
+        [Header("Minimum Playable Scenario")]
+        [Tooltip("Populates the shared ten-character production-shaped world.")]
         [SerializeField] private bool seedDemoCharacter = true;
 
         [Header("Presentation")]
@@ -93,11 +81,13 @@ namespace Vivarium.Unity.Bootstrap
         private ResolvedContent _resolvedContent;
         private InMemorySaveGameStore _saveStore;
         private float _accumulatedMinutes;
-        private readonly List<LocationId> _demoLocations = new List<LocationId>();
-        private readonly List<CharacterId> _demoCharacters = new List<CharacterId>();
+        private readonly SimulationStatusProjector _statusProjector = new SimulationStatusProjector();
+        private long _offlineReturnMinutes = -1;
 
         /// <summary>The composed simulation. Null until <see cref="Awake"/> has run.</summary>
         public SimulationHost Host => _host;
+
+        public MinimumPlayableWorldLayout WorldLayout { get; private set; }
 
         private void Awake()
         {
@@ -150,8 +140,6 @@ namespace Vivarium.Unity.Bootstrap
                 trace: null,
                 saveStore: _saveStore,
                 realWorldClock: new UnityRealWorldClock());
-            ConfigureDemoRules(_host);
-
             if (presenter == null)
             {
                 presenter = FindAnyObjectByType<WorldPresenter>();
@@ -164,235 +152,19 @@ namespace Vivarium.Unity.Bootstrap
             }
 
             presenter.ValidateConfiguration();
-            presenter.ConfigureTravel(CreateDemoTravelCommand);
             presenter.ConfigureDecisionContent(_host.Catalog.Interventions);
+            presenter.ConfigureRoster(_host.Catalog.DecisionImportancePolicy, _host.HoldPolicy);
 
             presenter.Initialize(_host.Projections, (command, diagnostics) => _host.Session.Enqueue(command, diagnostics));
 
             if (seedDemoCharacter)
             {
-                SeedDemoCharacters();
+                WorldLayout = MinimumPlayableWorld.Populate(_host);
             }
 
             _host.Projections.OnQuiescence(_host.World, _host.Simulation);
 
-            timeDisplay?.SetTime(_host.World.Clock.Now);
-        }
-
-        private void SeedDemoCharacters()
-        {
-            _demoLocations.Clear();
-            _demoCharacters.Clear();
-            LocationId room = SeedDemoLocation(
-                "Demo Room",
-                new[] { WellKnownActivities.Eating, ActivityReading });
-            LocationId cafe = SeedDemoLocation(
-                "Demo Commons",
-                new[] { ActivityTabletopGames, ActivityReading, ActivitySocializing },
-                supportsPlayerManagedAvailability: true);
-            LocationId workshop = SeedDemoLocation("Demo Workshop");
-
-            CharacterId mina = SeedDemoCharacter("Mina Test", room, 5592);
-            CharacterId glen = SeedDemoCharacter("Glen Test", room, 2000);
-            CharacterId darius = SeedDemoCharacter("Darius Test", workshop, 1000);
-
-            var walking = new AuthoredId("travel_mode.walking");
-            _host.World.TravelNetwork.ConnectBidirectional(room, workshop, SimDuration.FromMinutes(30), walking);
-            _host.World.TravelNetwork.ConnectBidirectional(room, cafe, SimDuration.FromMinutes(10), walking);
-            _host.World.TravelNetwork.ConnectBidirectional(cafe, workshop, SimDuration.FromMinutes(20), walking);
-
-            SeedNegativeRelationship(mina, darius);
-            _host.Transitions.BeginActivity(
-                _host.Simulation,
-                darius,
-                ActivityWorking,
-                workshop,
-                SimDuration.FromHours(2));
-
-            var employer = new Group(
-                _host.World.RuntimeIds.Groups.Next(),
-                GroupKinds.Employer,
-                "Demo Bakery",
-                workshop);
-            _host.World.Groups.Add(employer.Id, employer);
-
-            Employment minaEmployment = _host.Employments.Create(
-                _host.Simulation,
-                mina,
-                employer.Id,
-                EmploymentBakeryWorker,
-                darius,
-                new[] { PatternBakeryShift, PatternBakeryClosingDuty });
-            Employment glenEmployment = _host.Employments.Create(
-                _host.Simulation,
-                glen,
-                employer.Id,
-                EmploymentBakeryWorker,
-                darius,
-                new[] { PatternBakeryShift });
-            _host.Employments.MaterializeCommitments(_host.Simulation, minaEmployment);
-            _host.Employments.MaterializeCommitments(_host.Simulation, glenEmployment);
-            SeedCommitmentConflictReveal(mina, glen, cafe);
-            _host.Session.Advance(SimDuration.Zero);
-        }
-
-        private LocationId SeedDemoLocation(
-            string locationName,
-            IReadOnlyList<AuthoredId> activityAffordances = null,
-            bool supportsPlayerManagedAvailability = false)
-        {
-            var location = new LocationNode(
-                _host.World.RuntimeIds.Locations.Next(),
-                LocationId.None,
-                new AuthoredId("location_kind.building"),
-                locationName,
-                activityAffordances: activityAffordances,
-                supportsPlayerManagedAvailability: supportsPlayerManagedAvailability);
-            _host.World.Locations.Add(location);
-            _demoLocations.Add(location.Id);
-            return location.Id;
-        }
-
-        private CharacterId SeedDemoCharacter(string characterName, LocationId locationId, long initialHunger)
-        {
-            var character = new Character(
-                _host.World.RuntimeIds.Characters.Next(),
-                characterName,
-                _host.World.Clock.Now);
-
-            _host.World.Characters.Add(character.Id, character);
-            _demoCharacters.Add(character.Id);
-            if (_host.Catalog.AppraisalCalibrations.ContainsKey(SocialCalibrationStandard))
-            {
-                new SocialProfileGenerator(_host.Simulation.Random).Generate(character, SocialCalibrationStandard);
-            }
-
-            NeedDefinition hunger = _host.Catalog.Needs[new AuthoredId("need.hunger")];
-            var hungerState = new NeedState(
-                hunger.Id,
-                AnalyticalProgression.Linear(
-                    initialHunger,
-                    _host.World.Clock.Now,
-                    hunger.DefaultRateNumerator,
-                    hunger.DefaultRateDenominator,
-                    hunger.MinValue,
-                    hunger.MaxValue),
-                DemoDecisionThresholdFor(hunger.Id, hunger.MaxValue));
-            character.SetNeed(hungerState);
-            _host.Needs.Rearm(_host.Simulation, character, hungerState);
-
-            NeedDefinition energy = _host.Catalog.Needs[WellKnownNeeds.Energy];
-            var energyState = new NeedState(
-                energy.Id,
-                AnalyticalProgression.Linear(
-                    9000,
-                    _host.World.Clock.Now,
-                    energy.DefaultRateNumerator,
-                    energy.DefaultRateDenominator,
-                    energy.MinValue,
-                    energy.MaxValue),
-                energy.RestRoutine.ActivationThreshold);
-            character.SetNeed(energyState);
-            _host.Needs.Rearm(_host.Simulation, character, energyState);
-
-            var household = new Group(
-                _host.World.RuntimeIds.Groups.Next(),
-                GroupKinds.Household,
-                characterName + " household",
-                locationId);
-            _host.World.Groups.Add(household.Id, household);
-            _host.World.Memberships.Join(household.Id, character.Id);
-
-            _host.Transitions.BeginActivity(
-                _host.Simulation,
-                character.Id,
-                WellKnownActivities.Waiting,
-                locationId,
-                SimDuration.FromDays(1));
-            _host.WatchSignals.SetFollowed(_host.World, character.Id, true);
-            return character.Id;
-        }
-
-        private void SeedNegativeRelationship(CharacterId mina, CharacterId darius)
-        {
-            var relationship = new Relationship(
-                _host.World.RuntimeIds.Relationships.Next(),
-                mina,
-                darius,
-                new AuthoredId("relationship.disliked_colleague"),
-                AnalyticalProgression.Constant(-5000, _host.World.Clock.Now),
-                _host.World.Clock.Now);
-            _host.World.Relationships.Add(relationship.Id, relationship);
-            _host.World.RelationshipIndex.Register(relationship);
-        }
-
-        private void SeedCommitmentConflictReveal(
-            CharacterId mina,
-            CharacterId glen,
-            LocationId cafe)
-        {
-            SimTime revealAt = _host.World.Clock.Now.Plus(SimDuration.FromHours(1));
-            SimTime startsAt = _host.World.Clock.Now.Plus(SimDuration.FromMinutes(242));
-            ScheduleCommitmentReveal(revealAt, new CommitmentBecomesKnownPayload(
-                mina,
-                new AuthoredId("commitment.dinner_with_glen"),
-                startsAt,
-                startsAt.Plus(SimDuration.FromMinutes(10)),
-                SimDuration.FromMinutes(90),
-                cafe,
-                70,
-                ActivityDining,
-                new[] { glen },
-                accountabilityPolicy: _catalog.CommitmentAccountabilityPolicies[AccountabilitySocialCommitment]));
-        }
-
-        private void ScheduleCommitmentReveal(SimTime revealAt, CommitmentBecomesKnownPayload payload) =>
-            _host.World.Scheduler.Schedule(
-                revealAt,
-                SchedulePhase.Preparation,
-                ScheduledEventTypes.CommitmentBecomesKnown,
-                payload);
-
-        private static void ConfigureDemoRules(SimulationHost host)
-        {
-            var workPressure = new WorkContextPressureService(
-                host.Transitions,
-                host.DecisionReevaluation,
-                ActivityWorking,
-                ModifierDislikedColleague,
-                ContextWorkPressure,
-                affinityThreshold: -1000,
-                pressuredRate: -2);
-            host.DomainEventHandlers.Register(new WorkContextArrivalHandler(workPressure), 200);
-            host.DomainEventHandlers.Register(new WorkContextDepartureHandler(workPressure), 200);
-        }
-
-        private long DemoDecisionThresholdFor(AuthoredId needId, long fallback)
-        {
-            foreach (KeyValuePair<AuthoredId, DecisionDefinition> pair in _host.Catalog.Decisions)
-            {
-                NeedThresholdDecisionTrigger trigger = pair.Value.Trigger;
-                if (trigger != null && trigger.NeedId == needId)
-                {
-                    return trigger.Threshold;
-                }
-            }
-
-            return fallback;
-        }
-
-        private ICommand CreateDemoTravelCommand(CharacterId characterId)
-        {
-            if (_demoLocations.Count == 0 ||
-                !_host.World.TryGetSpatialContext(characterId, out ActivitySpatialContext spatial) ||
-                !spatial.IsLocated)
-            {
-                return null;
-            }
-
-            int currentIndex = _demoLocations.IndexOf(spatial.LocationId);
-            int destinationIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % _demoLocations.Count;
-            return new TravelCharacterCommand(characterId, _demoLocations[destinationIndex]);
+            RefreshStatus(Domain.Simulation.SimulationMode.Live);
         }
 
         public void SaveRuntimeSmokeTest() => _host.Session.Save("runtime-smoke-test");
@@ -413,13 +185,13 @@ namespace Vivarium.Unity.Bootstrap
                 trace: null,
                 saveStore: _saveStore,
                 realWorldClock: new UnityRealWorldClock());
-            ConfigureDemoRules(_host);
+            MinimumPlayableWorld.ConfigureScenarioServices(_host);
 
             _accumulatedMinutes = 0f;
             presenter.PrepareForWorldReload();
             presenter.Initialize(_host.Projections, (command, diagnostics) => _host.Session.Enqueue(command, diagnostics));
             _host.Projections.OnQuiescence(_host.World, _host.Simulation);
-            timeDisplay?.SetTime(_host.World.Clock.Now);
+            RefreshStatus(Domain.Simulation.SimulationMode.Live);
             return true;
         }
 
@@ -455,11 +227,21 @@ namespace Vivarium.Unity.Bootstrap
 
             Domain.Simulation.SimulationMode mode = speedMultiplier > 1f ? Domain.Simulation.SimulationMode.PlayerFastForward : Domain.Simulation.SimulationMode.Live;
             _host.Session.Advance(SimDuration.FromMinutes(wholeMinutes), mode);
-            timeDisplay?.SetTime(_host.World.Clock.Now);
+            RefreshStatus(mode);
         }
 
         /// <summary>Changes game speed. Presentation concern; the rules do not vary with it (§21).</summary>
-        public void SetSpeedMultiplier(float multiplier) => speedMultiplier = Mathf.Max(0f, multiplier);
+        public void SetSpeedMultiplier(float multiplier)
+        {
+            speedMultiplier = Mathf.Max(0f, multiplier);
+            _offlineReturnMinutes = -1;
+            if (_host != null)
+            {
+                RefreshStatus(speedMultiplier > 1f
+                    ? Domain.Simulation.SimulationMode.PlayerFastForward
+                    : Domain.Simulation.SimulationMode.Live);
+            }
+        }
 
         /// <summary>Saves at a quiescent boundary (§2.2.1).</summary>
         public SaveGameData Save(string slot) => _host.Session.Save(slot);
@@ -476,13 +258,24 @@ namespace Vivarium.Unity.Bootstrap
             var offline = new OfflineProgressionService(new UnityRealWorldClock());
             SimDuration elapsed = offline.ElapsedSince(saved);
 
+            _offlineReturnMinutes = System.Math.Max(0, elapsed.TotalMinutes);
+
             if (elapsed.TotalMinutes <= 0)
             {
+                RefreshStatus(Domain.Simulation.SimulationMode.OfflineCatchUp);
                 return;
             }
 
             // Publish periodically during a long catch-up, but only at safe boundaries (§13.1).
             _host.Session.Advance(elapsed, Domain.Simulation.SimulationMode.OfflineCatchUp, publishEveryInstants: 500);
+            RefreshStatus(Domain.Simulation.SimulationMode.OfflineCatchUp);
         }
+
+        private void RefreshStatus(Domain.Simulation.SimulationMode mode) =>
+            timeDisplay?.Apply(_statusProjector.Project(
+                _host.World,
+                mode,
+                Mathf.RoundToInt(speedMultiplier * 100f),
+                _offlineReturnMinutes));
     }
 }

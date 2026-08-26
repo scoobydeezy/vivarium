@@ -93,7 +93,7 @@ namespace Vivarium.SimRunner
                 seed,
                 SimTime.Epoch,
                 SampleContent.Build());
-            SampleWorld.Populate(host, population - 10);
+            MinimumPlayableWorld.Populate(host, population - 10);
             buildWatch.Stop();
 
             var runWatch = Stopwatch.StartNew();

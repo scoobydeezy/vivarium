@@ -1,8 +1,12 @@
 using System.Collections.Generic;
 using Vivarium.Domain.Activities;
+using Vivarium.Domain.Attention;
 using Vivarium.Domain.Characters;
 using Vivarium.Domain.Common;
+using Vivarium.Domain.Decisions;
 using Vivarium.Domain.Knowledge;
+using Vivarium.Domain.History;
+using Vivarium.Domain.Relationships;
 using Vivarium.Domain.Simulation;
 using Vivarium.Domain.Spatial;
 using Vivarium.Domain.Time;
@@ -11,19 +15,66 @@ namespace Vivarium.Application.Queries
 {
     public sealed class CharacterRosterProjector
     {
+        private readonly DecisionFeedProjector _decisionFeed;
+
+        public CharacterRosterProjector()
+        {
+        }
+
+        public CharacterRosterProjector(
+            DecisionImportancePolicyDefinition importance,
+            DecisionHoldPolicy holds)
+        {
+            _decisionFeed = new DecisionFeedProjector(importance, holds);
+        }
+
         public IReadOnlyList<CharacterRosterEntryView> Project(WorldState world)
         {
             var entries = new List<CharacterRosterEntryView>();
+            var surfacedDecisions = new Dictionary<int, DecisionFeedEntryView>();
+            if (_decisionFeed != null)
+            {
+                DecisionFeedView feed = _decisionFeed.Project(world);
+                for (int i = 0; i < feed.Entries.Count; i++)
+                {
+                    DecisionFeedEntryView candidate = feed.Entries[i];
+                    if (!surfacedDecisions.ContainsKey(candidate.CharacterId))
+                    {
+                        surfacedDecisions.Add(candidate.CharacterId, candidate);
+                    }
+                }
+            }
+
             foreach (Character character in world.Characters.All)
             {
+                WatchState watch = world.Attention.WatchStateOf(character.Id);
+                string activityLabel = "Unknown";
+                string locationLabel = "Not currently observed";
+                if (watch.SupportsObservation && world.TryGetCurrentActivity(character.Id, out ActivityInstance activity))
+                {
+                    activityLabel = activity.DefinitionId.Value;
+                    locationLabel = activity.SpatialContext.IsTraveling
+                        ? LocationName(world, activity.SpatialContext.Transit.DestinationLocationId) + " (en route)"
+                        : LocationName(world, activity.SpatialContext.LocationId);
+                }
+
+                bool needsAttention = surfacedDecisions.TryGetValue(character.Id.Value, out DecisionFeedEntryView decision);
                 entries.Add(new CharacterRosterEntryView(
                     character.Id.Value,
                     character.DisplayName,
-                    world.Attention.WatchStateOf(character.Id).IsFollowed));
+                    watch.IsFollowed,
+                    activityLabel,
+                    locationLabel,
+                    world.Attention.PolicyFor(character.Id).ToString(),
+                    needsAttention,
+                    needsAttention && decision.IsHeld));
             }
 
             return entries;
         }
+
+        private static string LocationName(WorldState world, LocationId locationId) =>
+            world.Locations.TryGet(locationId, out LocationNode node) ? node.DisplayName : locationId.ToString();
     }
 
     /// <summary>
@@ -43,6 +94,7 @@ namespace Vivarium.Application.Queries
     {
         /// <summary>How stale an observation must be before the view flags it as possibly outdated.</summary>
         private static readonly SimDuration StalenessWindow = SimDuration.FromDays(1);
+        private readonly ScheduleProjector _schedules = new ScheduleProjector();
 
         public bool TryProject(WorldState world, CharacterId characterId, out CharacterProfileView view)
         {
@@ -105,6 +157,54 @@ namespace Vivarium.Application.Queries
                 }
             }
 
+            var relationships = new List<KnownRelationshipView>();
+            foreach (Relationship relationship in world.Relationships.All)
+            {
+                if (!relationship.IsActive || !relationship.Involves(characterId)) continue;
+
+                var knownFacts = new List<KnownFactView>();
+                foreach (KnowledgeEntry entry in world.Knowledge.About(relationship.Id.ToRef()))
+                {
+                    if (entry.Key.Kind != FactKinds.RelationshipStanding &&
+                        entry.Key.Kind != FactKinds.RelationshipResentment) continue;
+                    knownFacts.Add(ToKnownFact(world, entry));
+                }
+                if (knownFacts.Count == 0) continue;
+
+                CharacterId otherId = relationship.Other(characterId);
+                string otherName = world.Characters.TryGet(otherId, out Character other)
+                    ? other.DisplayName
+                    : otherId.ToString();
+                relationships.Add(new KnownRelationshipView(
+                    relationship.Id.Value,
+                    otherId.Value,
+                    otherName,
+                    knownFacts));
+            }
+
+            var decisions = new List<CharacterDecisionSummaryView>();
+            foreach (Decision decision in world.Decisions.All)
+            {
+                if (decision.CharacterId != characterId) continue;
+                string timeLabel = decision.IsActive
+                    ? "resolves " + decision.ResolveAt
+                    : decision.Resolution == null ? decision.CreatedAt.ToString() : "resolved " + decision.Resolution.ResolvedAt;
+                decisions.Add(new CharacterDecisionSummaryView(
+                    decision.Id.Value,
+                    decision.DefinitionId.Value,
+                    decision.Status.ToString(),
+                    timeLabel));
+            }
+
+            var history = new List<CharacterHistoryEntryView>();
+            IReadOnlyList<HistoryEntry> allHistory = world.HistoryLedger.Entries;
+            for (int i = allHistory.Count - 1; i >= 0 && history.Count < 5; i--)
+            {
+                HistoryEntry entry = allHistory[i];
+                if (!HasSubject(entry.Subjects, subject)) continue;
+                history.Add(new CharacterHistoryEntryView(entry.Id.Value, entry.OccurredAt.ToString(), entry.Summary));
+            }
+
             view = new CharacterProfileView(
                 characterId.Value,
                 character.DisplayName,
@@ -115,13 +215,31 @@ namespace Vivarium.Application.Queries
                 travelProgressBasisPoints,
                 world.Attention.WatchStateOf(characterId).IsFollowed,
                 traits,
-                needs);
+                needs,
+                _schedules.Project(world, characterId),
+                relationships,
+                decisions,
+                history);
 
             return true;
         }
 
         private static string LocationName(WorldState world, LocationId locationId) =>
             world.Locations.TryGet(locationId, out LocationNode node) ? node.DisplayName : locationId.ToString();
+
+        private static KnownFactView ToKnownFact(WorldState world, KnowledgeEntry entry) => new KnownFactView(
+            entry.Key.Qualifier.IsSet ? entry.Key.Qualifier.Value : entry.Key.Kind.Value,
+            entry.ObservedValue.ToString(),
+            entry.ObservedAt.ToString(),
+            entry.Confidence.ToString(),
+            world.Clock.Now.Since(entry.ObservedAt) > StalenessWindow);
+
+        private static bool HasSubject(IReadOnlyList<EntityRef> subjects, EntityRef subject)
+        {
+            for (int i = 0; i < subjects.Count; i++)
+                if (subjects[i] == subject) return true;
+            return false;
+        }
     }
 
     /// <summary>Projects a location and its occupancy counts from the indexes (§30, §35).</summary>

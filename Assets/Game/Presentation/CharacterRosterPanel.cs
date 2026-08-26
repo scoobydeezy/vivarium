@@ -12,6 +12,8 @@ namespace Vivarium.Unity.Presentation
 
         private readonly Dictionary<int, CharacterRosterEntry> _entries = new Dictionary<int, CharacterRosterEntry>();
 
+        public int EntryCount => _entries.Count;
+
         public void Apply(IReadOnlyList<CharacterRosterEntryView> roster, System.Action<CharacterId> toggle)
         {
             for (int i = 0; i < roster.Count; i++)

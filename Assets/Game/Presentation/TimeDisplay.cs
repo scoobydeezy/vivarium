@@ -1,6 +1,6 @@
 using UnityEngine;
 using TMPro;
-using Vivarium.Domain.Time;
+using Vivarium.Application.Queries;
 
 namespace Vivarium.Unity.Presentation
 {
@@ -8,17 +8,19 @@ namespace Vivarium.Unity.Presentation
     {
         [SerializeField] private TextMeshProUGUI timeText;
 
-        public void SetTime(SimTime time)
+        public string DisplayedText => timeText == null ? string.Empty : timeText.text;
+
+        public void Apply(SimulationStatusView view)
         {
-            if (timeText == null)
+            if (timeText == null || view == null)
             {
                 return;
             }
 
-            long day = time.TotalMinutes / 1440;
-            long hour = (time.TotalMinutes % 1440) / 60;
-            long minute = time.TotalMinutes % 60;
-            timeText.text = $"Day {day} {hour:00}:{minute:00}";
+            string offline = view.IsOfflineReturn && !string.IsNullOrEmpty(view.OfflineElapsedLabel)
+                ? $" · {view.OfflineElapsedLabel}"
+                : string.Empty;
+            timeText.text = $"{view.TimeLabel} · {view.StatusLabel} · {view.SpeedLabel}{offline}";
         }
     }
 }

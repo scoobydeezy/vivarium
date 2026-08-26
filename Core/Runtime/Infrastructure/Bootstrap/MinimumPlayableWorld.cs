@@ -15,10 +15,10 @@ using Vivarium.Domain.Social;
 using Vivarium.Domain.Time;
 using Vivarium.Infrastructure.Bootstrap;
 
-namespace Vivarium.SimRunner
+namespace Vivarium.Infrastructure.Bootstrap
 {
     /// <summary>Handles to the places the scenario cares about.</summary>
-    public sealed class SampleWorldLayout
+    public sealed class MinimumPlayableWorldLayout
     {
         public LocationId World;
         public LocationId Town;
@@ -48,60 +48,60 @@ namespace Vivarium.SimRunner
     }
 
     /// <summary>
-    /// Builds the small world the headless scenario runs in (§55).
+    /// Builds the minimum playable world hosted by both Unity and the headless acceptance runner (§55).
     /// <para>
     /// Eight to twelve characters, a couple of locations with a travel connection, one recurring routine,
     /// a relationship, some traits, and one decision type — enough to exercise the architecture without
     /// committing to a setting.
     /// </para>
     /// </summary>
-    public static class SampleWorld
+    public static class MinimumPlayableWorld
     {
-        public static SampleWorldLayout Populate(SimulationHost host, int extraPopulation = 0)
+        public static MinimumPlayableWorldLayout Populate(SimulationHost host, int extraPopulation = 0)
         {
             WorldState world = host.World;
             SimulationContext context = host.Simulation;
-            var layout = new SampleWorldLayout();
+            var layout = new MinimumPlayableWorldLayout();
 
             // --- containment hierarchy (§27) ---
-            layout.World = AddLocation(world, LocationId.None, SampleContent.LocationKindWorld, "World");
-            layout.Town = AddLocation(world, layout.World, SampleContent.LocationKindTown, "Eastmarket");
+            layout.World = AddLocation(world, LocationId.None, MinimumPlayableContent.LocationKindWorld, "World");
+            layout.Town = AddLocation(world, layout.World, MinimumPlayableContent.LocationKindTown, "Eastmarket");
             layout.Home = AddLocation(
                 world,
                 layout.Town,
-                SampleContent.LocationKindBuilding,
+                MinimumPlayableContent.LocationKindBuilding,
                 "Mina's flat",
-                new[] { WellKnownActivities.Eating, SampleContent.ActivityReading });
-            layout.Bakery = AddLocation(world, layout.Town, SampleContent.LocationKindBuilding, "East Market Bakery");
+                new[] { WellKnownActivities.Eating, MinimumPlayableContent.ActivityReading });
+            layout.Bakery = AddLocation(world, layout.Town, MinimumPlayableContent.LocationKindBuilding, "East Market Bakery");
             layout.Cafe = AddLocation(
                 world,
                 layout.Town,
-                SampleContent.LocationKindBuilding,
+                MinimumPlayableContent.LocationKindBuilding,
                 "Eastmarket Commons",
                 new[]
                 {
-                    SampleContent.ActivityTabletopGames,
-                    SampleContent.ActivityReading,
-                    SampleContent.ActivitySocializing,
+                    MinimumPlayableContent.ActivityTabletopGames,
+                    MinimumPlayableContent.ActivityReading,
+                    MinimumPlayableContent.ActivitySocializing,
                 },
                 supportsPlayerManagedAvailability: true);
             layout.Commons = layout.Cafe;
 
             // --- travel topology, separate from containment (§28) ---
-            world.TravelNetwork.ConnectBidirectional(layout.Home, layout.Bakery, SimDuration.FromMinutes(12), SampleContent.TravelModeWalking);
-            world.TravelNetwork.ConnectBidirectional(layout.Home, layout.Cafe, SimDuration.FromMinutes(5), SampleContent.TravelModeWalking);
-            world.TravelNetwork.ConnectBidirectional(layout.Cafe, layout.Bakery, SimDuration.FromMinutes(9), SampleContent.TravelModeWalking);
+            world.TravelNetwork.ConnectBidirectional(layout.Home, layout.Bakery, SimDuration.FromMinutes(12), MinimumPlayableContent.TravelModeWalking);
+            world.TravelNetwork.ConnectBidirectional(layout.Home, layout.Cafe, SimDuration.FromMinutes(5), MinimumPlayableContent.TravelModeWalking);
+            world.TravelNetwork.ConnectBidirectional(layout.Cafe, layout.Bakery, SimDuration.FromMinutes(9), MinimumPlayableContent.TravelModeWalking);
 
             // --- characters: the locked MPS cast begins in deliberately staggered life states ---
             GroupId cairnHousehold = AddHousehold(world, "Cairn household", layout.Home);
             GroupId ashbyHousehold = AddHousehold(world, "Ashby household", layout.Home);
-            layout.Mina = AddCharacter(host, "Mina Cairn", layout.Home, new[] { SampleContent.TraitAmbitious, SampleContent.TraitEnjoysBaking }, 2000, householdId: cairnHousehold);
-            layout.Glen = AddCharacter(host, "Glen Ashby", layout.Home, new[] { SampleContent.TraitHomebound }, 2000, householdId: ashbyHousehold);
-            layout.Darius = AddCharacter(host, "Darius Vale", layout.Bakery, new[] { SampleContent.TraitAmbitious }, 1000);
+            layout.Mina = AddCharacter(host, "Mina Cairn", layout.Home, new[] { MinimumPlayableContent.TraitAmbitious, MinimumPlayableContent.TraitEnjoysBaking }, 2000, householdId: cairnHousehold);
+            layout.Glen = AddCharacter(host, "Glen Ashby", layout.Home, new[] { MinimumPlayableContent.TraitHomebound }, 2000, householdId: ashbyHousehold);
+            layout.Darius = AddCharacter(host, "Darius Vale", layout.Bakery, new[] { MinimumPlayableContent.TraitAmbitious }, 1000);
             layout.Lena = AddCharacter(host, "Lena Marsh", layout.Cafe, new AuthoredId[0], 1500);
             layout.Priya = AddCharacter(host, "Priya Nair", layout.Home, new AuthoredId[0], 6200);
-            layout.Marcus = AddCharacter(host, "Marcus Reed", layout.Bakery, new[] { SampleContent.TraitAmbitious }, 2500);
-            layout.Tess = AddCharacter(host, "Tess Cairn", layout.Home, new[] { SampleContent.TraitHomebound }, 5900, householdId: cairnHousehold);
+            layout.Marcus = AddCharacter(host, "Marcus Reed", layout.Bakery, new[] { MinimumPlayableContent.TraitAmbitious }, 2500);
+            layout.Tess = AddCharacter(host, "Tess Cairn", layout.Home, new[] { MinimumPlayableContent.TraitHomebound }, 5900, householdId: cairnHousehold);
             layout.Owen = AddCharacter(host, "Owen Hart", layout.Home, new AuthoredId[0], 1800);
             layout.Jo = AddCharacter(host, "Jo Ashby", layout.Home, new AuthoredId[0], 2200, initialEnergy: 1000, householdId: ashbyHousehold);
             layout.Ravi = AddCharacter(host, "Ravi Shah", layout.Cafe, new AuthoredId[0], 3000);
@@ -120,12 +120,12 @@ namespace Vivarium.SimRunner
                 host.Catalog.Activities[WellKnownActivities.Eating].DefaultDuration,
                 committedParameters: new SortedDictionary<AuthoredId, long>
                 {
-                    [ActivityNeedParameters.SatisfactionOffset(SampleContent.NeedHunger)] = -5000,
+                    [ActivityNeedParameters.SatisfactionOffset(MinimumPlayableContent.NeedHunger)] = -5000,
                 });
             host.Transitions.BeginActivity(
                 context,
                 layout.Marcus,
-                SampleContent.ActivityWorking,
+                MinimumPlayableContent.ActivityWorking,
                 layout.Bakery,
                 SimDuration.FromHours(3));
             host.Transitions.BeginActivity(
@@ -155,44 +155,44 @@ namespace Vivarium.SimRunner
                 context,
                 layout.Mina,
                 employer.Id,
-                SampleContent.EmploymentBakeryWorker,
+                MinimumPlayableContent.EmploymentBakeryWorker,
                 layout.Darius,
-                new[] { SampleContent.TemplateBakeryShift, SampleContent.TemplateBakeryClosingDuty });
+                new[] { MinimumPlayableContent.TemplateBakeryShift, MinimumPlayableContent.TemplateBakeryClosingDuty });
             Employment glenEmployment = host.Employments.Create(
                 context,
                 layout.Glen,
                 employer.Id,
-                SampleContent.EmploymentBakeryWorker,
+                MinimumPlayableContent.EmploymentBakeryWorker,
                 layout.Darius,
-                new[] { SampleContent.TemplateBakeryShift });
+                new[] { MinimumPlayableContent.TemplateBakeryShift });
             Employment priyaEmployment = host.Employments.Create(
                 context,
                 layout.Priya,
                 employer.Id,
-                SampleContent.EmploymentBakeryWorker,
+                MinimumPlayableContent.EmploymentBakeryWorker,
                 layout.Darius,
-                new[] { SampleContent.TemplateBakeryShift });
+                new[] { MinimumPlayableContent.TemplateBakeryShift });
             Employment marcusEmployment = host.Employments.Create(
                 context,
                 layout.Marcus,
                 employer.Id,
-                SampleContent.EmploymentBakeryWorker,
+                MinimumPlayableContent.EmploymentBakeryWorker,
                 layout.Darius,
-                new[] { SampleContent.TemplateBakeryShift });
+                new[] { MinimumPlayableContent.TemplateBakeryShift });
             Employment joEmployment = host.Employments.Create(
                 context,
                 layout.Jo,
                 commonsEmployer.Id,
-                SampleContent.EmploymentCafeHost,
+                MinimumPlayableContent.EmploymentCafeHost,
                 layout.Lena,
-                new[] { SampleContent.TemplateCafeHostingShift });
+                new[] { MinimumPlayableContent.TemplateCafeHostingShift });
             Employment lenaEmployment = host.Employments.Create(
                 context,
                 layout.Lena,
                 commonsEmployer.Id,
-                SampleContent.EmploymentCafeHost,
+                MinimumPlayableContent.EmploymentCafeHost,
                 supervisorId: default,
-                new[] { SampleContent.TemplateCafeHostingShift });
+                new[] { MinimumPlayableContent.TemplateCafeHostingShift });
             layout.MinaEmployment = minaEmployment.Id;
             layout.GlenEmployment = glenEmployment.Id;
             layout.PriyaEmployment = priyaEmployment.Id;
@@ -203,7 +203,7 @@ namespace Vivarium.SimRunner
             // A synthetic crowd, to prove the same systems run at a larger scale (§49, §56).
             for (int i = 0; i < extraPopulation; i++)
             {
-                AddCharacter(host, "Resident " + (i + 1), layout.Town, new[] { SampleContent.TraitAmbitious });
+                AddCharacter(host, "Resident " + (i + 1), layout.Town, new[] { MinimumPlayableContent.TraitAmbitious });
             }
 
             SeedSocialTopology(world, layout);
@@ -229,15 +229,15 @@ namespace Vivarium.SimRunner
                 .Plus(SimDuration.FromMinutes(35));
             ScheduleCommitmentReveal(world, revealAt, new CommitmentBecomesKnownPayload(
                 layout.Mina,
-                SampleContent.CommitmentDinnerWithGlen,
+                MinimumPlayableContent.CommitmentDinnerWithGlen,
                 dinnerStart,
                 dinnerStart.Plus(SimDuration.FromMinutes(2)),
                 SimDuration.FromMinutes(90),
                 layout.Cafe,
                 70,
-                SampleContent.ActivityDining,
+                MinimumPlayableContent.ActivityDining,
                 new[] { layout.Glen },
-                accountabilityPolicy: host.Catalog.CommitmentAccountabilityPolicies[SampleContent.AccountabilitySocialCommitment]));
+                accountabilityPolicy: host.Catalog.CommitmentAccountabilityPolicies[MinimumPlayableContent.AccountabilitySocialCommitment]));
 
             return layout;
         }
@@ -248,9 +248,9 @@ namespace Vivarium.SimRunner
             var workPressure = new WorkContextPressureService(
                 host.Transitions,
                 host.DecisionReevaluation,
-                SampleContent.ActivityWorking,
-                SampleContent.ModifierDislikedColleague,
-                SampleContent.ContextWorkPressure,
+                MinimumPlayableContent.ActivityWorking,
+                MinimumPlayableContent.ModifierDislikedColleague,
+                MinimumPlayableContent.ContextWorkPressure,
                 affinityThreshold: -1000,
                 pressuredRate: -2);
             host.DomainEventHandlers.Register(new WorkContextArrivalHandler(workPressure), 200);
@@ -267,7 +267,7 @@ namespace Vivarium.SimRunner
                 ScheduledEventTypes.CommitmentBecomesKnown,
                 payload);
 
-        private static void SeedSocialTopology(WorldState world, SampleWorldLayout layout)
+        private static void SeedSocialTopology(WorldState world, MinimumPlayableWorldLayout layout)
         {
             SimTime now = world.Clock.Now;
 
@@ -404,10 +404,10 @@ namespace Vivarium.SimRunner
             }
 
             world.Characters.Add(character.Id, character);
-            new SocialProfileGenerator(host.Simulation.Random).Generate(character, SampleContent.SocialCalibrationStandard);
+            new SocialProfileGenerator(host.Simulation.Random).Generate(character, MinimumPlayableContent.SocialCalibrationStandard);
 
             // Needs progress analytically and arm their own threshold events (§10.1, §10.2).
-            NeedDefinition hunger = host.Catalog.Needs[SampleContent.NeedHunger];
+            NeedDefinition hunger = host.Catalog.Needs[MinimumPlayableContent.NeedHunger];
             var hungerState = new NeedState(
                 hunger.Id,
                 AnalyticalProgression.Linear(initialHunger, world.Clock.Now, hunger.DefaultRateNumerator, hunger.DefaultRateDenominator, hunger.MinValue, hunger.MaxValue),
@@ -459,8 +459,8 @@ namespace Vivarium.SimRunner
         {
             WorldState world = host.World;
             Character character = world.Characters.Get(characterId);
-            character.Interests.Set(SampleContent.InterestTabletopGames, tabletopInterest);
-            character.Interests.Set(SampleContent.InterestReading, readingInterest);
+            character.Interests.Set(MinimumPlayableContent.InterestTabletopGames, tabletopInterest);
+            character.Interests.Set(MinimumPlayableContent.InterestReading, readingInterest);
             NeedDefinition recreation = host.Catalog.Needs[WellKnownNeeds.Recreation];
             var state = new NeedState(
                 recreation.Id,
@@ -483,7 +483,7 @@ namespace Vivarium.SimRunner
         {
             WorldState world = host.World;
             Character character = world.Characters.Get(characterId);
-            character.Interests.Set(SampleContent.InterestSocializing, 7000);
+            character.Interests.Set(MinimumPlayableContent.InterestSocializing, 7000);
             NeedDefinition social = host.Catalog.Needs[WellKnownNeeds.Social];
             var state = new NeedState(
                 social.Id,
@@ -500,3 +500,4 @@ namespace Vivarium.SimRunner
         }
     }
 }
+

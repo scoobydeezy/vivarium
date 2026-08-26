@@ -97,12 +97,9 @@ namespace Vivarium.Unity.Editor
             summaryRect.offsetMax = new Vector2(-18f, -18f);
 
             Button close = CreateButton(root.transform, "Close", new Vector2(18f, 12f), new Color(0.16f, 0.16f, 0.16f, 1f));
-            Button travel = CreateButton(root.transform, "Travel", new Vector2(174f, 12f), new Color(0.08f, 0.35f, 0.5f, 1f));
-
             var serialized = new SerializedObject(panel);
             serialized.FindProperty("summaryText").objectReferenceValue = summary;
             serialized.FindProperty("closeButton").objectReferenceValue = close;
-            serialized.FindProperty("travelButton").objectReferenceValue = travel;
             serialized.ApplyModifiedPropertiesWithoutUndo();
 
             GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, PrefabFolder + "/CharacterProfilePanel.prefab");

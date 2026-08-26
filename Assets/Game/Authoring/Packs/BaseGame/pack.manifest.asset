@@ -14,5 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: Vivarium.Unity.Authoring::Vivarium.Unity.Authoring.ContentPackManifestAsset
   packId: vivarium.base
   displayName: Vivarium Base Game
-  packVersion: 13
+  packVersion: 14
   overrides: []

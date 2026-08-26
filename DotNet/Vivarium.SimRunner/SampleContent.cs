@@ -11,6 +11,7 @@ using Vivarium.Domain.Relationships;
 using Vivarium.Domain.Spatial;
 using Vivarium.Domain.Social;
 using Vivarium.Domain.Time;
+using Vivarium.Infrastructure.Bootstrap;
 
 namespace Vivarium.SimRunner
 {
@@ -30,7 +31,7 @@ namespace Vivarium.SimRunner
     {
         public static readonly AuthoredId TraitAmbitious = new AuthoredId("trait.ambitious");
         public static readonly AuthoredId TraitEnjoysBaking = new AuthoredId("trait.enjoys_baking");
-        public static readonly AuthoredId TraitHomebound = new AuthoredId("trait.homebound");
+        public static readonly AuthoredId TraitHomebound = MinimumPlayableContent.TraitHomebound;
 
         public static readonly AuthoredId NeedHunger = new AuthoredId("need.hunger");
         public static readonly AuthoredId NeedSocial = WellKnownNeeds.Social;
@@ -115,7 +116,7 @@ namespace Vivarium.SimRunner
         public static readonly AuthoredId OptionDoItSelf = new AuthoredId("option.do_it_self");
         public static readonly AuthoredId SocialPressureReliance = new AuthoredId("social.pressure.reliance");
 
-        /// <summary>Home and the bakery are wired into the travel network by <see cref="SampleWorld"/>.</summary>
+        /// <summary>Home and the bakery are wired into the travel network by <see cref="MinimumPlayableWorld"/>.</summary>
         public static DefinitionCatalog Build(int contentVersion = 1)
         {
             var builder = new DefinitionCatalog.Builder { ContentVersion = contentVersion };

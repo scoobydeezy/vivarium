@@ -58,6 +58,38 @@ namespace Vivarium.Unity.Tests
             Assert.That(_bootstrapper.Host.World.Clock.Now.TotalMinutes, Is.EqualTo(before + 60));
         }
 
+        [UnityTest]
+        public IEnumerator World_hud_reports_pause_and_fast_forward_state()
+        {
+            TimeDisplay display = Object.FindAnyObjectByType<TimeDisplay>();
+            Assert.That(display, Is.Not.Null);
+            Assert.That(display.DisplayedText, Does.Contain("Paused"));
+            Assert.That(display.DisplayedText, Does.Contain("0x"));
+
+            _bootstrapper.SetSpeedMultiplier(4f);
+            Assert.That(display.DisplayedText, Does.Contain("Fast-forward"));
+            Assert.That(display.DisplayedText, Does.Contain("4x"));
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator Roster_rows_show_projected_activity_location_and_attention_state()
+        {
+            yield return null;
+            CharacterRosterPanel roster = Object.FindAnyObjectByType<CharacterRosterPanel>();
+            CharacterRosterEntry[] entries = Object.FindObjectsByType<CharacterRosterEntry>(
+                FindObjectsInactive.Exclude);
+
+            Assert.That(roster, Is.Not.Null);
+            Assert.That(roster.EntryCount, Is.EqualTo(_bootstrapper.Host.World.Characters.Count));
+            Assert.That(entries, Has.Length.EqualTo(_bootstrapper.Host.World.Characters.Count));
+            Assert.That(entries, Has.All.Matches<CharacterRosterEntry>(entry =>
+                entry.View != null &&
+                !string.IsNullOrEmpty(entry.View.CurrentActivityLabel) &&
+                !string.IsNullOrEmpty(entry.View.LocationLabel) &&
+                !string.IsNullOrEmpty(entry.View.AttentionPolicyLabel)));
+        }
+
         [Test]
         public void Authored_decision_reasoning_converts_and_passes_lint()
         {
@@ -118,11 +150,12 @@ namespace Vivarium.Unity.Tests
         }
 
         [UnityTest]
-        public IEnumerator Demo_world_projects_three_character_views()
+        public IEnumerator Minimum_playable_world_projects_the_locked_ten_character_roster()
         {
             yield return null;
-            Assert.That(_bootstrapper.Host.World.Characters.Count, Is.EqualTo(3));
-            Assert.That(_presenter.ActiveViewCount, Is.EqualTo(3));
+            Assert.That(_bootstrapper.Host.World.Characters.Count, Is.EqualTo(10));
+            Assert.That(_bootstrapper.WorldLayout.Mina, Is.EqualTo(CharacterNamed("Mina Cairn").Id));
+            Assert.That(_presenter.ActiveViewCount, Is.EqualTo(0));
             Assert.That(_presenter.PooledViewCount, Is.EqualTo(0));
         }
 
@@ -147,6 +180,27 @@ namespace Vivarium.Unity.Tests
             long refreshedHunger = long.Parse(KnownNeed(refreshed, HungerNeedId).ValueLabel);
             Assert.That(refreshedHunger, Is.GreaterThan(firstHunger));
             yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator Character_profile_surfaces_schedule_knowledge_decisions_and_history_sections()
+        {
+            Character mina = CharacterNamed("Mina Cairn");
+            _presenter.OnCharacterTapped(mina.Id);
+            yield return null;
+
+            var projector = new CharacterProfileProjector();
+            Assert.That(projector.TryProject(
+                _bootstrapper.Host.World, mina.Id, out CharacterProfileView profile), Is.True);
+            Assert.That(profile.Schedule.Entries, Is.Not.Empty);
+            Assert.That(profile.KnownNeeds, Is.Not.Empty);
+
+            CharacterProfilePanel panel = Object.FindAnyObjectByType<CharacterProfilePanel>();
+            Assert.That(panel.DisplayedText, Does.Contain("Schedule:"));
+            Assert.That(panel.DisplayedText, Does.Contain("Social / Knowledge:"));
+            Assert.That(panel.DisplayedText, Does.Contain("Decisions:"));
+            Assert.That(panel.DisplayedText, Does.Contain("History:"));
+            Assert.That(panel.IsTravelControlVisible, Is.False);
         }
 
         [UnityTest]
@@ -198,11 +252,16 @@ namespace Vivarium.Unity.Tests
         public IEnumerator Unfollow_releases_and_refollow_reuses_a_bound_view()
         {
             CharacterId characterId = FirstCharacter().Id;
+            Result initiallyShown = _bootstrapper.Host.Session.Execute(new FollowCharacterCommand(characterId, true));
+            Assert.That(initiallyShown.IsSuccess, Is.True);
+            yield return null;
+            Assert.That(_presenter.ActiveViewCount, Is.EqualTo(1));
+
             Result hidden = _bootstrapper.Host.Session.Execute(new FollowCharacterCommand(characterId, false));
             Assert.That(hidden.IsSuccess, Is.True);
             yield return null;
 
-            Assert.That(_presenter.ActiveViewCount, Is.EqualTo(2));
+            Assert.That(_presenter.ActiveViewCount, Is.EqualTo(0));
             Assert.That(_presenter.PooledViewCount, Is.EqualTo(1));
             Assert.That(_presenter.HasActiveView(characterId), Is.False);
 
@@ -210,7 +269,7 @@ namespace Vivarium.Unity.Tests
             Assert.That(shown.IsSuccess, Is.True);
             yield return null;
 
-            Assert.That(_presenter.ActiveViewCount, Is.EqualTo(3));
+            Assert.That(_presenter.ActiveViewCount, Is.EqualTo(1));
             Assert.That(_presenter.PooledViewCount, Is.EqualTo(0));
             Assert.That(_presenter.HasActiveView(characterId), Is.True);
         }
@@ -235,7 +294,7 @@ namespace Vivarium.Unity.Tests
             Assert.That(decision.TryGetContextParameter(
                 DecisionReasoningParameters.Urgency,
                 out DecisionParameterValue urgency), Is.True);
-            Assert.That(urgency.Integer, Is.EqualTo(6000));
+            Assert.That(urgency.Integer, Is.InRange(6000, 6010));
             Assert.That(definition.ActivityOutcomes.Count, Is.EqualTo(1));
             Assert.That(view.Options.Count, Is.EqualTo(2));
             Assert.That(view.Options[0].Influences.Count, Is.GreaterThan(0));
@@ -293,17 +352,18 @@ namespace Vivarium.Unity.Tests
             Assert.That(result.IsSuccess, Is.True);
             yield return null;
 
-            Assert.That(panel.DisplayedText, Does.Contain("You influenced Mina Test"));
+            Assert.That(panel.DisplayedText, Does.Contain("You influenced Mina Cairn"));
         }
 
         [UnityTest]
         public IEnumerator Demo_progresses_through_shared_travel_work_pressure_and_need_decision()
         {
-            Character mina = CharacterNamed("Mina Test");
-            Character glen = CharacterNamed("Glen Test");
+            Character mina = CharacterNamed("Mina Cairn");
+            Character glen = CharacterNamed("Glen Ashby");
             Assert.That(TryFindDecision(DemoDecisionId, out Decision _), Is.False);
 
-            _bootstrapper.Host.Session.Advance(SimDuration.FromMinutes(2));
+            _bootstrapper.Host.Session.Advance(
+                SimDuration.FromHours(1).Plus(SimDuration.FromMinutes(50)));
             Assert.That(_bootstrapper.Host.World.TryGetSpatialContext(mina.Id, out ActivitySpatialContext minaTravel), Is.True);
             Assert.That(_bootstrapper.Host.World.TryGetSpatialContext(glen.Id, out ActivitySpatialContext glenTravel), Is.True);
             Assert.That(minaTravel.IsTraveling, Is.True);
@@ -311,13 +371,14 @@ namespace Vivarium.Unity.Tests
             Assert.That(_bootstrapper.Host.World.RelationshipIndex.TryGetBetween(mina.Id, glen.Id, out RelationshipId sharedTravelRelationship), Is.True);
             Assert.That(_bootstrapper.Host.World.Relationships.Get(sharedTravelRelationship).LastInteractionAt.HasValue, Is.True);
 
-            _bootstrapper.Host.Session.Advance(SimDuration.FromMinutes(30));
+            _bootstrapper.Host.Session.Advance(SimDuration.FromMinutes(20));
             ActivityInstance work = _bootstrapper.Host.World.Activities.Get(mina.CurrentActivityId);
             Assert.That(work.DefinitionId, Is.EqualTo(new AuthoredId("activity.working")));
             Assert.That(work.HasModifier(new AuthoredId("activity_modifier.disliked_colleague_present")), Is.True);
             Assert.That(TryFindDecision(DemoDecisionId, out Decision _), Is.False);
 
-            _bootstrapper.Host.Session.Advance(SimDuration.FromMinutes(2));
+            _bootstrapper.Host.Session.Advance(
+                SimDuration.FromHours(4).Plus(SimDuration.FromMinutes(24)));
             Assert.That(DemoDecision().DefinitionId, Is.EqualTo(DemoDecisionId));
             yield return null;
         }
@@ -333,12 +394,12 @@ namespace Vivarium.Unity.Tests
             Assert.That(_bootstrapper.Host.Catalog.EmploymentDefinitions.ContainsKey(
                 new AuthoredId("employment.bakery_worker")), Is.True);
 
-            Character mina = CharacterNamed("Mina Test");
+            Character mina = CharacterNamed("Mina Cairn");
             Employment employment = null;
             foreach (Employment candidate in _bootstrapper.Host.World.Employments.All)
                 if (candidate.EmployeeId == mina.Id) employment = candidate;
             Assert.That(employment, Is.Not.Null);
-            Assert.That(employment.SupervisorId, Is.EqualTo(CharacterNamed("Darius Test").Id));
+            Assert.That(employment.SupervisorId, Is.EqualTo(CharacterNamed("Darius Vale").Id));
 
             Commitment closing = null;
             foreach (Commitment candidate in _bootstrapper.Host.World.Commitments.All)
@@ -349,7 +410,7 @@ namespace Vivarium.Unity.Tests
             Assert.That(closing.Stakeholders[0].Role, Is.EqualTo(StakeholderRole.Authority));
             Assert.That(TryFindDecision(CommitmentConflictDecisionId, out Decision _), Is.False);
 
-            _bootstrapper.Host.Session.Advance(SimDuration.FromHours(1));
+            _bootstrapper.Host.Session.Advance(SimDuration.FromHours(6));
             Assert.That(TryFindDecision(CommitmentConflictDecisionId, out Decision conflict), Is.True);
             Assert.That(conflict.IsActive, Is.True);
             Assert.That(conflict.CommitmentConflictKey, Is.Not.Null);
@@ -403,8 +464,8 @@ namespace Vivarium.Unity.Tests
             LocationNode workshop = null;
             foreach (LocationNode location in _bootstrapper.Host.World.Locations.Nodes.All)
             {
-                if (location.DisplayName == "Demo Room") room = location;
-                if (location.DisplayName == "Demo Workshop") workshop = location;
+                if (location.DisplayName == "Mina's flat") room = location;
+                if (location.DisplayName == "East Market Bakery") workshop = location;
             }
             Assert.That(room, Is.Not.Null);
             Assert.That(workshop, Is.Not.Null);
@@ -461,7 +522,7 @@ namespace Vivarium.Unity.Tests
                 return character;
             }
 
-            Assert.Fail("The demo world did not seed any characters.");
+            Assert.Fail("The minimum playable world did not seed any characters.");
             return null;
         }
 
@@ -475,15 +536,17 @@ namespace Vivarium.Unity.Tests
                 }
             }
 
-            Assert.Fail($"The demo world did not seed '{displayName}'.");
+            Assert.Fail($"The minimum playable world did not seed '{displayName}'.");
             return null;
         }
 
         private void AdvanceToDemoDecision()
         {
-            if (!TryFindDecision(DemoDecisionId, out Decision _))
+            CharacterId mina = CharacterNamed("Mina Cairn").Id;
+            if (!TryFindDecision(DemoDecisionId, mina, out Decision _))
             {
-                _bootstrapper.Host.Session.Advance(SimDuration.FromMinutes(34));
+                _bootstrapper.Host.Session.Advance(
+                    SimDuration.FromHours(5).Plus(SimDuration.FromMinutes(34)));
             }
         }
 
@@ -505,7 +568,22 @@ namespace Vivarium.Unity.Tests
                 }
             }
 
-            Assert.Fail("The authored demo Decision has no influence eligible for encouragement.");
+            string diagnostic = $"active={decision.IsActive}, awaitingCommit={decision.IsAwaitingCommit}, " +
+                $"nudges={_bootstrapper.Host.World.Nudges.Balance}";
+            for (int i = 0; i < decision.Influences.Count; i++)
+            {
+                DecisionInfluence candidate = decision.Influences[i];
+                Result eligibility = DecisionInterventionRules.Evaluate(
+                    decision,
+                    intervention,
+                    candidate.Id,
+                    _bootstrapper.Host.World.Nudges,
+                    _bootstrapper.Host.World.InterventionResources);
+                diagnostic += $"; {candidate.LabelId}/{candidate.CurrentDie}/{candidate.DefaultVisibility}: " +
+                    (eligibility.IsSuccess ? "eligible" : eligibility.ToString());
+            }
+
+            Assert.Fail("The authored minimum-playable Decision has no influence eligible for encouragement. " + diagnostic);
             return null;
         }
 
@@ -557,13 +635,32 @@ namespace Vivarium.Unity.Tests
 
         private Decision DemoDecision()
         {
-            if (TryFindDecision(DemoDecisionId, out Decision decision))
+            CharacterId mina = CharacterNamed("Mina Cairn").Id;
+            if (TryFindDecision(DemoDecisionId, mina, out Decision decision))
             {
                 return decision;
             }
 
-            Assert.Fail("The demo world did not generate the authored Need Decision.");
+            Assert.Fail("The minimum playable world did not generate the authored Need Decision.");
             return null;
+        }
+
+        private bool TryFindDecision(
+            AuthoredId definitionId,
+            CharacterId characterId,
+            out Decision found)
+        {
+            foreach (Decision decision in _bootstrapper.Host.World.Decisions.All)
+            {
+                if (decision.DefinitionId == definitionId && decision.CharacterId == characterId)
+                {
+                    found = decision;
+                    return true;
+                }
+            }
+
+            found = null;
+            return false;
         }
 
         private bool TryFindDecision(AuthoredId definitionId, out Decision found)

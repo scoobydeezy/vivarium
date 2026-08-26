@@ -792,7 +792,7 @@ The MPS should demonstrate:
 
 > **Characters respond to the person they currently believe exists, not to hidden omniscient truth.**
 
-**Implementation checkpoint (2026-08-25):** the production `SampleWorld` now authors all three anchor
+**Implementation checkpoint (2026-08-25):** the shared production `MinimumPlayableWorld` now authors all three anchor
 cases. Mina/Glen has high but asymmetric familiarity plus distinct positive/negative directional
 memories; Mina/Darius is partially known and combines resentment with respect; Owen/Lena is a weak
 acquaintance edge with an inaccurate, uncertain Owen-held first impression. Owen's ordinary Commons

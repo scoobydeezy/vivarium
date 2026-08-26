@@ -47,18 +47,19 @@ namespace Vivarium.Unity.Tests
                     overrides),
             }).Catalog;
 
-            Assert.That(catalog.Activities.Count, Is.EqualTo(10));
-            Assert.That(catalog.Traits.Count, Is.EqualTo(3));
+            Assert.That(catalog.Activities.Count, Is.EqualTo(11));
+            Assert.That(catalog.Traits.Count, Is.EqualTo(4));
             Assert.That(catalog.Needs.Count, Is.EqualTo(4));
-            Assert.That(catalog.EmploymentDefinitions.Count, Is.EqualTo(1));
+            Assert.That(catalog.EmploymentDefinitions.Count, Is.EqualTo(2));
             Assert.That(catalog.CommitmentAccountabilityPolicies.Count, Is.EqualTo(1));
-            Assert.That(catalog.LocationKinds.Count, Is.EqualTo(1));
+            Assert.That(catalog.LocationKinds.Count, Is.EqualTo(3));
             Assert.That(catalog.AppraisalCalibrations.Count, Is.EqualTo(1));
             Assert.That(catalog.SocialEvidence.Count, Is.EqualTo(3));
             Assert.That(catalog.SocialPressures.Count, Is.EqualTo(2));
             Assert.That(catalog.Decisions.Count, Is.EqualTo(4));
             Assert.That(catalog.Interventions.Count, Is.EqualTo(3));
-            AssertActivity(catalog, "activity.working", "Working", 5, producesOutcome: true);
+            AssertActivity(catalog, "activity.working", "Working", 360, producesOutcome: true);
+            AssertActivity(catalog, "activity.cafe_hosting", "Hosting at the cafe", 90);
             AssertActivity(catalog, "activity.traveling", "Traveling", 10, isTravel: true);
             AssertActivity(catalog, "activity.sleeping", "Sleeping", 480);
             AssertActivity(catalog, "activity.waiting", "Waiting", 60);
@@ -83,7 +84,7 @@ namespace Vivarium.Unity.Tests
 
             EmploymentDefinition employment = catalog.EmploymentDefinitions[
                 new AuthoredId("employment.bakery_worker")];
-            Assert.That(employment.RoleId, Is.EqualTo(new AuthoredId("employment_role.baker")));
+            Assert.That(employment.RoleId, Is.EqualTo(new AuthoredId("employment.role.baker")));
             Assert.That(employment.ObligationPatterns.Count, Is.EqualTo(2));
             Assert.That(employment.ObligationPatterns[0].Id,
                 Is.EqualTo(new AuthoredId("routine.bakery_closing_duty")));
@@ -91,6 +92,13 @@ namespace Vivarium.Unity.Tests
                 Is.EqualTo(new AuthoredId("routine.bakery_shift")));
             Assert.That(employment.ObligationPatterns[0].AccountabilityPolicy.Id,
                 Is.EqualTo(new AuthoredId("accountability.social_commitment")));
+
+            EmploymentDefinition cafeHost = catalog.EmploymentDefinitions[
+                new AuthoredId("employment.cafe_host")];
+            Assert.That(cafeHost.RoleId, Is.EqualTo(new AuthoredId("employment.role.cafe_host")));
+            Assert.That(cafeHost.ObligationPatterns.Count, Is.EqualTo(1));
+            Assert.That(cafeHost.ObligationPatterns[0].Id,
+                Is.EqualTo(new AuthoredId("routine.cafe_hosting_shift")));
 
             CommitmentAccountabilityPolicy accountability = catalog.CommitmentAccountabilityPolicies[
                 new AuthoredId("accountability.social_commitment")];

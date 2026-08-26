@@ -73,7 +73,7 @@ namespace Vivarium.SimRunner
 
             trace.RecordHeader(DefaultSeed, catalog.ContentVersion, 1, host.Simulation.RandomAlgorithmVersion);
 
-            SampleWorldLayout layout = SampleWorld.Populate(host);
+            MinimumPlayableWorldLayout layout = MinimumPlayableWorld.Populate(host);
             Console.WriteLine($"World built at {host.World.Clock.Now}: {host.World.Characters.Count} characters, {host.World.Locations.Count} locations, {host.World.Scheduler.PendingCount} pending events.");
 
             // Run to the middle of the working day. Mina travels and starts her shift on the way.
@@ -167,7 +167,7 @@ namespace Vivarium.SimRunner
             SimulationHost host = SimulationBootstrapper.CreateNewWorld(
                 DefaultSeed, SimTime.FromClockTime(0, 7, 0), catalog, 1, null, store, clock);
 
-            SampleWorldLayout layout = SampleWorld.Populate(host);
+            MinimumPlayableWorldLayout layout = MinimumPlayableWorld.Populate(host);
             host.Session.Advance(SimDuration.FromHours(5));
             host.Session.Execute(new FollowCharacterCommand(layout.Mina, true));
             host.Session.Execute(new BeginObservingCharacterCommand(layout.Mina));
@@ -193,7 +193,7 @@ namespace Vivarium.SimRunner
             WorldState restoredWorld = host.SaveMapper.Restore(saved);
             SimulationHost restored = SimulationBootstrapper.CreateFromRestoredWorld(
                 restoredWorld, catalog, saved.LastCommandSequence, 1, null, store, clock);
-            SampleWorld.ConfigureScenarioServices(restored);
+            MinimumPlayableWorld.ConfigureScenarioServices(restored);
 
             restored.Session.Advance(SimDuration.FromMinutes(10));
             string reloaded = Signature(restored);
@@ -252,7 +252,7 @@ namespace Vivarium.SimRunner
         {
             DefinitionCatalog catalog = SampleContent.Build();
             SimulationHost host = SimulationBootstrapper.CreateNewWorld(DefaultSeed, SimTime.FromClockTime(0, 7, 0), catalog);
-            SampleWorldLayout layout = SampleWorld.Populate(host);
+            MinimumPlayableWorldLayout layout = MinimumPlayableWorld.Populate(host);
 
             host.Session.Advance(SimDuration.FromHours(5));
             host.Session.Enqueue(new FollowCharacterCommand(layout.Mina, true));

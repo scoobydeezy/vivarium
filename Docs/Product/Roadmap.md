@@ -26,20 +26,27 @@ multiple habitats, and reciprocal autonomy.
 
 ## Current gate
 
-**Phases 0–4 are complete; Phase 5 is next.** The jointly locked
+**Phases 0–4 are complete; Phase 5 is in progress.** The jointly locked
 [`Minimum Playable Scenario`](MinimumPlayableScenario.md) and
 [`Player Agency Brief`](PlayerAgencyBrief.md) define the small world, meaningful character Decisions,
 supported player actions, and required Unity surfaces.
 
 The ten-character, two-day headless world now integrates production routines and Employments,
 asymmetric relationships and belief change, living Decisions and accountability, Commons management,
-all four intervention families, and exact replay/save-load/offline continuation. Its final Attention
+all four intervention families, and exact replay/save-load/offline continuation. That world now comes
+from one `MinimumPlayableWorld` composition path shared by the headless runner and Unity instead of a
+separate three-character smoke fixture. Its final Attention
 slice supplies a living-Importance feed, Follow prioritization, durable Normal/Auto-Hold/Quiet policy,
 prospective bounded Auto-Hold, deterministic overflow, and recap-safe Quiet behavior. Closing and
 reopening the Commons during in-flight routine Travel also proves targeted redirection and restored
-availability. The next task is therefore:
+availability. Phase 5 now has its HUD/roster and first character-profile slices: Unity hosts the locked
+ten-character cast, the full roster projects observation-safe activity/location plus Attention and
+Decision state, and character profiles project Overview, materialized Schedule, knowledge-filtered
+relationships, Decisions, and retained History. The legacy direct-Travel UI action is hidden because
+Travel is not an MVP player verb. The next vertical slice is Decision feed/detail completion:
 
-> **Begin Phase 5 with the Unity time/status and roster surfaces over the completed small-cast world.**
+> **Complete Decision feed/detail over the shared small-cast Unity world, then move through the
+> remaining world, location-management, notification, and recap surfaces in the locked order.**
 
 Observable completion test:
 
@@ -97,8 +104,8 @@ outcome identically offline and across save/load.
 | 1. Close the daily routine loop | Energy/Sleep/Wake, Employment obligations, ordinary Eating, discretionary Recreation, and Socializing support indefinite lives | Complete |
 | 2. Expand meaningful choice | Scenario-required branch points use compiled Considerations and production consequences | Complete |
 | 3. Complete player agency | Nudge economy, re-roll/substitution, and Commons availability become real Commands; interactive Activity stays deferred | Complete |
-| 4. Build the small-cast world | 8–12 characters run 2–3 days through one durable headless acceptance scenario | In progress |
-| 5. Build playable Unity surfaces | Roster, character, Decision, schedule, Knowledge, world, and history views consume projections/Commands | Pending |
+| 4. Build the small-cast world | 8–12 characters run 2–3 days through one durable headless acceptance scenario | Complete |
+| 5. Build playable Unity surfaces | Roster, character, Decision, schedule, Knowledge, world, and history views consume projections/Commands | In progress |
 | 6. Productize save/continue | Concrete storage, restart continuation, offline catch-up, migration diagnostics, and failure UX | Pending |
 | 7. MVP hardening gate | The small cast is legible, causal, replayable, persistent, and remains within scale gates | Pending |
 | 8. Relationship-memory longevity | Post-MVP consolidation retains defining memories and compacts ordinary history deterministically | Pending, post-MVP |

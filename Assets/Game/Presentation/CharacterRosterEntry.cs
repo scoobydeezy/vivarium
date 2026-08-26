@@ -15,11 +15,19 @@ namespace Vivarium.Unity.Presentation
         private CharacterId _characterId;
         private System.Action<CharacterId> _toggle;
 
+        public CharacterRosterEntryView View { get; private set; }
+
         public void Bind(CharacterRosterEntryView view, System.Action<CharacterId> toggle)
         {
+            View = view;
             _characterId = new CharacterId(view.CharacterId);
             _toggle = toggle;
-            label.text = $"{(view.IsFollowed ? "ON" : "OFF")}  {view.DisplayName}";
+            string decision = view.NeedsDecisionAttention
+                ? view.HasHeldDecision ? "  <color=#FFD166>HELD DECISION</color>" : "  <color=#FF8C69>DECISION</color>"
+                : string.Empty;
+            label.text =
+                $"{(view.IsFollowed ? "FOLLOWING" : "FOLLOW")}  {view.DisplayName}{decision}\n" +
+                $"{view.CurrentActivityLabel} · {view.LocationLabel} · {view.AttentionPolicyLabel}";
             background.color = view.IsFollowed
                 ? new Color(0.08f, 0.42f, 0.32f, 0.95f)
                 : new Color(0.22f, 0.22f, 0.22f, 0.95f);

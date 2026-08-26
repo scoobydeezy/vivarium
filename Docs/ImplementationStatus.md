@@ -205,7 +205,7 @@ Working implementations:
   unrelated Commitment travel continue. Living Recreation Decisions register rebuildable location
   dependencies and dissolve/replan when an option set is invalidated. State, management capability,
   revisions, and Nudge balance round-trip through save schema v13; legacy locations migrate open.
-- **Small-cast MPS foundation** — the production headless `SampleWorld` now authors all ten locked MPS
+- **Small-cast MPS foundation** — the shared production `MinimumPlayableWorld` now authors all ten locked MPS
   roles: Mina, Glen, Darius, Lena, Priya, Marcus, Tess, Owen, Jo, and Ravi. They share the three-location
   Residential/Bakery/Commons graph but begin in staggered authoritative Activities, including Eating,
   Working, Sleeping, and in-progress Travel. Shared households, six production Employments across two
@@ -237,6 +237,17 @@ Working implementations:
   an existing Hold, and durable policy/Hold state round-trips across save/load. The full-cast acceptance
   also closes and reopens the Commons during Owen's in-flight routine Travel and proves targeted
   redirection plus restored availability. Phase 4 is complete.
+- **Phase 5 HUD, roster, and character-profile foundation** — Unity and the headless acceptance runner
+  now call the same Infrastructure-owned ten-character world builder. BaseGame authoring contains the
+  matching Bakery and Commons Employments, café-host Activity, hierarchy location kinds, and cast Trait
+  ids. The Unity HUD projects clock/mode/speed/offline-return state; the complete roster projects
+  observation-safe Activity/location, Follow, Attention policy, and surfaced/Held Decision state.
+  Character profiles now combine observed Overview facts with the materialized Schedule,
+  knowledge-filtered Relationships, active/recent Decisions, and retained character History. The
+  legacy direct-Travel button remains serialized only for prefab compatibility and is always hidden,
+  preserving the MVP rule that Travel is autonomous rather than a player command. Projection tests
+  cover unobserved roster privacy and relationship Knowledge filtering; PlayMode coverage exercises
+  the ten-character roster and all five profile sections.
 - **Knowledge** — player- and character-scoped fact providers, sparse social belief distributions,
   lifecycle/retention metadata, and discovery driven by observation through one canonical `WatchState`
   (§20.1, §22–§25).
@@ -384,7 +395,10 @@ Intentionally thin, pending game-design decisions:
 - **MVP agency presentation breadth.** Follow, Hold/Release, stable Influence intervention,
   knowledge-filtered Decision projection foundations, the Nudge economy, Re-roll/die-substitution,
   and the Commons availability Command and targeted reactions exist authoritatively. Normal/Auto-Hold/
-  Quiet tuning, bounded recap presentation, and complete MVP Unity surfaces are not implemented.
+  Quiet tuning is now authoritative. Phase 5 has started: the Unity HUD projects current SimTime plus
+  paused/live/fast-forward/offline-return status, and roster rows project observed Activity/location,
+  Follow, Attention policy, and feed-qualified Decision attention without leaking unobserved live state.
+  Bounded recap presentation and the remaining MVP Unity surfaces are not implemented.
 - **Intent versus forced outcome.** Decisions retain historical reasoning and Commitments distinguish
   planning intent from Activity execution, but there is no general action-attempt provenance or player
   physical-interference path. The simulation cannot yet record “Mina chose and attempted to leave, but
@@ -471,6 +485,8 @@ The test suite is organised around the §58 invariants rather than around classe
 | Playable leave-work content runs entirely through authored compiled reasons | `WorkContextTests`, `GoldenScenarioTests`, `VivariumPlayModeTests` |
 | Held decisions bounded, overflow deterministic | `SimulationInvariantTests`, `CommandAndProjectionTests` |
 | Commands execute in ingress order at quiescent boundaries | `CommandAndProjectionTests` |
+| HUD status projects pause, speed, SimTime, and offline return without owning simulation state | `CommandAndProjectionTests`, `VivariumPlayModeTests` |
+| Roster combines observation-safe Activity/location, Attention, and authoritative Decision surfacing | `CommandAndProjectionTests`, `VivariumPlayModeTests` |
 | UI availability and command validation share one authority | `CommandAndProjectionTests` |
 | Nudge spend, insufficiency/no-op safety, and per-action eligibility/cost projection agree | `NudgeEconomyTests`, `CommandAndProjectionTests` |
 | Eight-hour Nudge regeneration does not bank at cap and matches save/load/OfflineCatchUp | `NudgeEconomyTests`, `PersistenceTests` |

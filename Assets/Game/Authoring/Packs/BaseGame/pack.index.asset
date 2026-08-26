@@ -15,6 +15,7 @@ MonoBehaviour:
   manifest: {fileID: 11400000, guid: e7c046ff24624cf098aa8297638881bb, type: 2}
   traits:
   - {fileID: 11400000, guid: afe9983f40078e045a269c0c1854d889, type: 2}
+  - {fileID: 11400000, guid: 086fd4d7d1c047f99e890c749057439e, type: 2}
   - {fileID: 11400000, guid: cf50c39fa4f24f64ca6fccdf406a2d68, type: 2}
   - {fileID: 11400000, guid: 4468f27faf43b5949bbf2a8be776698f, type: 2}
   needs:
@@ -23,6 +24,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 87c78c50b8bd41b0a6f595844ed45c9c, type: 2}
   - {fileID: 11400000, guid: 3919f747790b4b00bd9d0c18fbb2231c, type: 2}
   activities:
+  - {fileID: 11400000, guid: 209d673bc8754b299f204a2c8d53d967, type: 2}
   - {fileID: 11400000, guid: c6df252c21fb45138c4fa5743d5b5bc5, type: 2}
   - {fileID: 11400000, guid: 67f077e847834497b7812122c3b17d53, type: 2}
   - {fileID: 11400000, guid: bfc3b49dbcd54b4794c8dd2df0c76106, type: 2}
@@ -44,6 +46,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 3e2e8101b6684840b6a0b5abeb89edba, type: 2}
   locationKinds:
   - {fileID: 11400000, guid: 71c6c6f1d3d84f8da0078312f9675f0d, type: 2}
+  - {fileID: 11400000, guid: 900289b4cdd74af8ab0f9c9325518b65, type: 2}
+  - {fileID: 11400000, guid: 6f2a42e026594a39b1c14a2319593f7b, type: 2}
   appraisalCalibrations:
   - {fileID: 11400000, guid: e6a1f1ddd1c2499c9c1a5f321e8e938f, type: 2}
   socialEvidence:
@@ -55,7 +59,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 94420e057fac4a93bd8739e0beb4cad0, type: 2}
   employments:
   - {fileID: 11400000, guid: 6e32b01b2ea143e39ac7ad7a1f95e2e9, type: 2}
+  - {fileID: 11400000, guid: 4bb96d71b0df472fa5ae5bb7e1dc0de4, type: 2}
   socialPressures:
   - {fileID: 11400000, guid: 74b005db8dbe46bea042d95d6d02cf8e, type: 2}
   - {fileID: 11400000, guid: 73ad8259c8fa45a2a4700e930bcdbcc1, type: 2}
-  bakeFingerprint: aafdcb2b4cc91c02
+  bakeFingerprint: 85b619edd975c79d

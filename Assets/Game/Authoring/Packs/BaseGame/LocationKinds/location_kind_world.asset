@@ -1,0 +1,11 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 468a7f3b83804d949bd4f2df1860a0dc, type: 3}
+  m_Name: location_kind_world
+  m_EditorClassIdentifier: Vivarium.Unity.Authoring::Vivarium.Unity.Authoring.LocationKindDefinitionAsset
+  authoredId: location_kind.world
+  displayName: World
+  occupiableByDefault: 0

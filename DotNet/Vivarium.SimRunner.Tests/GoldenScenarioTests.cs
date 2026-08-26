@@ -33,7 +33,7 @@ namespace Vivarium.SimRunner.Tests
         {
             public DefinitionCatalog Catalog;
             public SimulationHost Host;
-            public SampleWorldLayout Layout;
+            public MinimumPlayableWorldLayout Layout;
             public InMemorySaveGameStore Store;
             public FixedRealWorldClock Clock;
         }
@@ -69,6 +69,35 @@ namespace Vivarium.SimRunner.Tests
             Assert.Contains(world.Commitments.All,
                 commitment => commitment.CharacterId == fixture.Layout.Jo &&
                     commitment.LocationId == fixture.Layout.Commons);
+        }
+
+        [Fact]
+        public void CharacterProfileCombinesScheduleAndPlayerKnowledgeWithoutRevealingUnknownRelationships()
+        {
+            Fixture fixture = Create();
+            var projector = new CharacterProfileProjector();
+            fixture.Host.Session.Execute(new InspectCharacterCommand(fixture.Layout.Mina));
+
+            Assert.True(projector.TryProject(
+                fixture.Host.World, fixture.Layout.Mina, out CharacterProfileView before));
+            Assert.NotEmpty(before.Schedule.Entries);
+            Assert.NotEmpty(before.KnownNeeds);
+            Assert.Empty(before.KnownRelationships);
+
+            Relationship friends = RelationshipBetween(
+                fixture.Host.World, fixture.Layout.Mina, fixture.Layout.Glen);
+            fixture.Host.World.Knowledge.Record(new KnowledgeEntry(
+                new FactKey(FactKinds.RelationshipStanding, friends.Id.ToRef()),
+                ObservedValue.Of(ValueBands.Strong),
+                fixture.Host.World.Clock.Now,
+                KnowledgeConfidence.Known,
+                DiscoverySource.Channel(DiscoveryChannels.DirectObservation)));
+
+            Assert.True(projector.TryProject(
+                fixture.Host.World, fixture.Layout.Mina, out CharacterProfileView after));
+            KnownRelationshipView known = Assert.Single(after.KnownRelationships);
+            Assert.Equal("Glen Ashby", known.OtherCharacterName);
+            Assert.Equal(ValueBands.Strong.ToString(), Assert.Single(known.KnownFacts).ValueLabel);
         }
 
         [Fact]
@@ -143,7 +172,7 @@ namespace Vivarium.SimRunner.Tests
                 null,
                 fixture.Store,
                 fixture.Clock);
-            SampleWorld.ConfigureScenarioServices(restored);
+            MinimumPlayableWorld.ConfigureScenarioServices(restored);
             restored.Session.Advance(throughArrival);
             restored.Session.Advance(SimDuration.FromMinutes(5));
             Relationship restoredWeak = RelationshipBetween(
@@ -365,7 +394,7 @@ namespace Vivarium.SimRunner.Tests
                 null,
                 fixture.Store,
                 fixture.Clock);
-            SampleWorld.ConfigureScenarioServices(restored);
+            MinimumPlayableWorld.ConfigureScenarioServices(restored);
             restored.Session.Advance(elapsed, SimulationMode.OfflineCatchUp);
 
             Assert.Equal(uninterrupted, AuthoritativeSignature(restored.World));
@@ -712,7 +741,7 @@ namespace Vivarium.SimRunner.Tests
                 null,
                 fixture.Store,
                 fixture.Clock);
-            SampleWorld.ConfigureScenarioServices(restored);
+            MinimumPlayableWorld.ConfigureScenarioServices(restored);
 
             Assert.True(restored.World.Attention.WatchStateOf(fixture.Layout.Mina).IsFollowed);
             Assert.False(restored.World.Attention.WatchStateOf(fixture.Layout.Mina).IsVisible);
@@ -788,7 +817,7 @@ namespace Vivarium.SimRunner.Tests
                 null,
                 fixture.Store,
                 fixture.Clock);
-            SampleWorld.ConfigureScenarioServices(restored);
+            MinimumPlayableWorld.ConfigureScenarioServices(restored);
             restored.Session.Advance(elapsed, SimulationMode.OfflineCatchUp);
 
             Assert.Equal(uninterrupted, AuthoritativeSignature(restored.World));
@@ -823,7 +852,7 @@ namespace Vivarium.SimRunner.Tests
                 null,
                 fixture.Store,
                 fixture.Clock);
-            SampleWorld.ConfigureScenarioServices(restored);
+            MinimumPlayableWorld.ConfigureScenarioServices(restored);
             restored.Session.Advance(SimDuration.FromMinutes(15));
             Decision reloaded = FindCommitmentConflict(restored.World, fixture.Layout.Mina);
 
@@ -923,7 +952,7 @@ namespace Vivarium.SimRunner.Tests
                 null,
                 replaySource.Store,
                 replaySource.Clock);
-            SampleWorld.ConfigureScenarioServices(replayHost);
+            MinimumPlayableWorld.ConfigureScenarioServices(replayHost);
             var replay = new Fixture
             {
                 Catalog = replaySource.Catalog,
@@ -959,7 +988,7 @@ namespace Vivarium.SimRunner.Tests
             {
                 Catalog = catalog,
                 Host = host,
-                Layout = SampleWorld.Populate(host),
+                Layout = MinimumPlayableWorld.Populate(host),
                 Store = store,
                 Clock = clock,
             };
@@ -1012,7 +1041,7 @@ namespace Vivarium.SimRunner.Tests
                 null,
                 fixture.Store,
                 fixture.Clock);
-            SampleWorld.ConfigureScenarioServices(restored);
+            MinimumPlayableWorld.ConfigureScenarioServices(restored);
             Decision restoredDecision = restored.World.Decisions.Get(decision.Id);
             Assert.True(restoredDecision.TryGetInfluence(stableId, out DecisionInfluence restoredInfluence));
             Assert.Equal(2, restored.World.Nudges.Balance);
@@ -1049,7 +1078,7 @@ namespace Vivarium.SimRunner.Tests
             return decision;
         }
 
-        private static void MoveDariusOutOfWorkContext(SimulationHost host, SampleWorldLayout layout)
+        private static void MoveDariusOutOfWorkContext(SimulationHost host, MinimumPlayableWorldLayout layout)
         {
             host.Transitions.BeginActivity(
                 host.Simulation,
@@ -1071,7 +1100,7 @@ namespace Vivarium.SimRunner.Tests
                 null,
                 fixture.Store,
                 fixture.Clock);
-            SampleWorld.ConfigureScenarioServices(restored);
+            MinimumPlayableWorld.ConfigureScenarioServices(restored);
             return restored;
         }
 

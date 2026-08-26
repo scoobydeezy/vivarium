@@ -5,10 +5,28 @@ namespace Vivarium.Application.Queries
     public sealed class CharacterRosterEntryView
     {
         public CharacterRosterEntryView(int characterId, string displayName, bool isFollowed)
+            : this(characterId, displayName, isFollowed, "Unknown", "Not currently observed", "Normal", false, false)
+        {
+        }
+
+        public CharacterRosterEntryView(
+            int characterId,
+            string displayName,
+            bool isFollowed,
+            string currentActivityLabel,
+            string locationLabel,
+            string attentionPolicyLabel,
+            bool needsDecisionAttention,
+            bool hasHeldDecision)
         {
             CharacterId = characterId;
             DisplayName = displayName;
             IsFollowed = isFollowed;
+            CurrentActivityLabel = currentActivityLabel;
+            LocationLabel = locationLabel;
+            AttentionPolicyLabel = attentionPolicyLabel;
+            NeedsDecisionAttention = needsDecisionAttention;
+            HasHeldDecision = hasHeldDecision;
         }
 
         public int CharacterId { get; }
@@ -16,6 +34,43 @@ namespace Vivarium.Application.Queries
         public string DisplayName { get; }
 
         public bool IsFollowed { get; }
+
+        public string CurrentActivityLabel { get; }
+
+        public string LocationLabel { get; }
+
+        public string AttentionPolicyLabel { get; }
+
+        public bool NeedsDecisionAttention { get; }
+
+        public bool HasHeldDecision { get; }
+    }
+
+    /// <summary>One immutable snapshot for the world HUD's time and execution state.</summary>
+    public sealed class SimulationStatusView
+    {
+        public SimulationStatusView(
+            string timeLabel,
+            string statusLabel,
+            string speedLabel,
+            bool isPaused,
+            bool isOfflineReturn,
+            string offlineElapsedLabel)
+        {
+            TimeLabel = timeLabel;
+            StatusLabel = statusLabel;
+            SpeedLabel = speedLabel;
+            IsPaused = isPaused;
+            IsOfflineReturn = isOfflineReturn;
+            OfflineElapsedLabel = offlineElapsedLabel;
+        }
+
+        public string TimeLabel { get; }
+        public string StatusLabel { get; }
+        public string SpeedLabel { get; }
+        public bool IsPaused { get; }
+        public bool IsOfflineReturn { get; }
+        public string OfflineElapsedLabel { get; }
     }
 
     /// <summary>
@@ -39,7 +94,11 @@ namespace Vivarium.Application.Queries
             int travelProgressBasisPoints,
             bool isFollowed,
             IReadOnlyList<KnownFactView> knownTraits,
-            IReadOnlyList<KnownFactView> knownNeeds)
+            IReadOnlyList<KnownFactView> knownNeeds,
+            ScheduleView schedule = null,
+            IReadOnlyList<KnownRelationshipView> knownRelationships = null,
+            IReadOnlyList<CharacterDecisionSummaryView> decisions = null,
+            IReadOnlyList<CharacterHistoryEntryView> recentHistory = null)
         {
             CharacterId = characterId;
             DisplayName = displayName;
@@ -51,6 +110,10 @@ namespace Vivarium.Application.Queries
             IsFollowed = isFollowed;
             KnownTraits = knownTraits;
             KnownNeeds = knownNeeds;
+            Schedule = schedule ?? new ScheduleView(characterId, new ScheduleEntryView[0]);
+            KnownRelationships = knownRelationships ?? new KnownRelationshipView[0];
+            Decisions = decisions ?? new CharacterDecisionSummaryView[0];
+            RecentHistory = recentHistory ?? new CharacterHistoryEntryView[0];
         }
 
         public int CharacterId { get; }
@@ -77,6 +140,60 @@ namespace Vivarium.Application.Queries
         public IReadOnlyList<KnownFactView> KnownTraits { get; }
 
         public IReadOnlyList<KnownFactView> KnownNeeds { get; }
+
+        public ScheduleView Schedule { get; }
+
+        public IReadOnlyList<KnownRelationshipView> KnownRelationships { get; }
+
+        public IReadOnlyList<CharacterDecisionSummaryView> Decisions { get; }
+
+        public IReadOnlyList<CharacterHistoryEntryView> RecentHistory { get; }
+    }
+
+    public sealed class KnownRelationshipView
+    {
+        public KnownRelationshipView(int relationshipId, int otherCharacterId, string otherCharacterName, IReadOnlyList<KnownFactView> knownFacts)
+        {
+            RelationshipId = relationshipId;
+            OtherCharacterId = otherCharacterId;
+            OtherCharacterName = otherCharacterName;
+            KnownFacts = knownFacts ?? new KnownFactView[0];
+        }
+
+        public int RelationshipId { get; }
+        public int OtherCharacterId { get; }
+        public string OtherCharacterName { get; }
+        public IReadOnlyList<KnownFactView> KnownFacts { get; }
+    }
+
+    public sealed class CharacterDecisionSummaryView
+    {
+        public CharacterDecisionSummaryView(int decisionId, string definitionId, string statusLabel, string timeLabel)
+        {
+            DecisionId = decisionId;
+            DefinitionId = definitionId;
+            StatusLabel = statusLabel;
+            TimeLabel = timeLabel;
+        }
+
+        public int DecisionId { get; }
+        public string DefinitionId { get; }
+        public string StatusLabel { get; }
+        public string TimeLabel { get; }
+    }
+
+    public sealed class CharacterHistoryEntryView
+    {
+        public CharacterHistoryEntryView(int historyEntryId, string occurredAtLabel, string summary)
+        {
+            HistoryEntryId = historyEntryId;
+            OccurredAtLabel = occurredAtLabel;
+            Summary = summary;
+        }
+
+        public int HistoryEntryId { get; }
+        public string OccurredAtLabel { get; }
+        public string Summary { get; }
     }
 
     /// <summary>

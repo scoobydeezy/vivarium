@@ -23,12 +23,11 @@ namespace Vivarium.Unity.Presentation
         private readonly HashSet<int> _visibleThisRefresh = new HashSet<int>();
         private readonly HashSet<int> _followedCharacters = new HashSet<int>();
         private readonly CharacterProfileProjector _profiles = new CharacterProfileProjector();
-        private readonly CharacterRosterProjector _roster = new CharacterRosterProjector();
+        private CharacterRosterProjector _roster;
         private readonly DecisionHistoryProjector _decisionHistory = new DecisionHistoryProjector();
 
         private ProjectionPublisher _publisher;
         private Func<ICommand, string, CommandEnvelope> _enqueue;
-        private Func<CharacterId, ICommand> _travelCommandFactory;
         private CharacterId _inspectedCharacter;
         private DecisionProjector _decisionProjector;
         private AuthoredId _interventionDefinitionId;
@@ -48,9 +47,6 @@ namespace Vivarium.Unity.Presentation
             }
         }
 
-        public void ConfigureTravel(Func<CharacterId, ICommand> commandFactory) =>
-            _travelCommandFactory = commandFactory;
-
         public void ConfigureDecisionContent(IReadOnlyDictionary<AuthoredId, InterventionDefinition> interventions)
         {
             _decisionProjector = new DecisionProjector(interventions);
@@ -61,6 +57,9 @@ namespace Vivarium.Unity.Presentation
                 break;
             }
         }
+
+        public void ConfigureRoster(DecisionImportancePolicyDefinition importance, DecisionHoldPolicy holds) =>
+            _roster = new CharacterRosterProjector(importance, holds);
 
         public void Initialize(ProjectionPublisher publisher, Func<ICommand, string, CommandEnvelope> enqueue)
         {
@@ -73,7 +72,7 @@ namespace Vivarium.Unity.Presentation
 
             _publisher = publisher ?? throw new ArgumentNullException(nameof(publisher));
             _enqueue = enqueue ?? throw new ArgumentNullException(nameof(enqueue));
-            profilePanel.Configure(CloseProfile, TravelSelectedCharacter);
+            profilePanel.Configure(CloseProfile);
             decisionPanel.Configure(HoldDecision, ReleaseDecision, InterveneInDecision);
             _publisher.Subscribe(OnQuiescence);
         }
@@ -87,6 +86,10 @@ namespace Vivarium.Unity.Presentation
 
         private void OnQuiescence(WorldState world, SimulationContext context)
         {
+            if (_roster == null)
+            {
+                _roster = new CharacterRosterProjector();
+            }
             IReadOnlyList<CharacterRosterEntryView> roster = _roster.Project(world);
             _followedCharacters.Clear();
             for (int i = 0; i < roster.Count; i++)
@@ -152,20 +155,6 @@ namespace Vivarium.Unity.Presentation
             SetSelectedView(CharacterId.None);
             _enqueue?.Invoke(new InspectCharacterCommand(closingCharacter, false), "close-profile");
             profilePanel.ShowPrompt("Click a character to inspect");
-        }
-
-        private void TravelSelectedCharacter()
-        {
-            if (!_inspectedCharacter.IsSet || _travelCommandFactory == null)
-            {
-                return;
-            }
-
-            ICommand command = _travelCommandFactory(_inspectedCharacter);
-            if (command != null)
-            {
-                _enqueue?.Invoke(command, "travel-button");
-            }
         }
 
         private void ToggleFollow(CharacterId characterId)
@@ -278,9 +267,9 @@ namespace Vivarium.Unity.Presentation
 
         private static Vector3 PositionForLocation(string locationLabel, int characterId)
         {
-            if (locationLabel.StartsWith("Demo Room")) return new Vector3(-3f, 0f, 0f);
-            if (locationLabel.StartsWith("Demo Cafe")) return new Vector3(0f, 0f, 0f);
-            if (locationLabel.StartsWith("Demo Workshop")) return new Vector3(3f, 0f, 0f);
+            if (locationLabel.StartsWith("Mina's flat")) return new Vector3(-3f, 0f, 0f);
+            if (locationLabel.StartsWith("Eastmarket Commons")) return new Vector3(0f, 0f, 0f);
+            if (locationLabel.StartsWith("East Market Bakery")) return new Vector3(3f, 0f, 0f);
 
             float x = characterId % 8;
             float z = characterId / 8;

@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e09f56e9506a453aabe19894ac48fc75, type: 3}
+  m_Name: employment_cafe_host
+  m_EditorClassIdentifier: Vivarium.Unity.Authoring::Vivarium.Unity.Authoring.EmploymentDefinitionAsset
+  authoredId: employment.cafe_host
+  roleId: employment.role.cafe_host
+  obligationPatterns:
+  - authoredId: routine.cafe_hosting_shift
+    commitmentKindId: commitment.cafe_hosting_shift
+    cycleLengthDays: 7
+    activeDaysMask: 31
+    startMinuteOfDay: 840
+    durationMinutes: 90
+    priority: 80
+    activityDefinitionId: activity.cafe_hosting
+    startWindowMinutes: 5
+    accountabilityPolicyId: accountability.social_commitment
