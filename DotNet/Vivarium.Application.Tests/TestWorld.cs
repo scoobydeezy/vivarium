@@ -55,6 +55,7 @@ namespace Vivarium.Application.Tests
         public static DefinitionCatalog BuildCatalog(int contentVersion = 1, bool includeSocialDecision = false)
         {
             var builder = new DefinitionCatalog.Builder { ContentVersion = contentVersion };
+            builder.SetDecisionImportancePolicy(new DecisionImportancePolicyDefinition(0, 0, 0, 0));
 
             builder.Add(new TraitDefinition(
                 TraitAmbitious,
@@ -419,7 +420,7 @@ namespace Vivarium.Application.Tests
         }
 
         /// <summary>Creates a job-offer decision with a mix of visible, generalized, and hidden influences.</summary>
-        public Decision CreateDecision()
+        public Decision CreateDecision(int importance = 0)
         {
             WorldState world = Host.World;
             DecisionDefinition definition = Catalog.Decisions[DecisionJobOffer];
@@ -431,7 +432,8 @@ namespace Vivarium.Application.Tests
                 world.Clock.Now,
                 world.Clock.Now.Plus(definition.TimeToResolve),
                 definition.Options,
-                new DecisionConflictScope(definition.ConflictScopeKind, Mina.ToRef()));
+                new DecisionConflictScope(definition.ConflictScopeKind, Mina.ToRef()),
+                importance);
 
             decision.AddInfluence(OptionAccept, new AuthoredId("cat.personal"), TraitAmbitious, Die.D10, InfluenceVisibility.Existence | InfluenceVisibility.Category | InfluenceVisibility.Magnitude, default, Mina.ToRef());
             decision.AddInfluence(OptionAccept, new AuthoredId("cat.practical"), new AuthoredId("influence.better_pay"), Die.D6, InfluenceVisibility.Full);

@@ -5,6 +5,7 @@ using Vivarium.Application.Persistence;
 using Vivarium.Application.Queries;
 using Vivarium.Application.Session;
 using Vivarium.Domain.Activities;
+using Vivarium.Domain.Attention;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Content;
 using Vivarium.Domain.Decisions;
@@ -15,6 +16,7 @@ using Vivarium.Domain.Knowledge;
 using Vivarium.Domain.Simulation;
 using Vivarium.Domain.Spatial;
 using Vivarium.Domain.Scheduling;
+using Vivarium.Domain.Social;
 using Vivarium.Domain.Time;
 using Vivarium.Infrastructure.Bootstrap;
 using Vivarium.Infrastructure.Clock;
@@ -37,6 +39,342 @@ namespace Vivarium.SimRunner.Tests
         }
 
         [Fact]
+        public void MpsWorldStartsWithTheLockedTenPersonCastAndStaggeredLifeStates()
+        {
+            Fixture fixture = Create();
+            WorldState world = fixture.Host.World;
+
+            Assert.Equal(10, world.Characters.Count);
+            Assert.Equal(10, new[]
+            {
+                fixture.Layout.Mina, fixture.Layout.Glen, fixture.Layout.Darius, fixture.Layout.Lena,
+                fixture.Layout.Priya, fixture.Layout.Marcus, fixture.Layout.Tess, fixture.Layout.Owen,
+                fixture.Layout.Jo, fixture.Layout.Ravi,
+            }.Distinct().Count());
+            Assert.Equal(fixture.Layout.Cafe, fixture.Layout.Commons);
+            Assert.True(world.Locations.Get(fixture.Layout.Commons).SupportsPlayerManagedAvailability);
+
+            Assert.Equal(WellKnownActivities.Eating, Current(world, fixture.Layout.Priya).DefinitionId);
+            Assert.Equal(SampleContent.ActivityWorking, Current(world, fixture.Layout.Marcus).DefinitionId);
+            Assert.Equal(WellKnownActivities.Sleeping, Current(world, fixture.Layout.Jo).DefinitionId);
+            ActivityInstance ravi = Current(world, fixture.Layout.Ravi);
+            Assert.Equal(WellKnownActivities.Traveling, ravi.DefinitionId);
+            Assert.Equal(fixture.Layout.Bakery, ravi.SpatialContext.Transit.DestinationLocationId);
+
+            Assert.Contains(world.Memberships.GroupsOf(fixture.Layout.Mina),
+                group => world.Memberships.GroupsOf(fixture.Layout.Tess).Contains(group));
+            Assert.Contains(world.Memberships.GroupsOf(fixture.Layout.Glen),
+                group => world.Memberships.GroupsOf(fixture.Layout.Jo).Contains(group));
+            Assert.Equal(6, world.Employments.Count);
+            Assert.Contains(world.Commitments.All,
+                commitment => commitment.CharacterId == fixture.Layout.Jo &&
+                    commitment.LocationId == fixture.Layout.Commons);
+        }
+
+        [Fact]
+        public void MpsSocialTopologyIsDirectionalAndOrdinaryEvidenceChangesOwensLaterReasonAcrossReload()
+        {
+            Fixture fixture = Create();
+            WorldState world = fixture.Host.World;
+            SimTime now = world.Clock.Now;
+
+            Relationship friends = RelationshipBetween(world, fixture.Layout.Mina, fixture.Layout.Glen);
+            Assert.True(friends.From(fixture.Layout.Mina).FamiliarityAt(now) >
+                        friends.From(fixture.Layout.Glen).FamiliarityAt(now));
+            Assert.True(friends.From(fixture.Layout.Mina).ChannelAt(RelationshipChannels.Affection, now) >
+                        friends.From(fixture.Layout.Glen).ChannelAt(RelationshipChannels.Affection, now));
+            Assert.Contains(friends.From(fixture.Layout.Mina).Memories,
+                memory => memory.ChannelEffects[RelationshipChannels.Affection] > 0);
+            Assert.Contains(friends.From(fixture.Layout.Glen).Memories,
+                memory => memory.ChannelEffects[RelationshipChannels.Affection] < 0);
+
+            Relationship boss = RelationshipBetween(world, fixture.Layout.Mina, fixture.Layout.Darius);
+            Assert.True(boss.From(fixture.Layout.Mina).FamiliarityAt(now) >
+                        boss.From(fixture.Layout.Darius).FamiliarityAt(now));
+            Assert.True(boss.From(fixture.Layout.Mina).ChannelAt(RelationshipChannels.Resentment, now) > 0);
+            Relationship weak = RelationshipBetween(world, fixture.Layout.Owen, fixture.Layout.Lena);
+            Assert.True(weak.From(fixture.Layout.Owen).FamiliarityAt(now) < 1000);
+
+            Assert.True(world.Knowledge.TryGetSocialBelief(
+                ObserverRef.Character(fixture.Layout.Owen), fixture.Layout.Lena, out BeliefDistribution prior));
+            long priorWarmth = prior.Mean[SocialDimensions.Warmth];
+            long priorVariance = prior.Covariance(SocialDimensions.Warmth, SocialDimensions.Warmth);
+            int priorEvidenceRevision = prior.EvidenceRevision;
+            long priorReason = EvaluateAffiliation(fixture, fixture.Layout.Owen, fixture.Layout.Lena);
+            SaveGameData saved = fixture.Host.Session.Save("before-owen-lena-evidence");
+
+            SimDuration throughArrival = SimDuration.FromHours(8).Plus(SimDuration.FromMinutes(26));
+            fixture.Host.Session.Advance(throughArrival);
+            Assert.True(weak.LastInteractionAt > now,
+                $"Owen={Current(world, fixture.Layout.Owen).DefinitionId}; " +
+                $"Lena={Current(world, fixture.Layout.Lena).DefinitionId}; " +
+                $"last interaction={weak.LastInteractionAt}");
+            Assert.True(world.Knowledge.TryGetSocialBelief(
+                ObserverRef.Character(fixture.Layout.Owen), fixture.Layout.Lena, out BeliefDistribution revised));
+            Assert.True(revised.EvidenceRevision > priorEvidenceRevision);
+            Assert.True(revised.Mean[SocialDimensions.Warmth] < priorWarmth);
+            Assert.True(revised.Covariance(SocialDimensions.Warmth, SocialDimensions.Warmth) < priorVariance);
+
+            // Let the overlapping social choice resolve, then exercise the same ordinary interaction
+            // occurrence again while both characters are still at the Commons. This later Decision is
+            // built from the evidence-revised belief rather than Owen's authored first impression.
+            fixture.Host.Session.Advance(SimDuration.FromMinutes(5));
+            world.Publish(new InteractionOccurredEvent(
+                fixture.Layout.Owen,
+                fixture.Layout.Lena,
+                fixture.Layout.Commons,
+                weak.Id));
+            fixture.Host.Session.Advance(SimDuration.Zero);
+            Decision decision = Assert.Single(world.Decisions.All, item =>
+                item.CharacterId == fixture.Layout.Owen &&
+                item.DefinitionId == SampleContent.DecisionSeekCompany &&
+                item.SnapshottedParameters.TryGetValue(
+                    SocialInteractionDecisionGenerationHandler.TargetParameter, out long target) &&
+                target == fixture.Layout.Lena.Value);
+            DecisionInfluence laterReason = Assert.Single(decision.Influences, item => !item.IsRetracted);
+            Assert.NotEqual(priorReason, laterReason.Evaluation.ExpectedScore);
+
+            WorldState restoredWorld = fixture.Host.SaveMapper.Restore(saved);
+            SimulationHost restored = SimulationBootstrapper.CreateFromRestoredWorld(
+                restoredWorld,
+                fixture.Catalog,
+                saved.LastCommandSequence,
+                1,
+                null,
+                fixture.Store,
+                fixture.Clock);
+            SampleWorld.ConfigureScenarioServices(restored);
+            restored.Session.Advance(throughArrival);
+            restored.Session.Advance(SimDuration.FromMinutes(5));
+            Relationship restoredWeak = RelationshipBetween(
+                restored.World, fixture.Layout.Owen, fixture.Layout.Lena);
+            restored.World.Publish(new InteractionOccurredEvent(
+                fixture.Layout.Owen,
+                fixture.Layout.Lena,
+                fixture.Layout.Commons,
+                restoredWeak.Id));
+            restored.Session.Advance(SimDuration.Zero);
+
+            Assert.Equal(AuthoritativeSignature(world), AuthoritativeSignature(restored.World));
+        }
+
+        [Fact]
+        public void MpsCastRunsTwoDaysDeterministicallyWithContinuousPrimaryActivitiesAndRoutineDiversity()
+        {
+            Fixture first = Create();
+            Fixture second = Create();
+
+            first.Host.Session.Advance(SimDuration.FromDays(2), SimulationMode.PlayerFastForward);
+            second.Host.Session.Advance(SimDuration.FromDays(2), SimulationMode.PlayerFastForward);
+
+            Assert.Equal(AuthoritativeSignature(first.Host.World), AuthoritativeSignature(second.Host.World));
+            foreach (Character character in first.Host.World.Characters.All)
+            {
+                ActivityInstance current = Current(first.Host.World, character.Id);
+                Assert.Equal(ActivityStatus.Active, current.Status);
+                Assert.Contains(first.Host.World.Activities.All,
+                    activity => activity.CharacterId == character.Id &&
+                        activity.DefinitionId == WellKnownActivities.Sleeping &&
+                        activity.Status != ActivityStatus.Active);
+            }
+
+            AuthoredId[] occurred = first.Host.World.Activities.All.Select(activity => activity.DefinitionId).Distinct().ToArray();
+            Assert.Contains(WellKnownActivities.Sleeping, occurred);
+            Assert.Contains(WellKnownActivities.Eating, occurred);
+            Assert.Contains(SampleContent.ActivityWorking, occurred);
+            Assert.Contains(WellKnownActivities.Traveling, occurred);
+            Assert.Contains(SampleContent.ActivityTabletopGames, occurred);
+            Assert.Contains(SampleContent.ActivityReading, occurred);
+            Assert.Contains(SampleContent.ActivitySocializing, occurred);
+        }
+
+        [Fact]
+        public void ClosingCommonsBeforeOwensAfternoonPlanningChangesHisOrdinaryBranch()
+        {
+            Fixture open = Create();
+            Fixture managed = Create();
+
+            Result close = managed.Host.Session.Execute(
+                new SetLocationAvailabilityCommand(managed.Layout.Commons, open: false));
+            Assert.True(close.IsSuccess);
+
+            SimDuration untilAfterPlanning = SimDuration.FromHours(8).Plus(SimDuration.FromMinutes(30));
+            open.Host.Session.Advance(untilAfterPlanning);
+            managed.Host.Session.Advance(untilAfterPlanning);
+
+            ActivityInstance openActivity = Current(open.Host.World, open.Layout.Owen);
+            Assert.True(openActivity.DefinitionId == WellKnownActivities.Traveling ||
+                openActivity.DefinitionId == SampleContent.ActivityTabletopGames);
+            if (openActivity.SpatialContext.IsTraveling)
+                Assert.Equal(open.Layout.Commons, openActivity.SpatialContext.Transit.DestinationLocationId);
+
+            ActivityInstance managedActivity = Current(managed.Host.World, managed.Layout.Owen);
+            Assert.Equal(SampleContent.ActivityReading, managedActivity.DefinitionId);
+            Assert.Equal(managed.Layout.Home, managedActivity.SpatialContext.LocationId);
+            Assert.DoesNotContain(managed.Host.World.Decisions.All,
+                decision => decision.CharacterId == managed.Layout.Owen &&
+                    decision.DefinitionId == SampleContent.DecisionChooseRecreation);
+            Assert.False(managed.Host.World.Locations.Get(managed.Layout.Commons).IsOpen);
+        }
+
+        [Fact]
+        public void ClosingCommonsDuringOwensTravelRedirectsTheTripAndReopeningRestoresAvailability()
+        {
+            Fixture fixture = Create();
+            fixture.Host.Session.Advance(
+                SimDuration.FromHours(8).Plus(SimDuration.FromMinutes(21)));
+
+            ActivityInstance outbound = Current(fixture.Host.World, fixture.Layout.Owen);
+            Assert.Equal(WellKnownActivities.Traveling, outbound.DefinitionId);
+            Assert.Equal(fixture.Layout.Commons, outbound.SpatialContext.Transit.DestinationLocationId);
+
+            Assert.True(fixture.Host.Session.Execute(
+                new SetLocationAvailabilityCommand(fixture.Layout.Commons, open: false)).IsSuccess);
+            ActivityInstance redirected = Current(fixture.Host.World, fixture.Layout.Owen);
+            Assert.True(redirected.DefinitionId == WellKnownActivities.Traveling ||
+                        redirected.DefinitionId == SampleContent.ActivityReading);
+            if (redirected.SpatialContext.IsTraveling)
+                Assert.Equal(fixture.Layout.Home, redirected.SpatialContext.Transit.DestinationLocationId);
+
+            Assert.True(fixture.Host.Session.Execute(
+                new SetLocationAvailabilityCommand(fixture.Layout.Commons, open: true)).IsSuccess);
+            Assert.True(fixture.Host.World.Locations.Get(fixture.Layout.Commons).IsOpen);
+            Assert.Equal(1, fixture.Host.World.Nudges.Balance);
+            Assert.Equal(2, fixture.Host.World.HistoryLedger.Entries.Count(entry =>
+                entry.Kind == LocationAvailabilityHistoryHandler.HistoryKind));
+        }
+
+        [Fact]
+        public void AutoHoldPersistsAndQuietDoesNotReleaseOrEraseTheOutcomeRecap()
+        {
+            Fixture fixture = Create();
+            Assert.True(fixture.Host.Session.Execute(new SetAttentionPolicyCommand(
+                fixture.Layout.Owen, AttentionPolicy.AutoHold)).IsSuccess);
+            fixture.Host.Session.Advance(
+                SimDuration.FromHours(8).Plus(SimDuration.FromMinutes(11)));
+            Decision decision = fixture.Host.World.Decisions.All.Single(candidate =>
+                candidate.IsActive && candidate.CharacterId == fixture.Layout.Owen);
+            Assert.True(decision.Importance >= fixture.Catalog.DecisionImportancePolicy.AutoHoldFloor,
+                $"Owen importance {decision.Importance}, Auto-Hold floor {fixture.Catalog.DecisionImportancePolicy.AutoHoldFloor}.");
+            Assert.True(fixture.Host.World.Attention.IsHeld(decision.Id));
+            Assert.Contains(new DecisionFeedProjector(
+                    fixture.Catalog.DecisionImportancePolicy, fixture.Host.HoldPolicy)
+                .Project(fixture.Host.World).Entries, entry => entry.DecisionId == decision.Id.Value);
+
+            Assert.True(fixture.Host.Session.Execute(new SetAttentionPolicyCommand(
+                fixture.Layout.Owen, AttentionPolicy.Quiet)).IsSuccess);
+            Assert.True(fixture.Host.World.Attention.IsHeld(decision.Id));
+            SaveGameData saved = fixture.Host.Session.Save("mps-auto-held-quiet");
+            SimulationHost restored = RestoreHost(fixture, saved);
+            Decision restoredDecision = restored.World.Decisions.Get(decision.Id);
+            Assert.Equal(AttentionPolicy.Quiet, restored.World.Attention.PolicyFor(fixture.Layout.Owen));
+            Assert.True(restored.World.Attention.IsHeld(restoredDecision.Id));
+
+            Assert.True(fixture.Host.Session.Execute(new ReleaseDecisionCommand(decision.Id)).IsSuccess);
+            Assert.True(restored.Session.Execute(new ReleaseDecisionCommand(restoredDecision.Id)).IsSuccess);
+            fixture.Host.Session.Advance(SimDuration.FromMinutes(10));
+            restored.Session.Advance(SimDuration.FromMinutes(10));
+
+            Assert.Equal(DecisionStatus.Resolved, decision.Status);
+            Assert.Equal(decision.Resolution.ChosenOptionId, restoredDecision.Resolution.ChosenOptionId);
+            Assert.Contains(new DecisionHistoryProjector().Project(fixture.Host.World, 5).Entries,
+                entry => entry.Message.Contains("resolved"));
+            Assert.Equal(AuthoritativeSignature(fixture.Host.World), AuthoritativeSignature(restored.World));
+        }
+
+        [Fact]
+        public void QuietSuppressesANewDecisionFromTheFeedWithoutChangingItsSimulation()
+        {
+            Fixture normal = Create();
+            Fixture quiet = Create();
+            Assert.True(normal.Host.Session.Execute(new SetAttentionPolicyCommand(
+                normal.Layout.Mina, AttentionPolicy.Normal)).IsSuccess);
+            Assert.True(quiet.Host.Session.Execute(new SetAttentionPolicyCommand(
+                quiet.Layout.Mina, AttentionPolicy.Quiet)).IsSuccess);
+            SimDuration untilDecision = SimDuration.FromHours(5).Plus(SimDuration.FromMinutes(35));
+            normal.Host.Session.Advance(untilDecision);
+            quiet.Host.Session.Advance(untilDecision);
+
+            Decision normalDecision = FindDecision(normal.Host.World, normal.Layout.Mina);
+            Decision quietDecision = FindDecision(quiet.Host.World, quiet.Layout.Mina);
+            var attentionTestPolicy = new DecisionImportancePolicyDefinition(0, 0, 0, 0);
+            var normalFeed = new DecisionFeedProjector(
+                attentionTestPolicy, normal.Host.HoldPolicy).Project(normal.Host.World);
+            var quietFeed = new DecisionFeedProjector(
+                attentionTestPolicy, quiet.Host.HoldPolicy).Project(quiet.Host.World);
+            Assert.Contains(normalFeed.Entries, entry => entry.DecisionId == normalDecision.Id.Value);
+            Assert.DoesNotContain(quietFeed.Entries, entry => entry.DecisionId == quietDecision.Id.Value);
+            Assert.Equal(normalDecision.Importance, quietDecision.Importance);
+            Assert.Equal(normalDecision.Influences.Count, quietDecision.Influences.Count);
+
+            normal.Host.Session.Advance(SimDuration.FromMinutes(10));
+            quiet.Host.Session.Advance(SimDuration.FromMinutes(10));
+            Assert.Equal(normalDecision.Resolution.ChosenOptionId, quietDecision.Resolution.ChosenOptionId);
+            Assert.Equal(normalDecision.Resolution.Degree, quietDecision.Resolution.Degree);
+            Assert.Contains(new DecisionHistoryProjector().Project(quiet.Host.World, 5).Entries,
+                entry => entry.Message.Contains("resolved"));
+        }
+
+        [Fact]
+        public void FollowingACharacterPrioritizesTheirQualifyingDecisionAndUnfollowIsDurableStateOnly()
+        {
+            Fixture fixture = Create();
+            Assert.True(fixture.Host.Session.Execute(new SetAttentionPolicyCommand(
+                fixture.Layout.Mina, AttentionPolicy.Normal)).IsSuccess);
+            fixture.Host.Session.Advance(
+                SimDuration.FromHours(5).Plus(SimDuration.FromMinutes(35)));
+            Decision glenDecision = FindDecision(fixture.Host.World, fixture.Layout.Glen);
+            var projector = new DecisionFeedProjector(
+                new DecisionImportancePolicyDefinition(0, 0, 0, 0), fixture.Host.HoldPolicy);
+
+            Assert.True(fixture.Host.Session.Execute(
+                new FollowCharacterCommand(fixture.Layout.Glen, true)).IsSuccess);
+            DecisionFeedView followed = projector.Project(fixture.Host.World);
+            DecisionFeedEntryView firstUnheld = followed.Entries.First(entry => !entry.IsHeld);
+            Assert.Equal(fixture.Layout.Glen.Value, firstUnheld.CharacterId);
+            Assert.Contains(followed.Entries, entry => entry.DecisionId == glenDecision.Id.Value);
+            Assert.True(fixture.Host.World.Attention.WatchStateOf(fixture.Layout.Glen).IsFollowed);
+
+            Assert.True(fixture.Host.Session.Execute(
+                new FollowCharacterCommand(fixture.Layout.Glen, false)).IsSuccess);
+            Assert.False(fixture.Host.World.Attention.WatchStateOf(fixture.Layout.Glen).IsFollowed);
+            Assert.False(fixture.Host.World.Attention.WatchStateOf(fixture.Layout.Glen).IsWatched);
+        }
+
+        [Fact]
+        public void ClosedCommonsBranchMatchesSaveReloadAndOfflineCatchUpInTheFullCastWorld()
+        {
+            Fixture fixture = Create();
+            fixture.Host.Session.Advance(SimDuration.FromMinutes(61));
+            Assert.True(fixture.Host.Session.Execute(
+                new SetLocationAvailabilityCommand(fixture.Layout.Commons, open: false)).IsSuccess);
+            Assert.Equal(2, fixture.Host.World.Nudges.Balance);
+            SaveGameData saved = fixture.Host.Session.Save("mps-commons-closed");
+
+            fixture.Clock.AdvanceMinutes(8 * 60);
+            SimDuration elapsed = new OfflineProgressionService(fixture.Clock).ElapsedSince(saved);
+            fixture.Host.Session.Advance(elapsed, SimulationMode.OfflineCatchUp);
+            string uninterrupted = AuthoritativeSignature(fixture.Host.World);
+
+            WorldState restoredWorld = fixture.Host.SaveMapper.Restore(saved);
+            SimulationHost restored = SimulationBootstrapper.CreateFromRestoredWorld(
+                restoredWorld,
+                fixture.Catalog,
+                saved.LastCommandSequence,
+                1,
+                null,
+                fixture.Store,
+                fixture.Clock);
+            SampleWorld.ConfigureScenarioServices(restored);
+            restored.Session.Advance(elapsed, SimulationMode.OfflineCatchUp);
+
+            Assert.Equal(uninterrupted, AuthoritativeSignature(restored.World));
+            Assert.False(restored.World.Locations.Get(fixture.Layout.Commons).IsOpen);
+            Assert.Equal(SampleContent.ActivityReading,
+                Current(restored.World, fixture.Layout.Owen).DefinitionId);
+        }
+
+        [Fact]
         public void ProductionRecreationRetriesAfterAnAcceptedSocialInvitationInterruptsTheFirstPlan()
         {
             Fixture fixture = Create();
@@ -46,7 +384,8 @@ namespace Vivarium.SimRunner.Tests
             Assert.True(fixture.Host.World.TryGetCurrentActivity(fixture.Layout.Glen, out ActivityInstance travel));
             Assert.Equal(WellKnownActivities.Traveling, travel.DefinitionId);
             Assert.Equal(fixture.Layout.Cafe, travel.SpatialContext.Transit.DestinationLocationId);
-            Assert.Empty(fixture.Host.World.Decisions.All);
+            Assert.DoesNotContain(fixture.Host.World.Decisions.All,
+                decision => decision.CharacterId == fixture.Layout.Glen);
 
             fixture.Host.Session.Advance(SimDuration.FromMinutes(5));
 
@@ -200,6 +539,149 @@ namespace Vivarium.SimRunner.Tests
         }
 
         [Fact]
+        public void FullCastHeldDecisionSupportsEmphasizeAndTemperAcrossLivingReevaluationAndReload()
+        {
+            AssertPreRollNudgeBranch(
+                SampleContent.InterventionStepUp,
+                Die.D12,
+                Die.D8,
+                "mps-emphasize");
+            AssertPreRollNudgeBranch(
+                SampleContent.InterventionTemper,
+                Die.D8,
+                Die.D4,
+                "mps-temper");
+        }
+
+        [Fact]
+        public void FullCastHeldDecisionSubstitutesLoadedTwentyAndResolvesNormallyAcrossReload()
+        {
+            Fixture fixture = Create();
+            Decision decision = PrepareHeldVisibleMinaDecision(fixture);
+            DecisionInfluence influence = FindInfluence(decision, SampleContent.InfluenceBadWorkContext);
+            DecisionInfluenceId stableId = influence.Id;
+            var projector = new DecisionProjector(fixture.Catalog.Interventions);
+            InterventionAvailabilityView availability = FindInfluenceView(
+                    projector.Project(fixture.Host.World, decision), stableId)
+                .Interventions.Single(item =>
+                    item.InterventionDefinitionId == SampleContent.InterventionLoadedTwenty.Value);
+
+            Assert.True(availability.IsAvailable);
+            Assert.Equal("ReplacementDie", availability.ResourceKind);
+            Assert.Equal(1, availability.Cost);
+            Assert.True(fixture.Host.Session.Execute(new ApplyDecisionInterventionCommand(
+                decision.Id, SampleContent.InterventionLoadedTwenty, stableId)).IsSuccess);
+            Assert.Equal(new Die(20, 20), influence.CurrentDie);
+            Assert.Equal(0, ResourceBalance(fixture.Host.World, InterventionResourceKind.ReplacementDie));
+            Assert.Equal(3, fixture.Host.World.Nudges.Balance);
+            Assert.Null(decision.Resolution);
+
+            SaveGameData saved = fixture.Host.Session.Save("mps-loaded-twenty");
+            SimulationHost restored = RestoreHost(fixture, saved);
+            Decision restoredDecision = restored.World.Decisions.Get(decision.Id);
+            Assert.True(restoredDecision.TryGetInfluence(stableId, out DecisionInfluence restoredInfluence));
+            Assert.Equal(new Die(20, 20), restoredInfluence.CurrentDie);
+            Assert.Equal(0, ResourceBalance(restored.World, InterventionResourceKind.ReplacementDie));
+
+            Assert.True(fixture.Host.Session.Execute(new BeginDecisionResolutionCommand(decision.Id)).IsSuccess);
+            Assert.True(restored.Session.Execute(new BeginDecisionResolutionCommand(restoredDecision.Id)).IsSuccess);
+            InfluenceRoll originalRoll = Assert.Single(
+                decision.PendingResolution.AcceptedRolls, item => item.InfluenceId == stableId);
+            InfluenceRoll restoredRoll = Assert.Single(
+                restoredDecision.PendingResolution.AcceptedRolls, item => item.InfluenceId == stableId);
+            Assert.Equal(20, originalRoll.Rolled);
+            Assert.Equal(new Die(20, 20), originalRoll.Die);
+            Assert.Equal(originalRoll.Rolled, restoredRoll.Rolled);
+            Assert.Null(decision.Resolution);
+
+            Assert.True(fixture.Host.Session.Execute(new CommitDecisionResolutionCommand(decision.Id)).IsSuccess);
+            Assert.True(restored.Session.Execute(new CommitDecisionResolutionCommand(restoredDecision.Id)).IsSuccess);
+            AssertNormalResolutionOwnsWinner(decision.Resolution);
+            Assert.Equal(decision.Resolution.ChosenOptionId, restoredDecision.Resolution.ChosenOptionId);
+            Assert.Equal(decision.Resolution.Degree, restoredDecision.Resolution.Degree);
+            Assert.Equal(20, Assert.Single(
+                restoredDecision.Resolution.Rolls, item => item.InfluenceId == stableId).Rolled);
+            Assert.Equal(AuthoritativeSignature(fixture.Host.World), AuthoritativeSignature(restored.World));
+        }
+
+        [Fact]
+        public void FullCastKnownRollRerollsNextScopedIndexAndPreservesDiscardedEvidenceAcrossReload()
+        {
+            Fixture fixture = Create();
+            Decision decision = PrepareHeldVisibleMinaDecision(fixture);
+            DecisionInfluence target = FindInfluence(decision, SampleContent.InfluenceBadWorkContext);
+            Assert.True(fixture.Host.Session.Execute(new BeginDecisionResolutionCommand(decision.Id)).IsSuccess);
+            InfluenceRoll initial = Assert.Single(
+                decision.PendingResolution.AcceptedRolls, item => item.InfluenceId == target.Id);
+            SaveGameData saved = fixture.Host.Session.Save("mps-before-reroll");
+
+            SimulationHost restored = RestoreHost(fixture, saved);
+            Decision restoredDecision = restored.World.Decisions.Get(decision.Id);
+            InterventionAvailabilityView availability = FindInfluenceView(
+                    new DecisionProjector(fixture.Catalog.Interventions).Project(
+                        fixture.Host.World, decision), target.Id)
+                .Interventions.Single(item =>
+                    item.InterventionDefinitionId == SampleContent.InterventionReroll.Value);
+            Assert.True(availability.IsAvailable);
+            Assert.Equal("ReRoll", availability.ResourceKind);
+            Assert.Equal(1, availability.Cost);
+
+            Assert.True(fixture.Host.Session.Execute(new ApplyDecisionInterventionCommand(
+                decision.Id, SampleContent.InterventionReroll, target.Id)).IsSuccess);
+            Assert.True(restored.Session.Execute(new ApplyDecisionInterventionCommand(
+                restoredDecision.Id, SampleContent.InterventionReroll, target.Id)).IsSuccess);
+            InfluenceRoll accepted = Assert.Single(
+                decision.PendingResolution.AcceptedRolls, item => item.InfluenceId == target.Id);
+            InfluenceRoll restoredAccepted = Assert.Single(
+                restoredDecision.PendingResolution.AcceptedRolls, item => item.InfluenceId == target.Id);
+            InfluenceRoll discarded = Assert.Single(decision.PendingResolution.SupersededRolls);
+            InfluenceRoll restoredDiscarded = Assert.Single(restoredDecision.PendingResolution.SupersededRolls);
+
+            Assert.Equal(initial.RollIndex + 1, accepted.RollIndex);
+            Assert.Equal(initial.Rolled, discarded.Rolled);
+            Assert.Equal(initial.RollIndex, discarded.RollIndex);
+            Assert.Equal(accepted.Rolled, restoredAccepted.Rolled);
+            Assert.Equal(accepted.RollIndex, restoredAccepted.RollIndex);
+            Assert.Equal(discarded.Rolled, restoredDiscarded.Rolled);
+            Assert.All(decision.PendingResolution.AcceptedRolls.Where(item => item.InfluenceId != target.Id),
+                item => Assert.Equal(0, item.RollIndex));
+            Assert.Equal(0, ResourceBalance(fixture.Host.World, InterventionResourceKind.ReRoll));
+            Assert.Equal(0, ResourceBalance(restored.World, InterventionResourceKind.ReRoll));
+            Assert.Equal(3, fixture.Host.World.Nudges.Balance);
+
+            Assert.True(fixture.Host.Session.Execute(new CommitDecisionResolutionCommand(decision.Id)).IsSuccess);
+            Assert.True(restored.Session.Execute(new CommitDecisionResolutionCommand(restoredDecision.Id)).IsSuccess);
+            Assert.Equal(accepted.Rolled, Assert.Single(
+                decision.Resolution.Rolls, item => item.InfluenceId == target.Id).Rolled);
+            Assert.Equal(initial.Rolled, Assert.Single(decision.Resolution.SupersededRolls).Rolled);
+            Assert.Equal(decision.Resolution.ChosenOptionId, restoredDecision.Resolution.ChosenOptionId);
+            Assert.Equal(decision.Resolution.Degree, restoredDecision.Resolution.Degree);
+            Assert.Equal(AuthoritativeSignature(fixture.Host.World), AuthoritativeSignature(restored.World));
+        }
+
+        [Fact]
+        public void FullCastPendingRollExpiryCommitsOfflineWithoutSpendingRerollAcrossReload()
+        {
+            Fixture fixture = Create();
+            Decision decision = PrepareHeldVisibleMinaDecision(fixture);
+            Assert.True(fixture.Host.Session.Execute(new BeginDecisionResolutionCommand(decision.Id)).IsSuccess);
+            SaveGameData saved = fixture.Host.Session.Save("mps-pending-expiry");
+            SimulationHost restored = RestoreHost(fixture, saved);
+            Decision restoredDecision = restored.World.Decisions.Get(decision.Id);
+
+            fixture.Host.Session.Advance(SimDuration.FromMinutes(15), SimulationMode.OfflineCatchUp);
+            restored.Session.Advance(SimDuration.FromMinutes(15), SimulationMode.OfflineCatchUp);
+
+            Assert.Equal(DecisionStatus.Resolved, decision.Status);
+            Assert.Equal(DecisionStatus.Resolved, restoredDecision.Status);
+            Assert.Equal(1, ResourceBalance(fixture.Host.World, InterventionResourceKind.ReRoll));
+            Assert.Equal(1, ResourceBalance(restored.World, InterventionResourceKind.ReRoll));
+            Assert.Equal(decision.Resolution.ChosenOptionId, restoredDecision.Resolution.ChosenOptionId);
+            Assert.Equal(decision.Resolution.Degree, restoredDecision.Resolution.Degree);
+            Assert.Equal(AuthoritativeSignature(fixture.Host.World), AuthoritativeSignature(restored.World));
+        }
+
+        [Fact]
         public void OfflineCatchUpResolvesHeldGeneratedDecisionAndMatchesReload()
         {
             Fixture fixture = Create();
@@ -230,6 +712,7 @@ namespace Vivarium.SimRunner.Tests
                 null,
                 fixture.Store,
                 fixture.Clock);
+            SampleWorld.ConfigureScenarioServices(restored);
 
             Assert.True(restored.World.Attention.WatchStateOf(fixture.Layout.Mina).IsFollowed);
             Assert.False(restored.World.Attention.WatchStateOf(fixture.Layout.Mina).IsVisible);
@@ -305,6 +788,7 @@ namespace Vivarium.SimRunner.Tests
                 null,
                 fixture.Store,
                 fixture.Clock);
+            SampleWorld.ConfigureScenarioServices(restored);
             restored.Session.Advance(elapsed, SimulationMode.OfflineCatchUp);
 
             Assert.Equal(uninterrupted, AuthoritativeSignature(restored.World));
@@ -339,6 +823,7 @@ namespace Vivarium.SimRunner.Tests
                 null,
                 fixture.Store,
                 fixture.Clock);
+            SampleWorld.ConfigureScenarioServices(restored);
             restored.Session.Advance(SimDuration.FromMinutes(15));
             Decision reloaded = FindCommitmentConflict(restored.World, fixture.Layout.Mina);
 
@@ -406,9 +891,11 @@ namespace Vivarium.SimRunner.Tests
 
             Relationship keptFriendship = Friendship(kept);
             Relationship breachedFriendship = Friendship(breached);
-            Assert.Empty(keptFriendship.From(kept.Layout.Glen).Memories);
+            Assert.DoesNotContain(keptFriendship.From(kept.Layout.Glen).Memories,
+                memory => memory.SourceOutcomeId.IsSet);
             RelationshipMemory breachMemory = Assert.Single(
-                breachedFriendship.From(breached.Layout.Glen).Memories);
+                breachedFriendship.From(breached.Layout.Glen).Memories,
+                memory => memory.SourceOutcomeId == relinquished.Id);
             Assert.Equal(relinquished.Id, breachMemory.SourceOutcomeId);
             Assert.Equal(-1200, breachedFriendship.From(breached.Layout.Glen)
                 .ChannelAt(RelationshipChannels.TrustJudgment, breached.Host.World.Clock.Now));
@@ -436,6 +923,7 @@ namespace Vivarium.SimRunner.Tests
                 null,
                 replaySource.Store,
                 replaySource.Clock);
+            SampleWorld.ConfigureScenarioServices(replayHost);
             var replay = new Fixture
             {
                 Catalog = replaySource.Catalog,
@@ -477,6 +965,128 @@ namespace Vivarium.SimRunner.Tests
             };
         }
 
+        private static ActivityInstance Current(WorldState world, CharacterId characterId) =>
+            world.Activities.Get(world.Characters.Get(characterId).CurrentActivityId);
+
+        private static void AssertPreRollNudgeBranch(
+            AuthoredId interventionId,
+            Die expectedAppliedDie,
+            Die expectedReevaluatedDie,
+            string saveSlot)
+        {
+            Fixture fixture = Create();
+            Decision decision = PrepareHeldVisibleMinaDecision(fixture);
+            DecisionInfluence influence = FindInfluence(decision, SampleContent.InfluenceBadWorkContext);
+            DecisionInfluenceId stableId = influence.Id;
+            var projector = new DecisionProjector(fixture.Catalog.Interventions);
+            InterventionAvailabilityView availability = FindInfluenceView(
+                    projector.Project(fixture.Host.World, decision), stableId)
+                .Interventions.Single(item => item.InterventionDefinitionId == interventionId.Value);
+
+            Assert.True(availability.IsAvailable);
+            Assert.Equal("Nudge", availability.ResourceKind);
+            Assert.Equal(1, availability.Cost);
+            Assert.Equal(Die.D10, influence.CurrentDie);
+            Assert.True(fixture.Host.Session.Execute(new ApplyDecisionInterventionCommand(
+                decision.Id, interventionId, stableId)).IsSuccess);
+
+            Assert.Equal(2, fixture.Host.World.Nudges.Balance);
+            Assert.Equal(expectedAppliedDie, influence.CurrentDie);
+            Assert.Equal(DecisionStatus.Active, decision.Status);
+            Assert.Null(decision.Resolution);
+            Assert.True(fixture.Host.World.Attention.IsHeld(decision.Id));
+            Assert.Equal(SampleContent.ActivityWorking, Current(fixture.Host.World, fixture.Layout.Mina).DefinitionId);
+            AppliedIntervention applied = Assert.Single(
+                decision.Interventions, item => item.InterventionDefinitionId == interventionId);
+            Assert.Equal(stableId, applied.TargetInfluenceId);
+            Assert.Equal(InterventionResourceKind.Nudge, applied.ResourceKind);
+            Assert.Equal(1, applied.ResourceCost);
+
+            SaveGameData saved = fixture.Host.Session.Save(saveSlot);
+            WorldState restoredWorld = fixture.Host.SaveMapper.Restore(saved);
+            SimulationHost restored = SimulationBootstrapper.CreateFromRestoredWorld(
+                restoredWorld,
+                fixture.Catalog,
+                saved.LastCommandSequence,
+                1,
+                null,
+                fixture.Store,
+                fixture.Clock);
+            SampleWorld.ConfigureScenarioServices(restored);
+            Decision restoredDecision = restored.World.Decisions.Get(decision.Id);
+            Assert.True(restoredDecision.TryGetInfluence(stableId, out DecisionInfluence restoredInfluence));
+            Assert.Equal(2, restored.World.Nudges.Balance);
+            Assert.Equal(expectedAppliedDie, restoredInfluence.CurrentDie);
+            Assert.True(restored.World.Attention.IsHeld(restoredDecision.Id));
+            Assert.Null(restoredDecision.Resolution);
+            Assert.Single(restoredDecision.Interventions,
+                item => item.InterventionDefinitionId == interventionId && item.TargetInfluenceId == stableId);
+
+            MoveDariusOutOfWorkContext(fixture.Host, fixture.Layout);
+            MoveDariusOutOfWorkContext(restored, fixture.Layout);
+
+            Assert.Equal(stableId, influence.Id);
+            Assert.Equal(stableId, restoredInfluence.Id);
+            Assert.Equal(expectedReevaluatedDie, influence.CurrentDie);
+            Assert.Equal(expectedReevaluatedDie, restoredInfluence.CurrentDie);
+            Assert.Equal(DecisionStatus.Active, decision.Status);
+            Assert.Equal(DecisionStatus.Active, restoredDecision.Status);
+            Assert.Null(decision.Resolution);
+            Assert.Null(restoredDecision.Resolution);
+            Assert.Equal(AuthoritativeSignature(fixture.Host.World), AuthoritativeSignature(restored.World));
+        }
+
+        private static Decision PrepareHeldVisibleMinaDecision(Fixture fixture)
+        {
+            fixture.Host.Session.Advance(SimDuration.FromHours(5));
+            fixture.Host.Session.Execute(new FollowCharacterCommand(fixture.Layout.Mina, true));
+            fixture.Host.Session.Execute(new BeginObservingCharacterCommand(fixture.Layout.Mina));
+            fixture.Host.Session.Advance(SimDuration.FromMinutes(35));
+            Decision decision = FindDecision(fixture.Host.World, fixture.Layout.Mina);
+            Assert.True(fixture.Host.Session.Execute(new HoldDecisionCommand(decision.Id)).IsSuccess);
+            fixture.Host.Session.Execute(new EndObservingCharacterCommand(fixture.Layout.Mina));
+            fixture.Host.Session.Execute(new BeginObservingCharacterCommand(fixture.Layout.Mina));
+            return decision;
+        }
+
+        private static void MoveDariusOutOfWorkContext(SimulationHost host, SampleWorldLayout layout)
+        {
+            host.Transitions.BeginActivity(
+                host.Simulation,
+                layout.Darius,
+                WellKnownActivities.Waiting,
+                layout.Commons,
+                SimDuration.FromHours(1));
+            host.Session.Advance(SimDuration.Zero);
+        }
+
+        private static SimulationHost RestoreHost(Fixture fixture, SaveGameData saved)
+        {
+            WorldState restoredWorld = fixture.Host.SaveMapper.Restore(saved);
+            SimulationHost restored = SimulationBootstrapper.CreateFromRestoredWorld(
+                restoredWorld,
+                fixture.Catalog,
+                saved.LastCommandSequence,
+                1,
+                null,
+                fixture.Store,
+                fixture.Clock);
+            SampleWorld.ConfigureScenarioServices(restored);
+            return restored;
+        }
+
+        private static int ResourceBalance(WorldState world, InterventionResourceKind kind) =>
+            world.InterventionResources.All.Single(pair => pair.Key == kind).Value.Balance;
+
+        private static void AssertNormalResolutionOwnsWinner(DecisionResolution resolution)
+        {
+            OptionTotal expected = resolution.OptionTotals
+                .OrderByDescending(total => total.Total)
+                .ThenBy(total => total.OrderIndex)
+                .First();
+            Assert.Equal(expected.OptionId, resolution.ChosenOptionId);
+        }
+
         private static void RearmNextHungerThreshold(SimulationHost host, CharacterId characterId)
         {
             Character character = host.World.Characters.Get(characterId);
@@ -499,6 +1109,14 @@ namespace Vivarium.SimRunner.Tests
                 .Append(ids.Commitments).Append(',').Append(ids.CommitmentOutcomes).Append(',')
                 .Append(ids.Relationships).Append(',').Append(ids.Decisions).Append(',').Append(ids.Employments)
                 .Append(',').Append(ids.ScheduledEvents).Append(',').Append(ids.HistoryEntries).Append(',').Append(ids.EventSequence);
+            text.Append("|nudges:").Append(world.Nudges.Balance).Append(',').Append(world.Nudges.Revision);
+
+            foreach (LocationNode location in world.Locations.Nodes.All)
+            {
+                text.Append("|location:").Append(location.Id.Value).Append(',')
+                    .Append(location.IsOpen ? 1 : 0).Append(',')
+                    .Append(location.SupportsPlayerManagedAvailability ? 1 : 0);
+            }
 
             foreach (ScheduledEvent scheduled in world.Scheduler.PendingEvents)
             {
@@ -508,7 +1126,10 @@ namespace Vivarium.SimRunner.Tests
             }
             foreach (Character character in world.Characters.All)
             {
-                text.Append("|char:").Append(character.Id.Value).Append(',').Append(character.CurrentActivityId.Value);
+                WatchState watch = world.Attention.WatchStateOf(character.Id);
+                text.Append("|char:").Append(character.Id.Value).Append(',').Append(character.CurrentActivityId.Value)
+                    .Append(",attention:").Append((int)world.Attention.PolicyFor(character.Id)).Append(',')
+                    .Append(watch.IsFollowed ? 1 : 0);
                 foreach (var needPair in character.Needs)
                 {
                     NeedState need = needPair.Value;
@@ -537,7 +1158,9 @@ namespace Vivarium.SimRunner.Tests
             foreach (Decision decision in world.Decisions.All)
             {
                 text.Append("|decision:").Append(decision.Id.Value).Append(',').Append((int)decision.Status)
-                    .Append(',').Append(decision.InfluenceRevision).Append(',');
+                    .Append(',').Append(decision.InfluenceRevision).Append(',')
+                    .Append(world.Attention.IsHeld(decision.Id) ? 1 : 0).Append(',')
+                    .Append((int)world.Attention.PolicyFor(decision.Id)).Append(',');
                 text.Append(decision.Resolution == null ? "-" : decision.Resolution.ChosenOptionId.Value.ToString());
                 if (decision.Resolution != null)
                 {
@@ -590,6 +1213,28 @@ namespace Vivarium.SimRunner.Tests
 
         private static Commitment FindCommitment(WorldState world, AuthoredId kind) =>
             world.Commitments.All.Single(commitment => commitment.Kind == kind);
+
+        private static Relationship RelationshipBetween(
+            WorldState world,
+            CharacterId first,
+            CharacterId second)
+        {
+            Assert.True(world.RelationshipIndex.TryGetBetween(first, second, out RelationshipId id));
+            return world.Relationships.Get(id);
+        }
+
+        private static long EvaluateAffiliation(
+            Fixture fixture,
+            CharacterId observer,
+            CharacterId target) =>
+            new SocialPressureEvaluator().Evaluate(
+                fixture.Host.World,
+                observer,
+                target,
+                AppraisalLenses.Affiliation,
+                new SocialEvaluationContext(),
+                fixture.Catalog.SocialPressures[SampleContent.SocialPressureSeekCompany],
+                fixture.Catalog).NormalizedAppraisal;
 
         private static Relationship Friendship(Fixture fixture)
         {

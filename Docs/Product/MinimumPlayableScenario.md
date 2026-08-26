@@ -792,6 +792,14 @@ The MPS should demonstrate:
 
 > **Characters respond to the person they currently believe exists, not to hidden omniscient truth.**
 
+**Implementation checkpoint (2026-08-25):** the production `SampleWorld` now authors all three anchor
+cases. Mina/Glen has high but asymmetric familiarity plus distinct positive/negative directional
+memories; Mina/Darius is partially known and combines resentment with respect; Owen/Lena is a weak
+acquaintance edge with an inaccurate, uncertain Owen-held first impression. Owen's ordinary Commons
+arrival during Lena's authored shift supplies interaction evidence, revises that belief without changing
+Lena's latent truth, and changes a later social Decision reason. Saving before the evidence and replaying
+the same branch produces the exact same authoritative state.
+
 ---
 
 ## 15. The Ordinary Character
@@ -1283,6 +1291,17 @@ The two-day acceptance branches must collectively exercise all four Decision-int
 and a Commons state change without directly choosing a character outcome. They need not spend every
 intervention in one canonical branch. Interactive Activities are explicitly deferred from MVP.
 
+**Implementation checkpoint (2026-08-25):** Emphasize and Temper now run as separate branches against
+Mina's production Held leave-work Decision in the ten-character fixture. Each action is projected as
+available by the same rules used by its Command, spends exactly one Nudge, leaves the Decision Held and
+unresolved, and remains bound to the same Influence when the underlying Work-context reason changes.
+Saving after the intervention and replaying that reevaluation produces the same authoritative state.
+Substitute now applies the authored loaded d20 before rolls and proves normal option totals still own
+the outcome. Re-roll saves after the initial known roll, advances only that Influence's scoped index,
+retains the discarded result as non-causal evidence, and commits identically after reload. Offline
+expiry commits the frozen rolls without consuming Re-roll availability. The four-family matrix is
+complete.
+
 ---
 
 ## 29. Attention Coverage Matrix
@@ -1578,8 +1597,10 @@ Based on the current repository status and the joint Phase 0 review, the impleme
 3. **ordinary Hunger → Eating behavior governed by location/Activity affordances** — complete
 4. **discretionary Recreation → Tabletop Games / Reading selection from Interests and availability** — complete
 5. **ordinary Socializing behavior** — complete
-6. **Nudge economy + Commons availability management**
-7. **Unity surfaces for following approximately ten simultaneous lives**
+6. **Nudge economy + Commons availability management** — complete
+7. **ten-character, two-day production fixture foundation and directional social-state matrix** —
+   complete; the four Phase 4 Decision-intervention acceptance branches remain in progress
+8. **Unity surfaces for following approximately ten simultaneous lives**
 
 All five routine links are complete. Further task selection returns to the phase ordering in
 [`Roadmap.md`](Roadmap.md), beginning with the earliest still-unproven meaningful Decision branch;

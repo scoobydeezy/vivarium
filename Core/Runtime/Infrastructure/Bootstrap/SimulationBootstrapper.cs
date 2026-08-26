@@ -307,6 +307,7 @@ namespace Vivarium.Infrastructure.Bootstrap
             domainHandlers.Register(new NeedChangedDecisionHandler(decisionReevaluation), 300);
             domainHandlers.Register(new DecisionRelationshipOutcomeHandler(catalog), 200);
             domainHandlers.Register(new DecisionCreatedHistoryHandler(), 900);
+            domainHandlers.Register(new DecisionAutoHoldHandler(catalog, holdPolicy, decisionResolution), 950);
             domainHandlers.Register(new DecisionInterventionHistoryHandler(), 900);
             domainHandlers.Register(new NudgeDissolutionRefundHandler(), 800);
             domainHandlers.Register(new InterventionResourceDissolutionRefundHandler(), 801);

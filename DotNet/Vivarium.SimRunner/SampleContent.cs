@@ -87,7 +87,9 @@ namespace Vivarium.SimRunner
         public static readonly AuthoredId ConflictScopeEmployment = new AuthoredId("conflict_scope.employment");
 
         public static readonly AuthoredId InterventionStepUp = new AuthoredId("intervention.encourage");
+        public static readonly AuthoredId InterventionTemper = new AuthoredId("intervention.temper");
         public static readonly AuthoredId InterventionReroll = new AuthoredId("intervention.reconsider");
+        public static readonly AuthoredId InterventionLoadedTwenty = new AuthoredId("intervention.loaded_twenty");
 
         public static readonly AuthoredId CategoryPersonalConcern = new AuthoredId("influence_category.personal_concern");
         public static readonly AuthoredId CategoryPractical = new AuthoredId("influence_category.practical");
@@ -117,7 +119,11 @@ namespace Vivarium.SimRunner
         public static DefinitionCatalog Build(int contentVersion = 1)
         {
             var builder = new DefinitionCatalog.Builder { ContentVersion = contentVersion };
-            builder.SetDecisionImportancePolicy(new DecisionImportancePolicyDefinition(6500));
+            builder.SetDecisionImportancePolicy(new DecisionImportancePolicyDefinition(
+                admissionFloor: 6500,
+                prioritizedFeedFloor: 6500,
+                normalFeedFloor: 7000,
+                autoHoldFloor: 7000));
 
             builder.Add(new TraitDefinition(
                 TraitAmbitious,
@@ -308,6 +314,7 @@ namespace Vivarium.SimRunner
                 reasoningProgram: RestOrContinueReasoningProgram()));
 
             builder.Add(new InterventionDefinition(InterventionStepUp, InterventionKind.StepDieUp, 1));
+            builder.Add(new InterventionDefinition(InterventionTemper, InterventionKind.StepDieDown, 1));
             builder.Add(new InterventionDefinition(
                 InterventionReroll,
                 InterventionKind.Reroll,
@@ -316,7 +323,7 @@ namespace Vivarium.SimRunner
                 resourcePolicy: new Vivarium.Domain.PlayerAgency.InterventionResourcePolicy(
                     1, 1, 1, SimDuration.FromDays(1))));
             builder.Add(new InterventionDefinition(
-                new AuthoredId("intervention.loaded_twenty"),
+                InterventionLoadedTwenty,
                 InterventionKind.ReplaceDie,
                 1,
                 replacementDie: new Die(20, 20),

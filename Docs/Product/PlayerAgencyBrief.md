@@ -450,8 +450,8 @@ Phase 3B's initial test values are one non-banking daily Re-roll, one persistent
 loaded d20 fixed at 20, a 15-world-minute pending window, and once-per-definition-per-Influence use.
 Substitute and Re-roll may stack. These remain tuning values, not permanent balance commitments.
 
-The following parameters remain genuine Phase 3 product gates because the system cannot exercise the
-locked Attention behavior coherently without choosing initial values:
+Phase 4 now ships deterministic initial values for the remaining Attention parameters. They remain
+authored tuning knobs, not permanent balance commitments:
 
 - **The Decision importance scale.** `Architecture/Reference.md` §18.2 and `DecisionReasoning.md` §39.2
   (2026-08-24) now fix the *mechanism*: `Importance` is derived from a Decision's own evaluated Signal
@@ -460,19 +460,14 @@ locked Attention behavior coherently without choosing initial values:
   (`Architecture/Reference.md` §20) both read from this same derived value, and both need a real number
   set against the magnitude scale `Evaluation/SignalField` actually produces. The retired "20 or greater"
   placeholder was written against a raw authored-integer scale that no longer exists, so it is not a
-  starting estimate for the new cutoff — treat this as unset, not as "was 20, now needs adjusting."
-  **Current state (2026-08-24):** none of the three shipped Decision generators — Need-threshold
-  (`DecisionGeneration.cs`), social-interaction (`SocialDecisionGeneration.cs`), or commitment-conflict
-  (`CommitmentConflictDecision.cs`) — derive this yet. Each just forwards its `DecisionDefinition`'s
-  static, authored `Importance` (default `0`) straight into the generated `Decision`, unchanged by
-  reevaluation. That's not a bug today — Auto-Hold and overflow eviction, the only consumers of
-  `Importance`, are both still unimplemented (`ImplementationStatus.md`'s "MVP agency contract" bullet
-  names Normal/Auto-Hold/Quiet policy semantics as not yet built) — but it means the derivation has no
-  code yet and is a real dependency of Phase 3, not a small tune-up of something already working.
+  starting estimate for the new cutoff. Production Decisions now derive living Importance from their
+  evaluated reasons, including reevaluation, and the feed, Auto-Hold, and overflow policy all consume it.
+  The initial sample floors are Admission `6500`, prioritized feed `6500`, normal feed `7000`, and
+  Auto-Hold `7000` on the shared `0..10000` scale.
 - **The feed thresholds.** [`DecisionImportance.md`](../Design/DecisionImportance.md) defines separate
   Normal and prioritized feed floors on the same derived scale. Watched/Followed Decisions may qualify at
   the no-higher prioritized floor; Quiet suppresses proactive surfacing regardless of magnitude. Both
-  numeric values remain unset until representative Decision distributions can be measured.
+  initial values are listed above and remain subject to playtest calibration.
 - **The Decision admission floor.** New alongside the above (`Architecture/Reference.md` §18.2,
   `DecisionReasoning.md` §39.2, corrected 2026-08-24): whether a candidate choice is promoted into a full
   reasoning Decision is gated by the same per-instance evaluated Signal magnitude `Importance` uses —
@@ -484,16 +479,17 @@ locked Attention behavior coherently without choosing initial values:
   right circumstance.) Below the floor, a choice resolves through the ordinary routine path
   (`Architecture/Reference.md` §29) instead of generating a Decision — this is what keeps population-scale
   ordinary choices off the Decision pipeline by default without permanently exiling any category of choice
-  from ever mattering. The floor itself is unset; it should be picked from real playtesting evidence
-  (what evaluated magnitude the leave-work Decision actually produces is a natural first data point)
-  rather than guessed in the abstract. This floor applies only when a generator has a truthful automatic
+  from ever mattering. The initial floor is `6500` and remains open to playtest calibration. This floor
+  applies only when a generator has a truthful automatic
   fallback. Structural generators such as commitment conflict always admit their Decision once the
   conflict exists; derived Importance still controls their surfacing, Auto-Hold, and overflow priority.
+  The initial admission floor is `6500`.
 - **Held-decision capacity numbers.** `Architecture/Reference.md` §20 defines `DecisionHoldPolicy` with a
   `maximum global held decisions` and `maximum held decisions per character` field, explicitly left
   unassigned ("exact names are not frozen"). §4's Auto-Hold description leans on "the same bounded
   global/per-character capacity... as manual Hold" as a known quantity; it is actually an open product
-  decision, not a locked one.
+  decision, not a locked one. The current deterministic starting policy is 12 Held Decisions globally
+  and 3 per character.
 
 Changing authored tuning values does not change this brief's mechanics and should not require a
 redesign. The admission, prioritized-feed, normal-feed, and Auto-Hold floors should be calibrated

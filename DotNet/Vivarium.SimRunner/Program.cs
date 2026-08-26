@@ -193,6 +193,7 @@ namespace Vivarium.SimRunner
             WorldState restoredWorld = host.SaveMapper.Restore(saved);
             SimulationHost restored = SimulationBootstrapper.CreateFromRestoredWorld(
                 restoredWorld, catalog, saved.LastCommandSequence, 1, null, store, clock);
+            SampleWorld.ConfigureScenarioServices(restored);
 
             restored.Session.Advance(SimDuration.FromMinutes(10));
             string reloaded = Signature(restored);

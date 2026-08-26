@@ -26,23 +26,25 @@ multiple habitats, and reciprocal autonomy.
 
 ## Current gate
 
-**Phases 0–3 are complete; Phase 4 is next.** The jointly locked
+**Phases 0–4 are complete; Phase 5 is next.** The jointly locked
 [`Minimum Playable Scenario`](MinimumPlayableScenario.md) and
 [`Player Agency Brief`](PlayerAgencyBrief.md) define the small world, meaningful character Decisions,
 supported player actions, and required Unity surfaces.
 
-The complete locked Need set now drives ordinary life through production routines: Energy rests,
-Hunger eats, Recreation selects available hobbies, and Social pressure selects bounded shared-context
-company, and the five required circumstance branches now use production-shaped Decisions. The
-player agency now has deterministic resource, dice-intervention, and environmental-management
-foundations. The immediate next work combines those production systems in the small-cast world:
+The ten-character, two-day headless world now integrates production routines and Employments,
+asymmetric relationships and belief change, living Decisions and accountability, Commons management,
+all four intervention families, and exact replay/save-load/offline continuation. Its final Attention
+slice supplies a living-Importance feed, Follow prioritization, durable Normal/Auto-Hold/Quiet policy,
+prospective bounded Auto-Hold, deterministic overflow, and recap-safe Quiet behavior. Closing and
+reopening the Commons during in-flight routine Travel also proves targeted redirection and restored
+availability. The next task is therefore:
 
-> **Build the 8–12-character multi-day acceptance world.**
+> **Begin Phase 5 with the Unity time/status and roster surfaces over the completed small-cast world.**
 
 Observable completion test:
 
-> Approximately ten deliberately intersecting characters run for multiple days with understandable
-> routines, Decisions, obligations, social fallout, and player agency in one durable headless scenario.
+> The same two-day fixture proves asymmetric beliefs/history, changing Decision reasons, accountability,
+> Commons management, all intervention families, and save/load/offline equivalence.
 
 The completed Phase 3A slice begins at three Nudges, spends only through valid Nudge-backed
 interventions, regenerates at aligned eight-hour boundaries without banking, refunds a Dissolved
@@ -95,7 +97,7 @@ outcome identically offline and across save/load.
 | 1. Close the daily routine loop | Energy/Sleep/Wake, Employment obligations, ordinary Eating, discretionary Recreation, and Socializing support indefinite lives | Complete |
 | 2. Expand meaningful choice | Scenario-required branch points use compiled Considerations and production consequences | Complete |
 | 3. Complete player agency | Nudge economy, re-roll/substitution, and Commons availability become real Commands; interactive Activity stays deferred | Complete |
-| 4. Build the small-cast world | 8–12 characters run 2–3 days through one durable headless acceptance scenario | Pending |
+| 4. Build the small-cast world | 8–12 characters run 2–3 days through one durable headless acceptance scenario | In progress |
 | 5. Build playable Unity surfaces | Roster, character, Decision, schedule, Knowledge, world, and history views consume projections/Commands | Pending |
 | 6. Productize save/continue | Concrete storage, restart continuation, offline catch-up, migration diagnostics, and failure UX | Pending |
 | 7. MVP hardening gate | The small cast is legible, causal, replayable, persistent, and remains within scale gates | Pending |
@@ -128,9 +130,9 @@ slice:
 
 All five Phase 2 branch candidates now exist: Need-vs-obligation, two-desirable-Recreation,
 social-invitation-versus-plan, rest-versus-continuation, and a second commitment conflict produced by
-routine Employment rather than scenario input. Phase 3A–3B's authoritative intervention economy and
-dice mechanics and Phase 3C Commons management are complete; task selection advances to Phase 4's
-small-cast acceptance world.
+routine Employment rather than scenario input. Phase 3A–3B's authoritative intervention economy,
+Phase 3C Commons management, and the Phase 4 small-cast acceptance world are complete; task selection
+advances to Phase 5's Unity product surface.
 
 This is sequencing guidance, not permission to implement all five as one subsystem project.
 

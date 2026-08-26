@@ -386,9 +386,47 @@ namespace Vivarium.Application.Tests
         {
             TestWorld fixture = TestWorld.Create();
 
-            fixture.Host.Session.Execute(new SetAttentionPolicyCommand(fixture.Mina, AttentionPolicy.Watch));
+            fixture.Host.Session.Execute(new SetAttentionPolicyCommand(fixture.Mina, AttentionPolicy.AutoHold));
 
-            Assert.Equal(AttentionPolicy.Watch, fixture.Host.World.Attention.PolicyFor(fixture.Mina));
+            Assert.Equal(AttentionPolicy.AutoHold, fixture.Host.World.Attention.PolicyFor(fixture.Mina));
+        }
+
+        [Fact]
+        public void CharacterAttentionPolicyRejectsDecisionOnlyHold()
+        {
+            TestWorld fixture = TestWorld.Create();
+
+            Result result = fixture.Host.Session.Execute(
+                new SetAttentionPolicyCommand(fixture.Mina, AttentionPolicy.Hold));
+
+            Assert.True(result.IsFailure);
+            Assert.Equal(Commands.Handlers.SetAttentionPolicyHandler.ReasonInvalidPolicy, result.Reason);
+            Assert.Equal(AttentionPolicy.Normal, fixture.Host.World.Attention.PolicyFor(fixture.Mina));
+        }
+
+        [Fact]
+        public void AutoHoldResolvesTheDeterministicOverflowVictimAtCapacity()
+        {
+            TestWorld fixture = TestWorld.Create();
+            Assert.True(fixture.Host.Session.Execute(new SetAttentionPolicyCommand(
+                fixture.Mina, AttentionPolicy.AutoHold)).IsSuccess);
+
+            var decisions = new List<Decision>();
+            for (int i = 0; i < fixture.Host.HoldPolicy.MaxHeldPerCharacter + 1; i++)
+            {
+                Decision decision = fixture.CreateDecision(importance: 100);
+                decisions.Add(decision);
+                fixture.Host.World.Publish(new DecisionCreatedEvent(
+                    decision.Id, decision.CharacterId, decision.DefinitionId));
+                fixture.Host.Session.Advance(SimDuration.Zero);
+            }
+
+            Assert.Equal(fixture.Host.HoldPolicy.MaxHeldPerCharacter,
+                fixture.Host.World.Attention.HeldCount);
+            Assert.Equal(DecisionStatus.Resolved, decisions[0].Status);
+            Assert.False(fixture.Host.World.Attention.IsHeld(decisions[0].Id));
+            Assert.All(decisions.Skip(1), decision =>
+                Assert.True(fixture.Host.World.Attention.IsHeld(decision.Id)));
         }
 
         private static InfluenceView FindInfluenceView(DecisionView view, int influenceId)

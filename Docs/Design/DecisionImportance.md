@@ -1,6 +1,6 @@
 # Vivarium Decision Importance Brief
 
-**Status:** Accepted; Slice A implemented, numeric thresholds intentionally open for tuning
+**Status:** Accepted; Slices A–C implemented, numeric thresholds remain authored tuning values
 
 **Scope:** Deriving per-instance Decision Importance, admitting meaningful candidate choices into the
 Decision pipeline, and using that value for player-facing Attention policy.  
@@ -51,8 +51,9 @@ The initial ordering constraint is:
 AdmissionFloor <= PrioritizedFeedFloor <= NormalFeedFloor <= AutoHoldFloor
 ```
 
-The actual values remain unset until representative choices can be measured. They are validated content
-parameters, not constants scattered through generators or Unity views.
+The sample content currently starts at `6500 / 6500 / 7000 / 7000` in the order above. These are
+validated authored parameters, not constants scattered through generators or Unity views, and remain
+open to calibration as representative choices are playtested.
 
 ---
 
@@ -195,6 +196,12 @@ Importance into a persistent Decision without reevaluation.
 5. Prove deterministic selection, admission, Travel, completion, save/load, and offline equivalence.
 
 ### Slice C — Attention consumers
+
+**Implemented.** The catalog owns ordered admission, prioritized-feed, normal-feed, and Auto-Hold
+floors. A quiescent feed query applies living Importance plus Follow/Watch/Quiet state, and qualifying
+new Decisions engage bounded Auto-Hold in player-present modes. Deterministic capacity overflow uses
+the existing living-Importance/creation-time/ID ordering and resolves the selected victim through the
+ordinary resolution path.
 
 1. Extend the catalog-owned admission policy with separately tunable feed and Auto-Hold floors.
 2. Build the feed query from all admitted Decisions using Importance plus Normal/Follow/Watch/Quiet policy.

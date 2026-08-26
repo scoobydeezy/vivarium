@@ -205,6 +205,38 @@ Working implementations:
   unrelated Commitment travel continue. Living Recreation Decisions register rebuildable location
   dependencies and dissolve/replan when an option set is invalidated. State, management capability,
   revisions, and Nudge balance round-trip through save schema v13; legacy locations migrate open.
+- **Small-cast MPS foundation** — the production headless `SampleWorld` now authors all ten locked MPS
+  roles: Mina, Glen, Darius, Lena, Priya, Marcus, Tess, Owen, Jo, and Ravi. They share the three-location
+  Residential/Bakery/Commons graph but begin in staggered authoritative Activities, including Eating,
+  Working, Sleeping, and in-progress Travel. Shared households, six production Employments across two
+  workplaces, distinct Need/Interest profiles, and the existing relationship/accountability paths give
+  the cast intersecting rather than duplicated lives. A two-day deterministic acceptance asserts one
+  active primary Activity per character, Sleep/wake completion for every character, and observed Eating,
+  Work, Travel, Tabletop Games, Reading, and Socializing. The same full-cast fixture now compares Owen's
+  Open-Commons Tabletop plan with a one-Nudge Closed-Commons branch that selects Reading from the
+  remaining real affordance; the managed branch matches through save/reload and OfflineCatchUp. Sample
+  content reactions use an explicit composition hook on both new and restored hosts. The fixture now
+  also authors directional Mina→Glen, Mina→Darius, and Owen→Lena social edges with deliberately
+  asymmetric familiarity/channels, positive and negative memories, and sparse observer-relative
+  beliefs at different confidence levels. Owen's ordinary afternoon arrival at Lena's Commons shift
+  revises his inaccurate first impression through interaction evidence; a later social Decision uses
+  the changed evaluation, and the whole pre-evidence branch replays exactly after save/load. The
+  full-cast Mina leave-work Decision now supplies paired Emphasize and Temper acceptance branches:
+  each action is projected through the authoritative eligibility rules, spends one Nudge, leaves the
+  Held Decision unresolved, persists with its stable Influence target, and reapplies over a later
+  living-reason reevaluation identically after reload. Substitute now applies the separately resourced
+  authored loaded d20 before rolls, persists it across load, produces its fixed 20, and still leaves
+  winner selection to the normal option-total policy. Re-roll freezes Mina's production Decision,
+  saves between the initial roll and player action, advances only the targeted scoped stream, retains
+  the discarded roll as non-causal evidence, and commits identically after reload. Offline expiry also
+  commits the frozen result without consuming Re-roll availability. All four intervention families are
+  therefore integrated. The final Phase 4 Attention audit adds a living-Importance Decision feed,
+  durable Normal/Auto-Hold/Quiet character policy, Follow prioritization, prospective Auto-Hold in
+  player-present modes, and deterministic held-capacity overflow through the normal resolution path.
+  Quiet suppresses surfacing without changing simulation or history, changing policy does not release
+  an existing Hold, and durable policy/Hold state round-trips across save/load. The full-cast acceptance
+  also closes and reopens the Commons during Owen's in-flight routine Travel and proves targeted
+  redirection plus restored availability. Phase 4 is complete.
 - **Knowledge** — player- and character-scoped fact providers, sparse social belief distributions,
   lifecycle/retention metadata, and discovery driven by observation through one canonical `WatchState`
   (§20.1, §22–§25).

@@ -66,8 +66,8 @@ namespace Vivarium.Domain.Attention
         /// <summary>Default handling.</summary>
         Normal = 0,
 
-        /// <summary>Surface more readily.</summary>
-        Watch = 1,
+        /// <summary>Automatically hold qualifying newly-created Decisions.</summary>
+        AutoHold = 1,
 
         /// <summary>Withhold auto-resolution so the player can intervene.</summary>
         Hold = 2,

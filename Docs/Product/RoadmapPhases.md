@@ -482,6 +482,27 @@ Author approximately 8–12 characters (target: about 10) with deliberately inte
 
 The scenario should run at least **2–3 simulated days** in acceptance coverage.
 
+**Complete.** The integration authors all ten locked MPS roles in the production
+`SampleWorld`, with shared households, six production Employments across Bakery and Commons, distinct
+Needs/Interests, and staggered Eating, Working, Sleeping, Travel, and routine starting states. A
+deterministic two-day acceptance now proves continuous primary Activities, Sleep/wake completion for
+every character, and routine diversity across Eating, Work, Travel, Tabletop Games, Reading, and
+Socializing. Owen's Open-Commons Tabletop control and one-Nudge Closed-Commons Reading branch now run
+inside that full cast and match across save/reload and OfflineCatchUp. Social starting-state breadth,
+including asymmetric Mina/Glen, Mina/Darius, and Owen/Lena relationships and belief confidence, is now
+authored. Owen's ordinary Commons interaction revises his inaccurate belief about Lena and materially
+changes a later social Decision reason, with exact pre-evidence save/reload replay. Paired Emphasize
+and Temper branches now spend one Nudge against Mina's real Held leave-work Decision, keep the choice
+unresolved, preserve stable Influence identity through living reevaluation, and continue exactly after
+reload. Substitute and Re-roll now complete the four-family matrix: the loaded d20 remains an authored,
+separately resourced replacement under normal resolution, while a saved known roll advances only its
+targeted stream and retains discarded evidence across reload. Offline expiry commits without consuming
+the Re-roll. The final audit adds a living-Importance Decision feed, Follow prioritization, durable
+Normal/Auto-Hold/Quiet policy, prospective bounded Auto-Hold with deterministic overflow, and
+save/load-safe Quiet/Hold behavior. Closing and reopening the Commons during Owen's in-flight routine
+Travel proves targeted redirection and restored availability. The full Phase 4 matrix now passes in the
+central Golden Scenario.
+
 ### Required acceptance assertions
 
 Across the scenario:
@@ -937,7 +958,7 @@ behavior, making this the earliest incomplete MPS causal link.
 | Employment | Conceptual/architectural only | Critical for reviewed MPS | Lock/implement authority + obligation-pattern v0 |
 | Hobbies/discretionary routine | Conceptual only | Critical | Start with concrete Tabletop Games + Reading Activities |
 | Sleep/Energy loop | Missing from playable routine | Critical | Immediate next vertical slice |
-| 8–12-character multi-day scenario | Missing | Critical | Build after routine links exist |
+| 8–12-character multi-day scenario | Ten-character/two-day Phase 4 acceptance matrix complete | Complete | Build Phase 5 Unity surfaces over it |
 | Unity general UI | Narrow prototype only | Critical | Build after headless loop is trustworthy |
 | Concrete save format | Deferred | Required for MVP completion | Select after world loop stabilizes |
 | Interactive Activity | Seam only; deferred from MVP | Optional | Preserve seam |

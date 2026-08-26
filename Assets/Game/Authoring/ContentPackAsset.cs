@@ -35,6 +35,9 @@ namespace Vivarium.Unity.Authoring
 
         [Header("Decision importance")]
         [SerializeField] private int decisionAdmissionFloor = 6500;
+        [SerializeField] private int decisionPrioritizedFeedFloor = 6500;
+        [SerializeField] private int decisionNormalFeedFloor = 7000;
+        [SerializeField] private int decisionAutoHoldFloor = 7000;
 
         [SerializeField] private TraitDefinitionAsset[] traits = new TraitDefinitionAsset[0];
 
@@ -67,7 +70,11 @@ namespace Vivarium.Unity.Authoring
         {
             var builder = new DefinitionCatalog.Builder { ContentVersion = contentVersion };
             builder.SetDecisionImportancePolicy(
-                new DecisionImportancePolicyDefinition(decisionAdmissionFloor));
+                new DecisionImportancePolicyDefinition(
+                    decisionAdmissionFloor,
+                    decisionPrioritizedFeedFloor,
+                    decisionNormalFeedFloor,
+                    decisionAutoHoldFloor));
 
             for (int i = 0; i < traits.Length; i++)
             {
@@ -181,6 +188,13 @@ namespace Vivarium.Unity.Authoring
             if (decisionAdmissionFloor < 0 || decisionAdmissionFloor > SignalNumeric.Scale)
             {
                 problems.Add($"Decision admission floor must be between 0 and {SignalNumeric.Scale}");
+            }
+            if (decisionPrioritizedFeedFloor < decisionAdmissionFloor ||
+                decisionNormalFeedFloor < decisionPrioritizedFeedFloor ||
+                decisionAutoHoldFloor < decisionNormalFeedFloor ||
+                decisionAutoHoldFloor > SignalNumeric.Scale)
+            {
+                problems.Add("Decision importance floors must satisfy Admission <= PrioritizedFeed <= NormalFeed <= AutoHold <= 10000.");
             }
 
             for (int i = 0; i < traits.Length; i++)

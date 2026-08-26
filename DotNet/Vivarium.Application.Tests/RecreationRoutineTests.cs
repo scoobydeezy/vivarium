@@ -304,7 +304,7 @@ namespace Vivarium.Application.Tests
         private static DefinitionCatalog BuildCatalog()
         {
             var builder = new DefinitionCatalog.Builder();
-            builder.SetDecisionImportancePolicy(new DecisionImportancePolicyDefinition(6500));
+            builder.SetDecisionImportancePolicy(new DecisionImportancePolicyDefinition(6500, 6500, 7000, 7500));
             builder.Add(new ActivityDefinition(WellKnownActivities.Waiting, "Waiting", SimDuration.FromHours(1), false));
             builder.Add(new ActivityDefinition(WellKnownActivities.Traveling, "Traveling", SimDuration.FromMinutes(10), false, false, true));
             builder.Add(new ActivityDefinition(Tabletop, "Tabletop Games", SimDuration.FromMinutes(30), false));

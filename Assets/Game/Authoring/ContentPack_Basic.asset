@@ -14,6 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Vivarium.Unity.Authoring::Vivarium.Unity.Authoring.ContentPackAsset
   contentVersion: 8
   decisionAdmissionFloor: 6500
+  decisionPrioritizedFeedFloor: 6500
+  decisionNormalFeedFloor: 7000
+  decisionAutoHoldFloor: 7000
   traits:
   - {fileID: 11400000, guid: afe9983f40078e045a269c0c1854d889, type: 2}
   - {fileID: 11400000, guid: cf50c39fa4f24f64ca6fccdf406a2d68, type: 2}

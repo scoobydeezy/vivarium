@@ -1329,7 +1329,7 @@ fallback: one incompatible plan must be relinquished. Such a generator always ad
 uses derived Importance only for Attention, ordering, and held-capacity policy. Admission, feed, and
 Auto-Hold floors are open numeric parameters on that one scale; held-capacity overflow has no Importance
 cutoff and instead orders contending Holds by their live derived values (§20).
-`Product/PlayerAgencyBrief.md` §14 owns the unset product numbers; this section fixes the mechanism.
+`Product/PlayerAgencyBrief.md` §14 owns the authored, playtest-tunable product numbers; this section fixes the mechanism.
 
 ---
 

@@ -85,7 +85,7 @@ namespace Vivarium.SimRunner
 
         public static ScaleBenchmarkResult Run(int population, SimDuration duration, long seed = DefaultSeed)
         {
-            if (population < 3) throw new ArgumentOutOfRangeException(nameof(population), "The sample world has three named characters.");
+            if (population < 10) throw new ArgumentOutOfRangeException(nameof(population), "The MPS world has ten named characters.");
             if (duration.IsNegative) throw new ArgumentOutOfRangeException(nameof(duration));
 
             var buildWatch = Stopwatch.StartNew();
@@ -93,7 +93,7 @@ namespace Vivarium.SimRunner
                 seed,
                 SimTime.Epoch,
                 SampleContent.Build());
-            SampleWorld.Populate(host, population - 3);
+            SampleWorld.Populate(host, population - 10);
             buildWatch.Stop();
 
             var runWatch = Stopwatch.StartNew();

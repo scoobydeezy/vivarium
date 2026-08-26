@@ -1,6 +1,7 @@
 using System;
 using Vivarium.Application.Observation;
 using Vivarium.Domain.Activities;
+using Vivarium.Domain.Attention;
 using Vivarium.Domain.Characters;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Simulation;
@@ -270,12 +271,20 @@ namespace Vivarium.Application.Commands.Handlers
     public sealed class SetAttentionPolicyHandler : CommandHandler<SetAttentionPolicyCommand, Result>
     {
         public static readonly AuthoredId ReasonUnknownCharacter = new AuthoredId("command.attention.unknown_character");
+        public static readonly AuthoredId ReasonInvalidPolicy = new AuthoredId("command.attention.invalid_character_policy");
 
         public override Result Handle(SetAttentionPolicyCommand command, CommandContext context)
         {
             if (!context.World.Characters.Contains(command.CharacterId))
             {
                 return Result.Fail(ReasonUnknownCharacter, command.CharacterId.ToString());
+            }
+
+            if (command.Policy != AttentionPolicy.Normal &&
+                command.Policy != AttentionPolicy.AutoHold &&
+                command.Policy != AttentionPolicy.Quiet)
+            {
+                return Result.Fail(ReasonInvalidPolicy, command.Policy.ToString());
             }
 
             context.World.Attention.SetPolicy(command.CharacterId, command.Policy);
