@@ -98,7 +98,8 @@ namespace Vivarium.Application.Queries
             ScheduleView schedule = null,
             IReadOnlyList<KnownRelationshipView> knownRelationships = null,
             IReadOnlyList<CharacterDecisionSummaryView> decisions = null,
-            IReadOnlyList<CharacterHistoryEntryView> recentHistory = null)
+            IReadOnlyList<CharacterHistoryEntryView> recentHistory = null,
+            IReadOnlyList<KnownFactView> knownSocialReports = null)
         {
             CharacterId = characterId;
             DisplayName = displayName;
@@ -114,6 +115,7 @@ namespace Vivarium.Application.Queries
             KnownRelationships = knownRelationships ?? new KnownRelationshipView[0];
             Decisions = decisions ?? new CharacterDecisionSummaryView[0];
             RecentHistory = recentHistory ?? new CharacterHistoryEntryView[0];
+            KnownSocialReports = knownSocialReports ?? new KnownFactView[0];
         }
 
         public int CharacterId { get; }
@@ -148,22 +150,40 @@ namespace Vivarium.Application.Queries
         public IReadOnlyList<CharacterDecisionSummaryView> Decisions { get; }
 
         public IReadOnlyList<CharacterHistoryEntryView> RecentHistory { get; }
+
+        public IReadOnlyList<KnownFactView> KnownSocialReports { get; }
     }
 
     public sealed class KnownRelationshipView
     {
-        public KnownRelationshipView(int relationshipId, int otherCharacterId, string otherCharacterName, IReadOnlyList<KnownFactView> knownFacts)
+        public KnownRelationshipView(
+            int relationshipId,
+            int otherCharacterId,
+            string otherCharacterName,
+            IReadOnlyList<KnownFactView> knownFacts,
+            string perspectiveLabel = null,
+            string directionLabel = null,
+            string mostRecentObservationLabel = null,
+            bool hasStaleFacts = false)
         {
             RelationshipId = relationshipId;
             OtherCharacterId = otherCharacterId;
             OtherCharacterName = otherCharacterName;
             KnownFacts = knownFacts ?? new KnownFactView[0];
+            PerspectiveLabel = perspectiveLabel;
+            DirectionLabel = directionLabel;
+            MostRecentObservationLabel = mostRecentObservationLabel;
+            HasStaleFacts = hasStaleFacts;
         }
 
         public int RelationshipId { get; }
         public int OtherCharacterId { get; }
         public string OtherCharacterName { get; }
         public IReadOnlyList<KnownFactView> KnownFacts { get; }
+        public string PerspectiveLabel { get; }
+        public string DirectionLabel { get; }
+        public string MostRecentObservationLabel { get; }
+        public bool HasStaleFacts { get; }
     }
 
     public sealed class CharacterDecisionSummaryView
@@ -205,13 +225,22 @@ namespace Vivarium.Application.Queries
     /// </summary>
     public sealed class KnownFactView
     {
-        public KnownFactView(string label, string valueLabel, string observedAtLabel, string confidenceLabel, bool mayBeStale)
+        public KnownFactView(
+            string label,
+            string valueLabel,
+            string observedAtLabel,
+            string confidenceLabel,
+            bool mayBeStale,
+            string sourceLabel = null,
+            string ageLabel = null)
         {
             Label = label;
             ValueLabel = valueLabel;
             ObservedAtLabel = observedAtLabel;
             ConfidenceLabel = confidenceLabel;
             MayBeStale = mayBeStale;
+            SourceLabel = sourceLabel;
+            AgeLabel = ageLabel;
         }
 
         public string Label { get; }
@@ -224,6 +253,10 @@ namespace Vivarium.Application.Queries
 
         /// <summary>Whether enough simulated time has passed that this observation may have drifted.</summary>
         public bool MayBeStale { get; }
+
+        public string SourceLabel { get; }
+
+        public string AgeLabel { get; }
     }
 
     /// <summary>
@@ -374,7 +407,12 @@ namespace Vivarium.Application.Queries
             IReadOnlyList<DecisionOptionView> options,
             DecisionResolutionView resolution,
             bool hasHardDeadline = false,
-            PendingDecisionResolutionView pendingResolution = null)
+            PendingDecisionResolutionView pendingResolution = null,
+            int importance = 0,
+            int globalHoldRemaining = 0,
+            int characterHoldRemaining = 0,
+            string holdUnavailableReason = null,
+            IReadOnlyList<AppliedInterventionView> appliedInterventions = null)
         {
             DecisionId = decisionId;
             CharacterId = characterId;
@@ -389,6 +427,11 @@ namespace Vivarium.Application.Queries
             Resolution = resolution;
             HasHardDeadline = hasHardDeadline;
             PendingResolution = pendingResolution;
+            Importance = importance;
+            GlobalHoldRemaining = globalHoldRemaining;
+            CharacterHoldRemaining = characterHoldRemaining;
+            HoldUnavailableReason = holdUnavailableReason;
+            AppliedInterventions = appliedInterventions ?? new AppliedInterventionView[0];
         }
 
         public int DecisionId { get; }
@@ -422,6 +465,42 @@ namespace Vivarium.Application.Queries
         public bool HasHardDeadline { get; }
 
         public PendingDecisionResolutionView PendingResolution { get; }
+
+        public int Importance { get; }
+
+        public int GlobalHoldRemaining { get; }
+
+        public int CharacterHoldRemaining { get; }
+
+        public string HoldUnavailableReason { get; }
+
+        public IReadOnlyList<AppliedInterventionView> AppliedInterventions { get; }
+    }
+
+    public sealed class AppliedInterventionView
+    {
+        public AppliedInterventionView(
+            string interventionDefinitionId,
+            int targetInfluenceId,
+            string kind,
+            string resourceKind,
+            int resourceCost,
+            long commandSequence)
+        {
+            InterventionDefinitionId = interventionDefinitionId;
+            TargetInfluenceId = targetInfluenceId;
+            Kind = kind;
+            ResourceKind = resourceKind;
+            ResourceCost = resourceCost;
+            CommandSequence = commandSequence;
+        }
+
+        public string InterventionDefinitionId { get; }
+        public int TargetInfluenceId { get; }
+        public string Kind { get; }
+        public string ResourceKind { get; }
+        public int ResourceCost { get; }
+        public long CommandSequence { get; }
     }
 
     public sealed class PendingDecisionResolutionView
@@ -519,7 +598,12 @@ namespace Vivarium.Application.Queries
             IReadOnlyList<int> childLocationIds,
             bool isOpen = true,
             bool canManageAvailability = false,
-            string availabilityDisabledReason = null)
+            string availabilityDisabledReason = null,
+            int parentLocationId = 0,
+            string parentDisplayName = null,
+            int nudgeBalance = 0,
+            IReadOnlyList<LocationPresenceView> observedPresence = null,
+            IReadOnlyList<LocationHistoryEntryView> recentHistory = null)
         {
             LocationId = locationId;
             DisplayName = displayName;
@@ -530,6 +614,11 @@ namespace Vivarium.Application.Queries
             IsOpen = isOpen;
             CanManageAvailability = canManageAvailability;
             AvailabilityDisabledReason = availabilityDisabledReason;
+            ParentLocationId = parentLocationId;
+            ParentDisplayName = parentDisplayName;
+            NudgeBalance = nudgeBalance;
+            ObservedPresence = observedPresence ?? new LocationPresenceView[0];
+            RecentHistory = recentHistory ?? new LocationHistoryEntryView[0];
         }
 
         public int LocationId { get; }
@@ -550,18 +639,65 @@ namespace Vivarium.Application.Queries
         public bool CanManageAvailability { get; }
         public int AvailabilityNudgeCost => Vivarium.Domain.Spatial.LocationAvailabilityRules.NudgeCost;
         public string AvailabilityDisabledReason { get; }
+        public int ParentLocationId { get; }
+        public string ParentDisplayName { get; }
+        public int NudgeBalance { get; }
+        public IReadOnlyList<LocationPresenceView> ObservedPresence { get; }
+        public IReadOnlyList<LocationHistoryEntryView> RecentHistory { get; }
+    }
+
+    public sealed class LocationPresenceView
+    {
+        public LocationPresenceView(int characterId, string characterName, string statusLabel)
+        {
+            CharacterId = characterId;
+            CharacterName = characterName;
+            StatusLabel = statusLabel;
+        }
+
+        public int CharacterId { get; }
+        public string CharacterName { get; }
+        public string StatusLabel { get; }
+    }
+
+    public sealed class LocationHistoryEntryView
+    {
+        public LocationHistoryEntryView(int historyEntryId, string occurredAtLabel, string summary)
+        {
+            HistoryEntryId = historyEntryId;
+            OccurredAtLabel = occurredAtLabel;
+            Summary = summary;
+        }
+
+        public int HistoryEntryId { get; }
+        public string OccurredAtLabel { get; }
+        public string Summary { get; }
     }
 
     /// <summary>A character's upcoming commitments (§29.3, §29.4).</summary>
     public sealed class ScheduleView
     {
-        public ScheduleView(int characterId, IReadOnlyList<ScheduleEntryView> entries)
+        public ScheduleView(
+            int characterId,
+            IReadOnlyList<ScheduleEntryView> entries,
+            string characterName = null,
+            string nowLabel = null,
+            int conflictCount = 0)
         {
             CharacterId = characterId;
             Entries = entries;
+            CharacterName = characterName;
+            NowLabel = nowLabel;
+            ConflictCount = conflictCount;
         }
 
         public int CharacterId { get; }
+
+        public string CharacterName { get; }
+
+        public string NowLabel { get; }
+
+        public int ConflictCount { get; }
 
         /// <summary>
         /// Only the materialized planning horizon. Asking for a longer view is what causes the planner
@@ -573,7 +709,20 @@ namespace Vivarium.Application.Queries
     /// <summary>One planned commitment.</summary>
     public sealed class ScheduleEntryView
     {
-        public ScheduleEntryView(int commitmentId, string kind, string startLabel, string durationLabel, string locationLabel, string statusLabel, bool conflicts)
+        public ScheduleEntryView(
+            int commitmentId,
+            string kind,
+            string startLabel,
+            string durationLabel,
+            string locationLabel,
+            string statusLabel,
+            bool conflicts,
+            string latestStartLabel = null,
+            string expectedEndLabel = null,
+            string timingLabel = null,
+            string sourceLabel = null,
+            IReadOnlyList<string> participantNames = null,
+            IReadOnlyList<int> conflictingCommitmentIds = null)
         {
             CommitmentId = commitmentId;
             Kind = kind;
@@ -582,6 +731,12 @@ namespace Vivarium.Application.Queries
             LocationLabel = locationLabel;
             StatusLabel = statusLabel;
             Conflicts = conflicts;
+            LatestStartLabel = latestStartLabel;
+            ExpectedEndLabel = expectedEndLabel;
+            TimingLabel = timingLabel;
+            SourceLabel = sourceLabel;
+            ParticipantNames = participantNames ?? new string[0];
+            ConflictingCommitmentIds = conflictingCommitmentIds ?? new int[0];
         }
 
         public int CommitmentId { get; }
@@ -596,6 +751,18 @@ namespace Vivarium.Application.Queries
 
         public string StatusLabel { get; }
 
+        public string LatestStartLabel { get; }
+
+        public string ExpectedEndLabel { get; }
+
+        public string TimingLabel { get; }
+
+        public string SourceLabel { get; }
+
+        public IReadOnlyList<string> ParticipantNames { get; }
+
+        public IReadOnlyList<int> ConflictingCommitmentIds { get; }
+
         /// <summary>Whether this overlaps another planned commitment (§29.3).</summary>
         public bool Conflicts { get; }
     }
@@ -603,11 +770,16 @@ namespace Vivarium.Application.Queries
     /// <summary>The feed of decisions worth surfacing, ordered by attention policy (§20, §36).</summary>
     public sealed class DecisionFeedView
     {
-        public DecisionFeedView(IReadOnlyList<DecisionFeedEntryView> entries, int heldCount, int heldCapacity)
+        public DecisionFeedView(
+            IReadOnlyList<DecisionFeedEntryView> entries,
+            int heldCount,
+            int heldCapacity,
+            int heldPerCharacterCapacity = 0)
         {
             Entries = entries;
             HeldCount = heldCount;
             HeldCapacity = heldCapacity;
+            HeldPerCharacterCapacity = heldPerCharacterCapacity;
         }
 
         public IReadOnlyList<DecisionFeedEntryView> Entries { get; }
@@ -615,12 +787,25 @@ namespace Vivarium.Application.Queries
         public int HeldCount { get; }
 
         public int HeldCapacity { get; }
+
+        public int HeldPerCharacterCapacity { get; }
     }
 
     /// <summary>One entry in the decision feed.</summary>
     public sealed class DecisionFeedEntryView
     {
-        public DecisionFeedEntryView(int decisionId, int characterId, string characterName, string definitionId, string resolveAtLabel, bool isHeld, int importance)
+        public DecisionFeedEntryView(
+            int decisionId,
+            int characterId,
+            string characterName,
+            string definitionId,
+            string resolveAtLabel,
+            bool isHeld,
+            int importance,
+            string statusLabel = null,
+            string timeRemainingLabel = null,
+            bool hasHardDeadline = false,
+            bool isRecentResolution = false)
         {
             DecisionId = decisionId;
             CharacterId = characterId;
@@ -629,6 +814,10 @@ namespace Vivarium.Application.Queries
             ResolveAtLabel = resolveAtLabel;
             IsHeld = isHeld;
             Importance = importance;
+            StatusLabel = statusLabel;
+            TimeRemainingLabel = timeRemainingLabel;
+            HasHardDeadline = hasHardDeadline;
+            IsRecentResolution = isRecentResolution;
         }
 
         public int DecisionId { get; }
@@ -644,5 +833,13 @@ namespace Vivarium.Application.Queries
         public bool IsHeld { get; }
 
         public int Importance { get; }
+
+        public string StatusLabel { get; }
+
+        public string TimeRemainingLabel { get; }
+
+        public bool HasHardDeadline { get; }
+
+        public bool IsRecentResolution { get; }
     }
 }

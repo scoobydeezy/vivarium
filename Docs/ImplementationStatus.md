@@ -237,7 +237,7 @@ Working implementations:
   an existing Hold, and durable policy/Hold state round-trips across save/load. The full-cast acceptance
   also closes and reopens the Commons during Owen's in-flight routine Travel and proves targeted
   redirection plus restored availability. Phase 4 is complete.
-- **Phase 5 HUD, roster, and character-profile foundation** — Unity and the headless acceptance runner
+- **Phase 5 playable Unity surface** — Unity and the headless acceptance runner
   now call the same Infrastructure-owned ten-character world builder. BaseGame authoring contains the
   matching Bakery and Commons Employments, café-host Activity, hierarchy location kinds, and cast Trait
   ids. The Unity HUD projects clock/mode/speed/offline-return state; the complete roster projects
@@ -247,7 +247,34 @@ Working implementations:
   legacy direct-Travel button remains serialized only for prefab compatibility and is always hidden,
   preserving the MVP rule that Travel is autonomous rather than a player command. Projection tests
   cover unobserved roster privacy and relationship Knowledge filtering; PlayMode coverage exercises
-  the ten-character roster and all five profile sections.
+  the ten-character roster and all five profile sections. The Decision center now consumes the
+  living-Importance inbox, preserves deliberate selection, and shows held capacity, countdowns,
+  hard-deadline warnings, knowledge-filtered Options/reasons, pending and frozen rolls, applied
+  interventions, resource balances, and authoritative availability/cost feedback for every authored
+  action. BaseGame includes Nudge-backed Encourage and Temper plus the separately resourced Re-roll and
+  loaded-d20 substitution actions; Unity sends the exact selected action and stable Influence target.
+  Recent important resolutions remain in a bounded result feed, while below-threshold active Decisions
+  remain available through the inspected character profile rather than leaking into the inbox. The
+  character surface now has a dedicated chronological timeline mode over the materialized planning
+  horizon. It shows start windows/deadlines, expected end, duration, location, lifecycle, recurring
+  template provenance, participants, and conflicts. Conflict projection combines direct time overlap
+  with active authoritative commitment-conflict episodes, so travel-induced infeasibility appears
+  without Unity or the query layer duplicating feasibility rules. A dedicated Knowledge mode now renders
+  only player-held personal and relationship evidence, including confidence, observation age, discovery
+  channel/informant provenance, and staleness. Unknown relationships stay absent despite existing Domain
+  truth, character-held belief distributions and latent relationship channels never leak, and evidence
+  whose direction is not encoded says so explicitly instead of inventing a symmetric score. A selectable
+  world-location panel now projects Home, Bakery, and Commons hierarchy and availability, authoritative
+  Nudge cost/eligibility, recent location history, and only watched-character occupancy or inbound Travel.
+  Its Open/Close control enqueues the existing location-availability Command, so Commons closure before
+  Owen plans exposes the ordinary Reading fallback while closure during his trip exposes targeted Travel
+  redirection without adding Unity-side simulation rules. The final bounded notification/recap panel
+  derives meaningful events from retained causal History rather than subscribing to Domain Events.
+  It applies the Decision Importance and Quiet policies for live surfacing, admits social consequences
+  only when player Knowledge supports them, groups repeated event families under an eight-group bound,
+  switches to one since-return recap during OfflineCatchUp, and retains navigation targets for Decisions,
+  characters, and locations. Notification selection and toast/panel state remain ephemeral Presentation
+  state. Phase 5 is complete.
 - **Knowledge** — player- and character-scoped fact providers, sparse social belief distributions,
   lifecycle/retention metadata, and discovery driven by observation through one canonical `WatchState`
   (§20.1, §22–§25).
@@ -395,10 +422,13 @@ Intentionally thin, pending game-design decisions:
 - **MVP agency presentation breadth.** Follow, Hold/Release, stable Influence intervention,
   knowledge-filtered Decision projection foundations, the Nudge economy, Re-roll/die-substitution,
   and the Commons availability Command and targeted reactions exist authoritatively. Normal/Auto-Hold/
-  Quiet tuning is now authoritative. Phase 5 has started: the Unity HUD projects current SimTime plus
+  Quiet tuning is now authoritative. Phase 5 is complete: the Unity HUD projects current SimTime plus
   paused/live/fast-forward/offline-return status, and roster rows project observed Activity/location,
-  Follow, Attention policy, and feed-qualified Decision attention without leaking unobserved live state.
-  Bounded recap presentation and the remaining MVP Unity surfaces are not implemented.
+  Follow, Attention policy, and feed-qualified Decision attention without leaking unobserved live state;
+  character profiles, the selectable Decision feed/detail surface, the dedicated materialized
+  schedule/timeline, player-Knowledge relationship view, world/location management surface, and bounded
+  live/offline notification recap are implemented. Phase 6 concrete save storage and restart/failure UX
+  remain.
 - **Intent versus forced outcome.** Decisions retain historical reasoning and Commitments distinguish
   planning intent from Activity execution, but there is no general action-attempt provenance or player
   physical-interference path. The simulation cannot yet record “Mina chose and attempted to leave, but
@@ -529,6 +559,13 @@ The test suite is organised around the §58 invariants rather than around classe
 | Authored Unity Need crossing generates the projectable Decision | `VivariumPlayModeTests` |
 | Decision history feed is causal, bounded, filtered, and newest-first | `CommandAndProjectionTests` |
 | Unity Decision feed refreshes after intervention at quiescence | `VivariumPlayModeTests` |
+| Unity Decision center selects surfaced Decisions and exposes resources plus every authored action without bypassing Attention floors | `VivariumPlayModeTests` |
+| Low-Importance active Decisions remain inspectable through the character profile instead of leaking into the inbox | `VivariumPlayModeTests` |
+| Materialized timeline orders commitments and finds every direct overlap, including non-adjacent intervals | `CommandAndProjectionTests` |
+| Timeline conflict state consumes authoritative travel-feasibility conflict episodes and appears in Unity with windows, routines, and participants | `CommitmentConflictDecisionTests`, `VivariumPlayModeTests` |
+| Knowledge view hides unknown relationship truth and exposes only observed confidence, age, provenance, and staleness without latent-channel leakage | `GoldenScenarioTests`, `VivariumPlayModeTests` |
+| Location view exposes hierarchy, availability, bounded history, and only watched occupants/travelers; Commons closure surfaces both planning fallback and in-flight redirection | `RecreationRoutineTests`, `GoldenScenarioTests`, `VivariumPlayModeTests` |
+| Notification/recap projection is bounded, groups repetition, suppresses proactive Quiet events without erasing recap history, filters social events through player Knowledge, and navigates retained targets in Unity | `RecreationRoutineTests`, `GoldenScenarioTests`, `VivariumPlayModeTests` |
 | Unity demo progresses through shared travel, Work pressure, and generated Decision | `VivariumPlayModeTests` |
 | Version drift diagnosed, not automatically blocking | `PersistenceTests` |
 | Schema-v6 travel arrivals migrate without invented continuation intent | `PersistenceTests` |

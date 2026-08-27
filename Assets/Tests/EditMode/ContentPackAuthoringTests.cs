@@ -57,7 +57,7 @@ namespace Vivarium.Unity.Tests
             Assert.That(catalog.SocialEvidence.Count, Is.EqualTo(3));
             Assert.That(catalog.SocialPressures.Count, Is.EqualTo(2));
             Assert.That(catalog.Decisions.Count, Is.EqualTo(4));
-            Assert.That(catalog.Interventions.Count, Is.EqualTo(3));
+            Assert.That(catalog.Interventions.Count, Is.EqualTo(4));
             AssertActivity(catalog, "activity.working", "Working", 360, producesOutcome: true);
             AssertActivity(catalog, "activity.cafe_hosting", "Hosting at the cafe", 90);
             AssertActivity(catalog, "activity.traveling", "Traveling", 10, isTravel: true);
@@ -153,6 +153,8 @@ namespace Vivarium.Unity.Tests
             Assert.That(loadedTwenty.ReplacementDie.FixedResult, Is.EqualTo(20));
             Assert.That(catalog.Interventions[new AuthoredId("intervention.re_roll")].Kind,
                 Is.EqualTo(InterventionKind.Reroll));
+            Assert.That(catalog.Interventions[new AuthoredId("intervention.temper")].Kind,
+                Is.EqualTo(InterventionKind.StepDieDown));
         }
 
         private static void AssertActivity(

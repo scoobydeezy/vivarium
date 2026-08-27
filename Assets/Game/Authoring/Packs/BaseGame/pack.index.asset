@@ -44,6 +44,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 3e19f957a9574a5a86fb7b275294465d, type: 2}
   - {fileID: 11400000, guid: 3e3e2be03bb14c1ba7eea1e00374775d, type: 2}
   - {fileID: 11400000, guid: 3e2e8101b6684840b6a0b5abeb89edba, type: 2}
+  - {fileID: 11400000, guid: 3e4f51e50fd14eec9b935124260116ce, type: 2}
   locationKinds:
   - {fileID: 11400000, guid: 71c6c6f1d3d84f8da0078312f9675f0d, type: 2}
   - {fileID: 11400000, guid: 900289b4cdd74af8ab0f9c9325518b65, type: 2}
@@ -63,4 +64,4 @@ MonoBehaviour:
   socialPressures:
   - {fileID: 11400000, guid: 74b005db8dbe46bea042d95d6d02cf8e, type: 2}
   - {fileID: 11400000, guid: 73ad8259c8fa45a2a4700e930bcdbcc1, type: 2}
-  bakeFingerprint: 85b619edd975c79d
+  bakeFingerprint: 0ff937bb1da2c509

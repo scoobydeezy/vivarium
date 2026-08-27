@@ -204,6 +204,58 @@ namespace Vivarium.Unity.Tests
         }
 
         [UnityTest]
+        public IEnumerator Character_timeline_surfaces_windows_routines_and_real_commitment_conflicts()
+        {
+            Character mina = CharacterNamed("Mina Cairn");
+            _presenter.OnCharacterTapped(mina.Id);
+            yield return null;
+            _bootstrapper.Host.Session.Advance(SimDuration.FromHours(6));
+            yield return null;
+
+            CharacterProfilePanel panel = Object.FindAnyObjectByType<CharacterProfilePanel>();
+            panel.ShowTimeline();
+
+            Assert.That(panel.IsTimelineVisible, Is.True);
+            Assert.That(panel.IsTravelControlVisible, Is.False);
+            Assert.That(panel.DisplayedText, Does.Contain("materialized timeline"));
+            Assert.That(panel.DisplayedText, Does.Contain("start deadline"));
+            Assert.That(panel.DisplayedText, Does.Contain("Routine routine.bakery_shift"));
+            Assert.That(panel.DisplayedText, Does.Contain("commitment.dinner_with_glen"));
+            Assert.That(panel.DisplayedText, Does.Contain("commitment.help_darius_close_bakery"));
+            Assert.That(panel.DisplayedText, Does.Contain("CONFLICT"));
+        }
+
+        [UnityTest]
+        public IEnumerator Character_knowledge_view_surfaces_only_observed_relationship_evidence()
+        {
+            Character mina = CharacterNamed("Mina Cairn");
+            Character glen = CharacterNamed("Glen Ashby");
+            Character darius = CharacterNamed("Darius Vale");
+            Assert.That(_bootstrapper.Host.World.RelationshipIndex.TryGetBetween(
+                mina.Id, glen.Id, out RelationshipId relationshipId), Is.True);
+            _bootstrapper.Host.World.Knowledge.Record(new KnowledgeEntry(
+                new FactKey(FactKinds.RelationshipStanding, relationshipId.ToRef()),
+                ObservedValue.Of(ValueBands.Strong),
+                _bootstrapper.Host.World.Clock.Now.Minus(SimDuration.FromDays(2)),
+                KnowledgeConfidence.Suspected,
+                new DiscoverySource(DiscoveryChannels.Hearsay, darius.Id.ToRef())));
+
+            _presenter.OnCharacterTapped(mina.Id);
+            yield return null;
+            CharacterProfilePanel panel = Object.FindAnyObjectByType<CharacterProfilePanel>();
+            panel.ShowKnowledge();
+
+            Assert.That(panel.IsKnowledgeVisible, Is.True);
+            Assert.That(panel.DisplayedText, Does.Contain("Player observations only"));
+            Assert.That(panel.DisplayedText, Does.Contain("Mina Cairn ↔ Glen Ashby"));
+            Assert.That(panel.DisplayedText, Does.Contain("Direction not established by player evidence"));
+            Assert.That(panel.DisplayedText, Does.Contain("Suspected"));
+            Assert.That(panel.DisplayedText, Does.Contain("possibly stale"));
+            Assert.That(panel.DisplayedText, Does.Contain("Darius Vale"));
+            Assert.That(panel.DisplayedText, Does.Not.Contain("relationship_channel.affection"));
+        }
+
+        [UnityTest]
         public IEnumerator Travel_command_arrives_at_committed_destination()
         {
             CharacterId characterId = FirstCharacter().Id;
@@ -356,6 +408,140 @@ namespace Vivarium.Unity.Tests
         }
 
         [UnityTest]
+        public IEnumerator Decision_center_surfaces_feed_resources_and_every_authored_action()
+        {
+            Character mina = CharacterNamed("Mina Cairn");
+            Assert.That(_bootstrapper.Host.Session.Execute(new InspectCharacterCommand(mina.Id)).IsSuccess, Is.True);
+            AdvanceToDemoDecision();
+            Decision minaDecision = DemoDecision();
+            Assert.That(_bootstrapper.Host.Session.Execute(new HoldDecisionCommand(minaDecision.Id)).IsSuccess, Is.True);
+            yield return null;
+
+            DecisionPanel panel = Object.FindAnyObjectByType<DecisionPanel>();
+            Assert.That(panel.FeedEntryCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(panel.SelectedDecisionId, Is.EqualTo(minaDecision.Id.Value));
+            Assert.That(panel.DisplayedText, Does.Contain("Decision inbox"));
+            Assert.That(panel.DisplayedText, Does.Contain("remaining"));
+            Assert.That(panel.DisplayedText, Does.Contain("Resources:"));
+            Assert.That(panel.DisplayedText, Does.Contain("Nudges 3/3"));
+            Assert.That(panel.DisplayedText, Does.Contain("intervention.encourage"));
+            Assert.That(panel.DisplayedText, Does.Contain("intervention.temper"));
+            Assert.That(panel.DisplayedText, Does.Contain("intervention.re_roll"));
+            Assert.That(panel.DisplayedText, Does.Contain("intervention.loaded_twenty"));
+        }
+
+        [UnityTest]
+        public IEnumerator Location_center_closes_commons_before_planning_and_surfaces_the_fallout()
+        {
+            WorldLocationPanel panel = Object.FindAnyObjectByType<WorldLocationPanel>();
+            Assert.That(panel, Is.Not.Null);
+            Assert.That(panel.TrySelectLocation(_bootstrapper.WorldLayout.Commons), Is.True);
+            Assert.That(panel.DisplayedText, Does.Contain("Eastmarket Commons — OPEN"));
+            Assert.That(panel.DisplayedText, Does.Contain("Resources: Nudges 3"));
+
+            Assert.That(panel.InvokeAvailabilityForTest(), Is.True);
+            Assert.That(_bootstrapper.Host.Session.Pump(), Is.EqualTo(1));
+            yield return null;
+
+            Assert.That(panel.DisplayedText, Does.Contain("Eastmarket Commons — CLOSED"));
+            Assert.That(panel.DisplayedText, Does.Contain("Resources: Nudges 2"));
+            Assert.That(panel.DisplayedText, Does.Contain("Eastmarket Commons was closed"));
+
+            _bootstrapper.Host.Session.Advance(
+                SimDuration.FromHours(8).Plus(SimDuration.FromMinutes(30)));
+            ActivityInstance owenActivity = _bootstrapper.Host.World.Activities.Get(
+                CharacterNamed("Owen Hart").CurrentActivityId);
+            Assert.That(owenActivity.DefinitionId, Is.EqualTo(new AuthoredId("activity.reading")));
+            Assert.That(owenActivity.SpatialContext.LocationId, Is.EqualTo(_bootstrapper.WorldLayout.Home));
+        }
+
+        [UnityTest]
+        public IEnumerator Location_center_observes_and_redirects_travel_when_commons_closes_in_flight()
+        {
+            Character owen = CharacterNamed("Owen Hart");
+            Assert.That(_bootstrapper.Host.Session.Execute(new FollowCharacterCommand(owen.Id, true)).IsSuccess, Is.True);
+            _bootstrapper.Host.Session.Advance(
+                SimDuration.FromHours(8).Plus(SimDuration.FromMinutes(21)));
+
+            ActivityInstance outbound = _bootstrapper.Host.World.Activities.Get(owen.CurrentActivityId);
+            Assert.That(outbound.SpatialContext.IsTraveling, Is.True);
+            Assert.That(outbound.SpatialContext.Transit.DestinationLocationId,
+                Is.EqualTo(_bootstrapper.WorldLayout.Commons));
+
+            WorldLocationPanel panel = Object.FindAnyObjectByType<WorldLocationPanel>();
+            Assert.That(panel.TrySelectLocation(_bootstrapper.WorldLayout.Commons), Is.True);
+            Assert.That(panel.DisplayedText, Does.Contain("Owen Hart — traveling"));
+            Assert.That(panel.DisplayedText, Does.Contain("→ Eastmarket Commons"));
+
+            Assert.That(panel.InvokeAvailabilityForTest(), Is.True);
+            Assert.That(_bootstrapper.Host.Session.Pump(), Is.EqualTo(1));
+            yield return null;
+
+            ActivityInstance redirected = _bootstrapper.Host.World.Activities.Get(owen.CurrentActivityId);
+            Assert.That(redirected.SpatialContext.IsTraveling &&
+                redirected.SpatialContext.Transit.DestinationLocationId == _bootstrapper.WorldLayout.Commons,
+                Is.False);
+            Assert.That(panel.DisplayedText, Does.Contain("Eastmarket Commons — CLOSED"));
+            Assert.That(panel.DisplayedText, Does.Contain("Eastmarket Commons was closed"));
+        }
+
+        [UnityTest]
+        public IEnumerator Notification_center_surfaces_world_change_with_a_navigation_target()
+        {
+            NotificationRecapPanel notifications = Object.FindAnyObjectByType<NotificationRecapPanel>();
+            WorldLocationPanel locations = Object.FindAnyObjectByType<WorldLocationPanel>();
+            Assert.That(notifications, Is.Not.Null);
+            Assert.That(locations, Is.Not.Null);
+            Assert.That(locations.SelectedLocationId, Is.EqualTo(_bootstrapper.WorldLayout.Home.Value));
+
+            Assert.That(_bootstrapper.Host.Session.Execute(
+                new SetLocationAvailabilityCommand(_bootstrapper.WorldLayout.Commons, open: false)).IsSuccess,
+                Is.True);
+            yield return null;
+
+            Assert.That(notifications.EntryCount, Is.InRange(1, 8));
+            Assert.That(notifications.DisplayedText, Does.Contain("World notifications"));
+            Assert.That(notifications.DisplayedText, Does.Contain("Eastmarket Commons was closed"));
+            Assert.That(notifications.InvokeOpenForTest(), Is.True);
+            Assert.That(locations.SelectedLocationId, Is.EqualTo(_bootstrapper.WorldLayout.Commons.Value));
+        }
+
+        [UnityTest]
+        public IEnumerator Offline_notification_center_groups_a_bounded_recap_instead_of_live_toasts()
+        {
+            NotificationRecapPanel notifications = Object.FindAnyObjectByType<NotificationRecapPanel>();
+            Assert.That(notifications, Is.Not.Null);
+            _presenter.BeginOfflineRecap(_bootstrapper.Host.World.Clock.Now);
+
+            _bootstrapper.Host.Session.Advance(
+                SimDuration.FromHours(8).Plus(SimDuration.FromMinutes(30)),
+                Vivarium.Domain.Simulation.SimulationMode.OfflineCatchUp);
+            yield return null;
+
+            Assert.That(notifications.EntryCount, Is.InRange(1, 8));
+            Assert.That(notifications.DisplayedText, Does.Contain("While you were away"));
+            Assert.That(notifications.DisplayedText, Does.Contain("meaningful event(s)"));
+
+            NotificationRecapView recap = new NotificationRecapProjector(
+                _bootstrapper.Host.Catalog.DecisionImportancePolicy).Project(
+                    _bootstrapper.Host.World,
+                    Vivarium.Domain.Simulation.SimulationMode.OfflineCatchUp,
+                    maximumGroups: 8);
+            NotificationEntryView decisionEntry = null;
+            for (int i = 0; i < recap.Entries.Count; i++)
+                if (recap.Entries[i].DecisionId > 0)
+                {
+                    decisionEntry = recap.Entries[i];
+                    break;
+                }
+            Assert.That(decisionEntry, Is.Not.Null);
+            Assert.That(notifications.TrySelectHistoryEntry(decisionEntry.HistoryEntryId), Is.True);
+            Assert.That(notifications.InvokeOpenForTest(), Is.True);
+            Assert.That(Object.FindAnyObjectByType<DecisionPanel>().SelectedDecisionId,
+                Is.EqualTo(decisionEntry.DecisionId));
+        }
+
+        [UnityTest]
         public IEnumerator Demo_progresses_through_shared_travel_work_pressure_and_need_decision()
         {
             Character mina = CharacterNamed("Mina Cairn");
@@ -395,6 +581,8 @@ namespace Vivarium.Unity.Tests
                 new AuthoredId("employment.bakery_worker")), Is.True);
 
             Character mina = CharacterNamed("Mina Cairn");
+            _presenter.OnCharacterTapped(mina.Id);
+            Assert.That(_bootstrapper.Host.Session.Pump(), Is.EqualTo(1));
             Employment employment = null;
             foreach (Employment candidate in _bootstrapper.Host.World.Employments.All)
                 if (candidate.EmployeeId == mina.Id) employment = candidate;
@@ -426,9 +614,8 @@ namespace Vivarium.Unity.Tests
             Assert.That(keepDinner.IntentSummary, Does.Contain("give up Help Darius Close Bakery"));
 
             yield return null;
-            DecisionPanel panel = Object.FindAnyObjectByType<DecisionPanel>();
-            Assert.That(panel.DisplayedText, Does.Contain("hard deadline"));
-            Assert.That(panel.DisplayedText, Does.Contain("Dinner With Glen"));
+            CharacterProfilePanel profile = Object.FindAnyObjectByType<CharacterProfilePanel>();
+            Assert.That(profile.DisplayedText, Does.Contain("decision.commitment_conflict"));
 
             _bootstrapper.Host.Session.Advance(conflict.ResolveAt - _bootstrapper.Host.World.Clock.Now);
             Assert.That(conflict.Status, Is.EqualTo(DecisionStatus.Resolved));

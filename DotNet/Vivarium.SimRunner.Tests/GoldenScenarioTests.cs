@@ -89,15 +89,22 @@ namespace Vivarium.SimRunner.Tests
             fixture.Host.World.Knowledge.Record(new KnowledgeEntry(
                 new FactKey(FactKinds.RelationshipStanding, friends.Id.ToRef()),
                 ObservedValue.Of(ValueBands.Strong),
-                fixture.Host.World.Clock.Now,
-                KnowledgeConfidence.Known,
-                DiscoverySource.Channel(DiscoveryChannels.DirectObservation)));
+                fixture.Host.World.Clock.Now.Minus(SimDuration.FromDays(2)),
+                KnowledgeConfidence.Suspected,
+                new DiscoverySource(DiscoveryChannels.Hearsay, fixture.Layout.Darius.ToRef())));
 
             Assert.True(projector.TryProject(
                 fixture.Host.World, fixture.Layout.Mina, out CharacterProfileView after));
             KnownRelationshipView known = Assert.Single(after.KnownRelationships);
             Assert.Equal("Glen Ashby", known.OtherCharacterName);
-            Assert.Equal(ValueBands.Strong.ToString(), Assert.Single(known.KnownFacts).ValueLabel);
+            Assert.Equal("Mina Cairn ↔ Glen Ashby", known.PerspectiveLabel);
+            Assert.Equal("Direction not established by player evidence", known.DirectionLabel);
+            Assert.True(known.HasStaleFacts);
+            KnownFactView standing = Assert.Single(known.KnownFacts);
+            Assert.Equal(ValueBands.Strong.ToString(), standing.ValueLabel);
+            Assert.Equal(nameof(KnowledgeConfidence.Suspected), standing.ConfidenceLabel);
+            Assert.Contains("Darius Vale", standing.SourceLabel);
+            Assert.Equal("2d0h ago", standing.AgeLabel);
         }
 
         [Fact]
@@ -333,6 +340,15 @@ namespace Vivarium.SimRunner.Tests
                 attentionTestPolicy, quiet.Host.HoldPolicy).Project(quiet.Host.World);
             Assert.Contains(normalFeed.Entries, entry => entry.DecisionId == normalDecision.Id.Value);
             Assert.DoesNotContain(quietFeed.Entries, entry => entry.DecisionId == quietDecision.Id.Value);
+            Assert.DoesNotContain(
+                new NotificationRecapProjector(attentionTestPolicy)
+                    .Project(quiet.Host.World, SimulationMode.Live).Entries,
+                entry => entry.DecisionId == quietDecision.Id.Value);
+            DecisionFeedEntryView normalEntry = normalFeed.Entries.Single(
+                entry => entry.DecisionId == normalDecision.Id.Value);
+            Assert.False(normalEntry.IsRecentResolution);
+            Assert.False(normalEntry.HasHardDeadline);
+            Assert.NotNull(normalEntry.TimeRemainingLabel);
             Assert.Equal(normalDecision.Importance, quietDecision.Importance);
             Assert.Equal(normalDecision.Influences.Count, quietDecision.Influences.Count);
 
@@ -342,6 +358,17 @@ namespace Vivarium.SimRunner.Tests
             Assert.Equal(normalDecision.Resolution.Degree, quietDecision.Resolution.Degree);
             Assert.Contains(new DecisionHistoryProjector().Project(quiet.Host.World, 5).Entries,
                 entry => entry.Message.Contains("resolved"));
+            DecisionFeedEntryView recentQuietResult = Assert.Single(
+                new DecisionFeedProjector(attentionTestPolicy, quiet.Host.HoldPolicy)
+                    .Project(quiet.Host.World).Entries,
+                entry => entry.DecisionId == quietDecision.Id.Value);
+            Assert.True(recentQuietResult.IsRecentResolution);
+            Assert.Equal(nameof(DecisionStatus.Resolved), recentQuietResult.StatusLabel);
+            Assert.Null(recentQuietResult.TimeRemainingLabel);
+            Assert.Contains(
+                new NotificationRecapProjector(attentionTestPolicy)
+                    .Project(quiet.Host.World, SimulationMode.OfflineCatchUp, maximumGroups: 100).Entries,
+                entry => entry.DecisionId == quietDecision.Id.Value && entry.OccurrenceCount >= 2);
         }
 
         [Fact]

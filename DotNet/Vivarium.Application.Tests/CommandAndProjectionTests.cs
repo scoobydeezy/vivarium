@@ -75,6 +75,48 @@ namespace Vivarium.Application.Tests
         }
 
         [Fact]
+        public void ScheduleProjectionOrdersMaterializedCommitmentsAndFindsEveryOverlap()
+        {
+            TestWorld fixture = TestWorld.Create();
+            WorldState world = fixture.Host.World;
+            var longRoutine = new Commitment(
+                world.RuntimeIds.Commitments.Next(), fixture.Mina,
+                new AuthoredId("commitment.long_routine"),
+                SimTime.FromClockTime(0, 10, 0), SimTime.FromClockTime(0, 10, 15),
+                SimDuration.FromHours(4), fixture.Bakery, 100,
+                sourceTemplateId: new AuthoredId("routine.long_shift"));
+            var shortMiddle = new Commitment(
+                world.RuntimeIds.Commitments.Next(), fixture.Mina,
+                new AuthoredId("commitment.short_middle"),
+                SimTime.FromClockTime(0, 11, 0), SimTime.FromClockTime(0, 11, 5),
+                SimDuration.FromMinutes(15), fixture.Home, 50);
+            var shortLater = new Commitment(
+                world.RuntimeIds.Commitments.Next(), fixture.Mina,
+                new AuthoredId("commitment.short_later"),
+                SimTime.FromClockTime(0, 12, 0), SimTime.FromClockTime(0, 12, 5),
+                SimDuration.FromMinutes(15), fixture.Home, 50);
+            world.Commitments.Add(longRoutine.Id, longRoutine);
+            world.Commitments.Add(shortMiddle.Id, shortMiddle);
+            world.Commitments.Add(shortLater.Id, shortLater);
+
+            ScheduleView view = new ScheduleProjector().Project(world, fixture.Mina);
+
+            Assert.Equal("Mina Cairn", view.CharacterName);
+            Assert.Equal("Day 0 08:00", view.NowLabel);
+            Assert.Equal(3, view.ConflictCount);
+            Assert.Equal(new[] { longRoutine.Id.Value, shortMiddle.Id.Value, shortLater.Id.Value },
+                view.Entries.Select(entry => entry.CommitmentId));
+            ScheduleEntryView later = view.Entries[2];
+            Assert.True(later.Conflicts);
+            Assert.Contains(longRoutine.Id.Value, later.ConflictingCommitmentIds);
+            Assert.DoesNotContain(shortMiddle.Id.Value, later.ConflictingCommitmentIds);
+            Assert.Equal("Routine routine.long_shift", view.Entries[0].SourceLabel);
+            Assert.Equal("Day 0 10:15", view.Entries[0].LatestStartLabel);
+            Assert.Equal("Day 0 14:00", view.Entries[0].ExpectedEndLabel);
+            Assert.Equal("Upcoming", view.Entries[0].TimingLabel);
+        }
+
+        [Fact]
         public void CommandSequenceIsSeparateFromEventSequence()
         {
             // §34: deliberately distinct counters with different scope and lifetime.
@@ -153,17 +195,27 @@ namespace Vivarium.Application.Tests
             TestWorld fixture = TestWorld.Create();
             Decision decision = fixture.CreateDecision();
 
-            var projector = new DecisionProjector(fixture.Catalog.Interventions);
+            var projector = new DecisionProjector(
+                fixture.Catalog.Interventions,
+                fixture.Host.HoldPolicy);
             DecisionView before = projector.Project(fixture.Host.World, decision);
             InfluenceView ambitionView = FindInfluenceView(before, decision.Influences[0].Id.Value);
 
             Assert.True(ambitionView.CanBeIntervenedOn);
+            Assert.True(before.CanBeHeld);
+            Assert.Equal(fixture.Host.HoldPolicy.MaxGlobalHeld, before.GlobalHoldRemaining);
+            Assert.Equal(fixture.Host.HoldPolicy.MaxHeldPerCharacter, before.CharacterHoldRemaining);
+            Assert.Empty(before.AppliedInterventions);
             Assert.True(fixture.Host.Session.Execute(
                 new ApplyDecisionInterventionCommand(decision.Id, TestWorld.InterventionStepUp, decision.Influences[0].Id)).IsSuccess);
             Assert.Equal(2, fixture.Host.World.Nudges.Balance);
 
             // Spent: the projection must now agree that the control should be disabled.
             DecisionView after = projector.Project(fixture.Host.World, decision);
+            AppliedInterventionView applied = Assert.Single(after.AppliedInterventions);
+            Assert.Equal(TestWorld.InterventionStepUp.Value, applied.InterventionDefinitionId);
+            Assert.Equal(decision.Influences[0].Id.Value, applied.TargetInfluenceId);
+            Assert.Equal(1, applied.ResourceCost);
             Assert.False(FindInfluenceView(after, decision.Influences[0].Id.Value).Interventions
                 .Single(item => item.InterventionDefinitionId == TestWorld.InterventionStepUp.Value).IsAvailable);
 

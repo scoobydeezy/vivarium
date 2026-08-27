@@ -160,6 +160,7 @@ namespace Vivarium.Unity.Bootstrap
             if (seedDemoCharacter)
             {
                 WorldLayout = MinimumPlayableWorld.Populate(_host);
+                presenter.ConfigureLocations(new[] { WorldLayout.Home, WorldLayout.Bakery, WorldLayout.Commons });
             }
 
             _host.Projections.OnQuiescence(_host.World, _host.Simulation);
@@ -259,6 +260,7 @@ namespace Vivarium.Unity.Bootstrap
             SimDuration elapsed = offline.ElapsedSince(saved);
 
             _offlineReturnMinutes = System.Math.Max(0, elapsed.TotalMinutes);
+            presenter.BeginOfflineRecap(_host.World.Clock.Now);
 
             if (elapsed.TotalMinutes <= 0)
             {

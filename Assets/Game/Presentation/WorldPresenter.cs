@@ -6,6 +6,7 @@ using Vivarium.Application.Queries;
 using Vivarium.Domain.Common;
 using Vivarium.Domain.Decisions;
 using Vivarium.Domain.Simulation;
+using Vivarium.Domain.Time;
 
 namespace Vivarium.Unity.Presentation
 {
@@ -17,6 +18,8 @@ namespace Vivarium.Unity.Presentation
         [SerializeField] private CharacterProfilePanel profilePanel;
         [SerializeField] private CharacterRosterPanel rosterPanel;
         [SerializeField] private DecisionPanel decisionPanel;
+        [SerializeField] private WorldLocationPanel locationPanel;
+        [SerializeField] private NotificationRecapPanel notificationPanel;
 
         private readonly Dictionary<int, CharacterView> _activeViews = new Dictionary<int, CharacterView>();
         private readonly Stack<CharacterView> _pool = new Stack<CharacterView>();
@@ -25,12 +28,24 @@ namespace Vivarium.Unity.Presentation
         private readonly CharacterProfileProjector _profiles = new CharacterProfileProjector();
         private CharacterRosterProjector _roster;
         private readonly DecisionHistoryProjector _decisionHistory = new DecisionHistoryProjector();
+        private readonly NudgeEconomyProjector _nudgeEconomy = new NudgeEconomyProjector();
+        private readonly DecisionInterventionResourceProjector _interventionResources =
+            new DecisionInterventionResourceProjector();
 
         private ProjectionPublisher _publisher;
         private Func<ICommand, string, CommandEnvelope> _enqueue;
         private CharacterId _inspectedCharacter;
         private DecisionProjector _decisionProjector;
-        private AuthoredId _interventionDefinitionId;
+        private DecisionFeedProjector _decisionFeed;
+        private IReadOnlyDictionary<AuthoredId, InterventionDefinition> _interventions;
+        private DecisionHoldPolicy _holds;
+        private DecisionId _selectedDecisionId;
+        private WorldState _lastWorld;
+        private readonly LocationProjector _locations = new LocationProjector();
+        private IReadOnlyList<LocationId> _managedLocations = new LocationId[0];
+        private LocationId _selectedLocationId;
+        private NotificationRecapProjector _notifications;
+        private SimTime? _offlineRecapSince;
 
         public int ActiveViewCount => _activeViews.Count;
 
@@ -49,17 +64,31 @@ namespace Vivarium.Unity.Presentation
 
         public void ConfigureDecisionContent(IReadOnlyDictionary<AuthoredId, InterventionDefinition> interventions)
         {
-            _decisionProjector = new DecisionProjector(interventions);
-            _interventionDefinitionId = AuthoredId.None;
-            foreach (KeyValuePair<AuthoredId, InterventionDefinition> pair in interventions)
-            {
-                _interventionDefinitionId = pair.Key;
-                break;
-            }
+            _interventions = interventions ?? throw new ArgumentNullException(nameof(interventions));
+            RebuildDecisionProjector();
         }
 
-        public void ConfigureRoster(DecisionImportancePolicyDefinition importance, DecisionHoldPolicy holds) =>
+        public void ConfigureRoster(DecisionImportancePolicyDefinition importance, DecisionHoldPolicy holds)
+        {
             _roster = new CharacterRosterProjector(importance, holds);
+            _holds = holds ?? throw new ArgumentNullException(nameof(holds));
+            _decisionFeed = new DecisionFeedProjector(importance, holds);
+            _notifications = new NotificationRecapProjector(importance);
+            RebuildDecisionProjector();
+        }
+
+        public void ConfigureLocations(IReadOnlyList<LocationId> locations)
+        {
+            _managedLocations = locations ?? throw new ArgumentNullException(nameof(locations));
+            _selectedLocationId = locations.Count == 0 ? LocationId.None : locations[0];
+            if (_lastWorld != null) RefreshLocationPanel(_lastWorld);
+        }
+
+        private void RebuildDecisionProjector()
+        {
+            if (_interventions != null)
+                _decisionProjector = new DecisionProjector(_interventions, _holds);
+        }
 
         public void Initialize(ProjectionPublisher publisher, Func<ICommand, string, CommandEnvelope> enqueue)
         {
@@ -73,19 +102,28 @@ namespace Vivarium.Unity.Presentation
             _publisher = publisher ?? throw new ArgumentNullException(nameof(publisher));
             _enqueue = enqueue ?? throw new ArgumentNullException(nameof(enqueue));
             profilePanel.Configure(CloseProfile);
-            decisionPanel.Configure(HoldDecision, ReleaseDecision, InterveneInDecision);
+            decisionPanel.Configure(HoldDecision, ReleaseDecision, InterveneInDecision, SelectDecision);
+            if (locationPanel == null)
+                locationPanel = WorldLocationPanel.CreateRuntime(decisionPanel.transform.parent);
+            locationPanel.Configure(SelectLocation, ToggleLocationAvailability);
+            if (notificationPanel == null)
+                notificationPanel = NotificationRecapPanel.CreateRuntime(decisionPanel.transform.parent);
+            notificationPanel.Configure(OpenNotification);
             _publisher.Subscribe(OnQuiescence);
         }
 
         public void PrepareForWorldReload()
         {
+            _offlineRecapSince = null;
             _inspectedCharacter = CharacterId.None;
+            _selectedDecisionId = DecisionId.None;
             SetSelectedView(CharacterId.None);
             profilePanel.ShowPrompt("World loaded — click a character to inspect");
         }
 
         private void OnQuiescence(WorldState world, SimulationContext context)
         {
+            _lastWorld = world;
             if (_roster == null)
             {
                 _roster = new CharacterRosterProjector();
@@ -103,6 +141,8 @@ namespace Vivarium.Unity.Presentation
             rosterPanel.Apply(roster, ToggleFollow);
             RefreshDecisionPanel(world);
             decisionPanel.ApplyHistory(_decisionHistory.Project(world));
+            RefreshLocationPanel(world);
+            RefreshNotifications(world, context);
             _visibleThisRefresh.Clear();
 
             foreach (CharacterId characterId in world.Attention.WatchedCharacters)
@@ -123,6 +163,56 @@ namespace Vivarium.Unity.Presentation
             }
 
             ReleaseViewsThatLeft();
+        }
+
+        private void RefreshLocationPanel(WorldState world)
+        {
+            if (locationPanel == null || !_selectedLocationId.IsSet ||
+                !_locations.TryProject(world, _selectedLocationId, out LocationView view)) return;
+            locationPanel.Apply(view, _managedLocations);
+        }
+
+        private void SelectLocation(LocationId locationId)
+        {
+            _selectedLocationId = locationId;
+            if (_lastWorld != null) RefreshLocationPanel(_lastWorld);
+        }
+
+        private void ToggleLocationAvailability(LocationId locationId)
+        {
+            if (_lastWorld == null || !_locations.TryProject(_lastWorld, locationId, out LocationView view)) return;
+            _enqueue?.Invoke(new SetLocationAvailabilityCommand(locationId, !view.IsOpen), "location-availability");
+        }
+
+        public void BeginOfflineRecap(SimTime since) => _offlineRecapSince = since;
+
+        private void RefreshNotifications(WorldState world, SimulationContext context)
+        {
+            if (notificationPanel == null || _notifications == null) return;
+            SimTime? since = context.Mode == Vivarium.Domain.Simulation.SimulationMode.OfflineCatchUp
+                ? _offlineRecapSince
+                : null;
+            notificationPanel.Apply(_notifications.Project(world, context.Mode, since));
+            if (context.Mode != Vivarium.Domain.Simulation.SimulationMode.OfflineCatchUp)
+                _offlineRecapSince = null;
+        }
+
+        private void OpenNotification(NotificationEntryView entry)
+        {
+            if (entry.DecisionId > 0)
+            {
+                _selectedDecisionId = new DecisionId(entry.DecisionId);
+                if (_lastWorld != null && _lastWorld.Decisions.TryGet(_selectedDecisionId, out Decision _))
+                    RefreshDecisionPanel(_lastWorld, preserveExplicitSelection: true);
+                return;
+            }
+            if (entry.CharacterId > 0)
+            {
+                OnCharacterTapped(new CharacterId(entry.CharacterId));
+                return;
+            }
+            if (entry.LocationId > 0)
+                SelectLocation(new LocationId(entry.LocationId));
         }
 
         public void OnCharacterTapped(CharacterId characterId)
@@ -168,25 +258,35 @@ namespace Vivarium.Unity.Presentation
             _enqueue?.Invoke(new FollowCharacterCommand(characterId, !currentlyFollowed), "roster-toggle");
         }
 
-        private void RefreshDecisionPanel(WorldState world)
+        private void RefreshDecisionPanel(WorldState world, bool preserveExplicitSelection = false)
         {
-            if (_decisionProjector == null)
+            if (_decisionProjector == null || _decisionFeed == null)
             {
                 return;
             }
 
-            Decision selected = null;
-            foreach (Decision decision in world.Decisions.All)
+            DecisionFeedView feed = _decisionFeed.Project(world);
+            bool selectionStillSurfaced = false;
+            for (int i = 0; i < feed.Entries.Count; i++)
             {
-                if (!decision.IsActive) continue;
-                if (selected == null || decision.Importance > selected.Importance ||
-                    (decision.Importance == selected.Importance && decision.ResolveAt < selected.ResolveAt) ||
-                    (decision.Importance == selected.Importance && decision.ResolveAt == selected.ResolveAt &&
-                     decision.Id.CompareTo(selected.Id) < 0))
-                    selected = decision;
+                if (feed.Entries[i].DecisionId == _selectedDecisionId.Value)
+                {
+                    selectionStillSurfaced = true;
+                    break;
+                }
             }
 
-            if (selected != null)
+            if (!selectionStillSurfaced && !preserveExplicitSelection)
+                _selectedDecisionId = feed.Entries.Count == 0
+                    ? DecisionId.None
+                    : new DecisionId(feed.Entries[0].DecisionId);
+
+            decisionPanel.ApplyFeed(feed, _selectedDecisionId);
+            decisionPanel.ApplyResources(
+                _nudgeEconomy.Project(world),
+                _interventionResources.Project(world));
+
+            if (_selectedDecisionId.IsSet && world.Decisions.TryGet(_selectedDecisionId, out Decision selected))
             {
                 decisionPanel.Apply(_decisionProjector.Project(world, selected));
                 return;
@@ -201,14 +301,23 @@ namespace Vivarium.Unity.Presentation
         private void ReleaseDecision(DecisionId decisionId) =>
             _enqueue?.Invoke(new ReleaseDecisionCommand(decisionId), "release-button");
 
-        private void InterveneInDecision(DecisionId decisionId, DecisionInfluenceId influenceId)
+        private void InterveneInDecision(
+            DecisionId decisionId,
+            DecisionInfluenceId influenceId,
+            AuthoredId interventionDefinitionId)
         {
-            if (_interventionDefinitionId.IsSet)
+            if (interventionDefinitionId.IsSet)
             {
                 _enqueue?.Invoke(
-                    new ApplyDecisionInterventionCommand(decisionId, _interventionDefinitionId, influenceId),
+                    new ApplyDecisionInterventionCommand(decisionId, interventionDefinitionId, influenceId),
                     "intervene-button");
             }
+        }
+
+        private void SelectDecision(DecisionId decisionId)
+        {
+            _selectedDecisionId = decisionId;
+            if (_lastWorld != null) RefreshDecisionPanel(_lastWorld);
         }
 
         private CharacterView Acquire(CharacterId characterId)

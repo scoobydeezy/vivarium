@@ -1,7 +1,7 @@
 # Vivarium Product Roadmap
 
 **Status:** Current product sequence and next-task authority  
-**Last reconciled:** 2026-08-25
+**Last reconciled:** 2026-08-26
 
 This document answers: **given the implemented simulation, what should be built next?** The product
 north star is [`CoreIdentity.md`](CoreIdentity.md). Detailed phase
@@ -26,7 +26,7 @@ multiple habitats, and reciprocal autonomy.
 
 ## Current gate
 
-**Phases 0–4 are complete; Phase 5 is in progress.** The jointly locked
+**Phases 0–5 are complete; Phase 6 is next.** The jointly locked
 [`Minimum Playable Scenario`](MinimumPlayableScenario.md) and
 [`Player Agency Brief`](PlayerAgencyBrief.md) define the small world, meaningful character Decisions,
 supported player actions, and required Unity surfaces.
@@ -39,14 +39,29 @@ separate three-character smoke fixture. Its final Attention
 slice supplies a living-Importance feed, Follow prioritization, durable Normal/Auto-Hold/Quiet policy,
 prospective bounded Auto-Hold, deterministic overflow, and recap-safe Quiet behavior. Closing and
 reopening the Commons during in-flight routine Travel also proves targeted redirection and restored
-availability. Phase 5 now has its HUD/roster and first character-profile slices: Unity hosts the locked
+availability. Phase 5 now has its HUD/roster, character-profile, Decision-center, timeline, and Knowledge slices: Unity hosts the locked
 ten-character cast, the full roster projects observation-safe activity/location plus Attention and
 Decision state, and character profiles project Overview, materialized Schedule, knowledge-filtered
-relationships, Decisions, and retained History. The legacy direct-Travel UI action is hidden because
-Travel is not an MVP player verb. The next vertical slice is Decision feed/detail completion:
+relationships, Decisions, and retained History. Its selectable living-Importance inbox and detail panel
+show Hold capacity, deadlines, visible reasoning, intervention resources and eligibility, pending/frozen
+roll evidence, applied actions, and bounded recent results without surfacing below-threshold Decisions.
+The character timeline presents its bounded materialized planning horizon with windows, deadlines,
+locations, recurring provenance, participants, lifecycle, and authoritative feasibility conflicts,
+including travel-induced conflicts that do not overlap on the clock. The legacy direct-Travel UI action
+is hidden because Travel is not an MVP player verb. The Knowledge mode exposes only player observations,
+including confidence, age, provenance, staleness, and explicitly unknown direction, without leaking
+latent relationship truth or character-held belief clouds. The world/location-management slice now
+adds a selectable Home/Bakery/Commons surface over the same small-cast world. It shows hierarchy,
+availability, Nudge cost and eligibility, watched-character occupancy/travel context, and recent
+location history; its Open/Close action uses the authoritative Commons Command and makes both
+pre-planning fallback and in-flight Travel redirection visible. The final Phase 5 slice adds a bounded
+Knowledge- and Attention-filtered history/notification feed. Live presentation suppresses proactive
+Quiet-character events, offline catch-up becomes one grouped recap, repeated event families coalesce,
+and retained entries navigate back to their Decision, character, or location without creating a second
+event authority. The next vertical slice begins save/continue productization:
 
-> **Complete Decision feed/detail over the shared small-cast Unity world, then move through the
-> remaining world, location-management, notification, and recap surfaces in the locked order.**
+> **Choose and implement the concrete save-store path and restart-safe continue flow, then expose
+> migration and failure diagnostics through the existing Unity HUD.**
 
 Observable completion test:
 
@@ -105,7 +120,7 @@ outcome identically offline and across save/load.
 | 2. Expand meaningful choice | Scenario-required branch points use compiled Considerations and production consequences | Complete |
 | 3. Complete player agency | Nudge economy, re-roll/substitution, and Commons availability become real Commands; interactive Activity stays deferred | Complete |
 | 4. Build the small-cast world | 8–12 characters run 2–3 days through one durable headless acceptance scenario | Complete |
-| 5. Build playable Unity surfaces | Roster, character, Decision, schedule, Knowledge, world, and history views consume projections/Commands | In progress |
+| 5. Build playable Unity surfaces | Roster, character, Decision, schedule, Knowledge, world, and history views consume projections/Commands | Complete |
 | 6. Productize save/continue | Concrete storage, restart continuation, offline catch-up, migration diagnostics, and failure UX | Pending |
 | 7. MVP hardening gate | The small cast is legible, causal, replayable, persistent, and remains within scale gates | Pending |
 | 8. Relationship-memory longevity | Post-MVP consolidation retains defining memories and compacts ordinary history deterministically | Pending, post-MVP |

@@ -25,14 +25,18 @@ namespace Vivarium.Application.Queries
     public sealed class DecisionProjector
     {
         private readonly IReadOnlyDictionary<AuthoredId, InterventionDefinition> _interventions;
+        private readonly DecisionHoldPolicy _holds;
 
         /// <param name="interventions">
         /// Used to answer "should this control be enabled?" with the same rules the command handler
         /// enforces (§19). Pass an empty dictionary to project without intervention affordances.
         /// </param>
-        public DecisionProjector(IReadOnlyDictionary<AuthoredId, InterventionDefinition> interventions = null)
+        public DecisionProjector(
+            IReadOnlyDictionary<AuthoredId, InterventionDefinition> interventions = null,
+            DecisionHoldPolicy holds = null)
         {
             _interventions = interventions ?? new Dictionary<AuthoredId, InterventionDefinition>();
+            _holds = holds;
         }
 
         public DecisionView Project(WorldState world, Decision decision)
@@ -86,6 +90,17 @@ namespace Vivarium.Application.Queries
                     ProjectResolvedReasons(decision.Resolution),
                     ProjectRolls(decision.Resolution.SupersededRolls));
 
+            bool isHeld = world.Attention.IsHeld(decision.Id);
+            int globalRemaining = _holds == null
+                ? 0
+                : Math.Max(0, _holds.MaxGlobalHeld - world.Attention.HeldCount);
+            int heldForCharacter = HeldForCharacter(world, decision.CharacterId);
+            int characterRemaining = _holds == null
+                ? 0
+                : Math.Max(0, _holds.MaxHeldPerCharacter - heldForCharacter);
+            bool canBeHeld = decision.IsActive && !decision.IsAwaitingCommit && !isHeld &&
+                (_holds == null || (globalRemaining > 0 && characterRemaining > 0));
+
             return new DecisionView(
                 decision.Id.Value,
                 decision.CharacterId.Value,
@@ -94,12 +109,59 @@ namespace Vivarium.Application.Queries
                 decision.Status.ToString(),
                 decision.ResolveAt.ToString(),
                 decision.InfluenceRevision,
-                world.Attention.IsHeld(decision.Id),
-                decision.IsActive && !decision.IsAwaitingCommit,
+                isHeld,
+                canBeHeld,
                 options,
                 resolution,
                 decision.CommitmentConflictKey != null,
-                ProjectPending(decision.PendingResolution));
+                ProjectPending(decision.PendingResolution),
+                decision.Importance,
+                globalRemaining,
+                characterRemaining,
+                HoldUnavailableReason(decision, isHeld, globalRemaining, characterRemaining),
+                ProjectAppliedInterventions(decision));
+        }
+
+        private int HeldForCharacter(WorldState world, CharacterId characterId)
+        {
+            if (_holds == null) return 0;
+            int count = 0;
+            foreach (DecisionId heldId in world.Attention.HeldDecisions)
+                if (world.Decisions.TryGet(heldId, out Decision held) &&
+                    held.IsActive && held.CharacterId == characterId)
+                    count++;
+            return count;
+        }
+
+        private string HoldUnavailableReason(
+            Decision decision,
+            bool isHeld,
+            int globalRemaining,
+            int characterRemaining)
+        {
+            if (isHeld) return "decision.hold.already_held";
+            if (!decision.IsActive) return "decision.hold.not_active";
+            if (decision.IsAwaitingCommit) return "decision.hold.rolls_pending";
+            if (_holds != null && globalRemaining == 0) return "decision.hold.global_capacity";
+            if (_holds != null && characterRemaining == 0) return "decision.hold.character_capacity";
+            return null;
+        }
+
+        private static IReadOnlyList<AppliedInterventionView> ProjectAppliedInterventions(Decision decision)
+        {
+            var views = new List<AppliedInterventionView>(decision.Interventions.Count);
+            for (int i = 0; i < decision.Interventions.Count; i++)
+            {
+                AppliedIntervention intervention = decision.Interventions[i];
+                views.Add(new AppliedInterventionView(
+                    intervention.InterventionDefinitionId.Value,
+                    intervention.TargetInfluenceId.Value,
+                    intervention.Kind.ToString(),
+                    intervention.ResourceKind.ToString(),
+                    intervention.ResourceCost,
+                    intervention.CommandSequence));
+            }
+            return views;
         }
 
         private static PendingDecisionResolutionView ProjectPending(PendingDecisionResolution pending)
@@ -267,6 +329,9 @@ namespace Vivarium.Application.Queries
                     eligibility.IsSuccess,
                     eligibility.IsFailure ? eligibility.Reason.Value : null));
             }
+            views.Sort((left, right) => string.CompareOrdinal(
+                left.InterventionDefinitionId,
+                right.InterventionDefinitionId));
             return views;
         }
     }

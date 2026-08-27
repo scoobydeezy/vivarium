@@ -136,16 +136,12 @@ namespace Vivarium.Application.Queries
 
             var traits = new List<KnownFactView>();
             var needs = new List<KnownFactView>();
+            var socialReports = new List<KnownFactView>();
             EntityRef subject = characterId.ToRef();
 
             foreach (KnowledgeEntry entry in world.Knowledge.About(subject))
             {
-                var factView = new KnownFactView(
-                    entry.Key.Qualifier.IsSet ? entry.Key.Qualifier.Value : entry.Key.Kind.Value,
-                    entry.ObservedValue.ToString(),
-                    entry.ObservedAt.ToString(),
-                    entry.Confidence.ToString(),
-                    world.Clock.Now.Since(entry.ObservedAt) > StalenessWindow);
+                KnownFactView factView = ToKnownFact(world, entry);
 
                 if (entry.Key.Kind == FactKinds.CharacterTrait)
                 {
@@ -155,6 +151,11 @@ namespace Vivarium.Application.Queries
                 {
                     needs.Add(factView);
                 }
+                else if (entry.Key.Kind == FactKinds.ReportedSocialBelief ||
+                         entry.Key.Kind == FactKinds.PerceivedGroupOpinion)
+                {
+                    socialReports.Add(factView);
+                }
             }
 
             var relationships = new List<KnownRelationshipView>();
@@ -163,11 +164,17 @@ namespace Vivarium.Application.Queries
                 if (!relationship.IsActive || !relationship.Involves(characterId)) continue;
 
                 var knownFacts = new List<KnownFactView>();
+                SimTime? mostRecentObservation = null;
+                bool hasStaleFacts = false;
                 foreach (KnowledgeEntry entry in world.Knowledge.About(relationship.Id.ToRef()))
                 {
                     if (entry.Key.Kind != FactKinds.RelationshipStanding &&
                         entry.Key.Kind != FactKinds.RelationshipResentment) continue;
-                    knownFacts.Add(ToKnownFact(world, entry));
+                    KnownFactView knownFact = ToKnownFact(world, entry);
+                    knownFacts.Add(knownFact);
+                    hasStaleFacts |= knownFact.MayBeStale;
+                    if (!mostRecentObservation.HasValue || entry.ObservedAt > mostRecentObservation.Value)
+                        mostRecentObservation = entry.ObservedAt;
                 }
                 if (knownFacts.Count == 0) continue;
 
@@ -179,7 +186,11 @@ namespace Vivarium.Application.Queries
                     relationship.Id.Value,
                     otherId.Value,
                     otherName,
-                    knownFacts));
+                    knownFacts,
+                    character.DisplayName + " ↔ " + otherName,
+                    "Direction not established by player evidence",
+                    mostRecentObservation?.ToString(),
+                    hasStaleFacts));
             }
 
             var decisions = new List<CharacterDecisionSummaryView>();
@@ -219,7 +230,8 @@ namespace Vivarium.Application.Queries
                 _schedules.Project(world, characterId),
                 relationships,
                 decisions,
-                history);
+                history,
+                socialReports);
 
             return true;
         }
@@ -227,12 +239,26 @@ namespace Vivarium.Application.Queries
         private static string LocationName(WorldState world, LocationId locationId) =>
             world.Locations.TryGet(locationId, out LocationNode node) ? node.DisplayName : locationId.ToString();
 
-        private static KnownFactView ToKnownFact(WorldState world, KnowledgeEntry entry) => new KnownFactView(
-            entry.Key.Qualifier.IsSet ? entry.Key.Qualifier.Value : entry.Key.Kind.Value,
-            entry.ObservedValue.ToString(),
-            entry.ObservedAt.ToString(),
-            entry.Confidence.ToString(),
-            world.Clock.Now.Since(entry.ObservedAt) > StalenessWindow);
+        private static KnownFactView ToKnownFact(WorldState world, KnowledgeEntry entry)
+        {
+            SimDuration age = world.Clock.Now.Since(entry.ObservedAt);
+            string source = entry.Source.ChannelId.Value;
+            if (entry.Source.Informant.Kind == EntityKind.Character)
+            {
+                var informantId = new CharacterId(entry.Source.Informant.RuntimeId);
+                source += world.Characters.TryGet(informantId, out Character informant)
+                    ? " via " + informant.DisplayName
+                    : " via " + informantId;
+            }
+            return new KnownFactView(
+                entry.Key.Qualifier.IsSet ? entry.Key.Qualifier.Value : entry.Key.Kind.Value,
+                entry.ObservedValue.ToString(),
+                entry.ObservedAt.ToString(),
+                entry.Confidence.ToString(),
+                age > StalenessWindow,
+                source,
+                age == SimDuration.Zero ? "just now" : age + " ago");
+        }
 
         private static bool HasSubject(IReadOnlyList<EntityRef> subjects, EntityRef subject)
         {
@@ -260,9 +286,49 @@ namespace Vivarium.Application.Queries
                 children.Add(child.Value);
             }
 
+            var observed = new List<LocationPresenceView>();
+            foreach (CharacterId characterId in world.Attention.WatchedCharacters)
+            {
+                if (!world.Characters.TryGet(characterId, out Character character) ||
+                    !world.TryGetSpatialContext(characterId, out ActivitySpatialContext spatial))
+                    continue;
+
+                if (spatial.IsLocated && IsWithin(world, spatial.LocationId, locationId))
+                {
+                    string at = world.Locations.Get(spatial.LocationId).DisplayName;
+                    observed.Add(new LocationPresenceView(characterId.Value, character.DisplayName, "at " + at));
+                }
+                else if (spatial.IsTraveling && IsWithin(world, spatial.Transit.DestinationLocationId, locationId))
+                {
+                    string from = world.Locations.Get(spatial.Transit.OriginLocationId).DisplayName;
+                    string to = world.Locations.Get(spatial.Transit.DestinationLocationId).DisplayName;
+                    int percent = spatial.Transit.ProgressBasisPointsAt(world.Clock.Now) / 100;
+                    observed.Add(new LocationPresenceView(
+                        characterId.Value,
+                        character.DisplayName,
+                        $"traveling {from} → {to} ({percent}%)"));
+                }
+            }
+
+            var history = new List<LocationHistoryEntryView>();
+            IReadOnlyList<HistoryEntry> allHistory = world.HistoryLedger.Entries;
+            EntityRef locationSubject = locationId.ToRef();
+            for (int i = allHistory.Count - 1; i >= 0 && history.Count < 5; i--)
+            {
+                HistoryEntry entry = allHistory[i];
+                if (HasSubject(entry.Subjects, locationSubject))
+                    history.Add(new LocationHistoryEntryView(
+                        entry.Id.Value,
+                        entry.OccurredAt.ToString(),
+                        entry.Summary));
+            }
+
             // Counts come from maintained indexes, never from scanning the population (§50).
             bool requestedState = !node.IsOpen;
             Result availability = LocationAvailabilityRules.Evaluate(world, node.Id, requestedState);
+            string parentName = node.ParentLocationId.IsSet
+                ? world.Locations.Get(node.ParentLocationId).DisplayName
+                : null;
             view = new LocationView(
                 node.Id.Value,
                 node.DisplayName,
@@ -272,9 +338,24 @@ namespace Vivarium.Application.Queries
                 children,
                 node.IsOpen,
                 availability.IsSuccess,
-                availability.IsFailure ? availability.Reason.Value : null);
+                availability.IsFailure ? availability.Reason.Value : null,
+                node.ParentLocationId.Value,
+                parentName,
+                world.Nudges.Balance,
+                observed,
+                history);
 
             return true;
+        }
+
+        private static bool IsWithin(WorldState world, LocationId candidate, LocationId selected) =>
+            candidate == selected || world.Locations.IsDescendantOf(candidate, selected);
+
+        private static bool HasSubject(IReadOnlyList<EntityRef> subjects, EntityRef subject)
+        {
+            for (int i = 0; i < subjects.Count; i++)
+                if (subjects[i] == subject) return true;
+            return false;
         }
     }
 
@@ -285,6 +366,7 @@ namespace Vivarium.Application.Queries
     {
         public ScheduleView Project(WorldState world, CharacterId characterId)
         {
+            if (world == null) throw new System.ArgumentNullException(nameof(world));
             var commitments = new List<Commitment>();
             foreach (Commitment commitment in world.Commitments.All)
             {
@@ -300,12 +382,54 @@ namespace Vivarium.Application.Queries
                 return byStart != 0 ? byStart : a.Id.Value.CompareTo(b.Id.Value);
             });
 
+            var conflictsByCommitment = new Dictionary<int, List<int>>();
+            for (int i = 0; i < commitments.Count; i++)
+            {
+                for (int j = i + 1; j < commitments.Count; j++)
+                {
+                    if (!commitments[i].OverlapsWindowOf(commitments[j])) continue;
+                    AddConflict(conflictsByCommitment, commitments[i].Id.Value, commitments[j].Id.Value);
+                    AddConflict(conflictsByCommitment, commitments[j].Id.Value, commitments[i].Id.Value);
+                }
+            }
+
+            foreach (Decision decision in world.Decisions.All)
+            {
+                CommitmentConflictKey key = decision.CommitmentConflictKey;
+                if (!decision.IsActive || key == null || key.CharacterId != characterId) continue;
+                for (int i = 0; i < key.ParticipatingCommitmentIds.Count; i++)
+                {
+                    for (int j = i + 1; j < key.ParticipatingCommitmentIds.Count; j++)
+                    {
+                        AddConflict(
+                            conflictsByCommitment,
+                            key.ParticipatingCommitmentIds[i].Value,
+                            key.ParticipatingCommitmentIds[j].Value);
+                        AddConflict(
+                            conflictsByCommitment,
+                            key.ParticipatingCommitmentIds[j].Value,
+                            key.ParticipatingCommitmentIds[i].Value);
+                    }
+                }
+            }
+
             var entries = new List<ScheduleEntryView>(commitments.Count);
+            int conflictCount = 0;
             for (int i = 0; i < commitments.Count; i++)
             {
                 Commitment commitment = commitments[i];
-                bool conflicts = (i > 0 && commitments[i - 1].OverlapsWindowOf(commitment))
-                    || (i + 1 < commitments.Count && commitments[i + 1].OverlapsWindowOf(commitment));
+                conflictsByCommitment.TryGetValue(commitment.Id.Value, out List<int> conflictingIds);
+                bool conflicts = conflictingIds != null && conflictingIds.Count > 0;
+                if (conflicts) conflictCount++;
+
+                var participantNames = new List<string>(commitment.AdditionalParticipants.Count);
+                for (int participant = 0; participant < commitment.AdditionalParticipants.Count; participant++)
+                {
+                    CharacterId participantId = commitment.AdditionalParticipants[participant];
+                    participantNames.Add(world.Characters.TryGet(participantId, out Character other)
+                        ? other.DisplayName
+                        : participantId.ToString());
+                }
 
                 entries.Add(new ScheduleEntryView(
                     commitment.Id.Value,
@@ -314,10 +438,45 @@ namespace Vivarium.Application.Queries
                     commitment.ExpectedDuration.ToString(),
                     world.Locations.TryGet(commitment.LocationId, out LocationNode node) ? node.DisplayName : commitment.LocationId.ToString(),
                     commitment.Status.ToString(),
-                    conflicts));
+                    conflicts,
+                    commitment.LatestStart.ToString(),
+                    commitment.ExpectedEnd.ToString(),
+                    TimingLabel(commitment, world.Clock.Now),
+                    commitment.SourceTemplateId.IsSet
+                        ? "Routine " + commitment.SourceTemplateId.Value
+                        : "Concrete commitment",
+                    participantNames,
+                    conflictingIds));
             }
 
-            return new ScheduleView(characterId.Value, entries);
+            string characterName = world.Characters.TryGet(characterId, out Character character)
+                ? character.DisplayName
+                : characterId.ToString();
+            return new ScheduleView(
+                characterId.Value,
+                entries,
+                characterName,
+                world.Clock.Now.ToString(),
+                conflictCount);
+        }
+
+        private static void AddConflict(Dictionary<int, List<int>> conflicts, int commitmentId, int otherId)
+        {
+            if (!conflicts.TryGetValue(commitmentId, out List<int> ids))
+            {
+                ids = new List<int>();
+                conflicts.Add(commitmentId, ids);
+            }
+            if (!ids.Contains(otherId)) ids.Add(otherId);
+        }
+
+        private static string TimingLabel(Commitment commitment, SimTime now)
+        {
+            if (commitment.Status == CommitmentStatus.Active) return "Happening now";
+            if (commitment.Status != CommitmentStatus.Planned) return "Past";
+            if (now < commitment.EarliestStart) return "Upcoming";
+            if (now <= commitment.LatestStart) return "Start window open";
+            return "Overdue";
         }
     }
 }

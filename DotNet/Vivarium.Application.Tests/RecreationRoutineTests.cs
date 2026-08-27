@@ -7,6 +7,8 @@ using Vivarium.Domain.Common;
 using Vivarium.Domain.Content;
 using Vivarium.Domain.Decisions;
 using Vivarium.Domain.Evaluation;
+using Vivarium.Domain.History;
+using Vivarium.Domain.Knowledge;
 using Vivarium.Domain.Simulation;
 using Vivarium.Domain.PlayerAgency;
 using Vivarium.Domain.Social;
@@ -109,6 +111,52 @@ namespace Vivarium.Application.Tests
             Assert.False(locationView.IsOpen);
             Assert.True(locationView.CanManageAvailability);
             Assert.Equal(LocationAvailabilityRules.NudgeCost, locationView.AvailabilityNudgeCost);
+            Assert.Equal(2, locationView.NudgeBalance);
+            Assert.Contains(locationView.RecentHistory,
+                entry => entry.Summary.Contains("was closed"));
+
+            NotificationRecapView notification = new NotificationRecapProjector(
+                fixture.Host.Catalog.DecisionImportancePolicy).Project(
+                    fixture.Host.World, SimulationMode.Live, maximumGroups: 1);
+            NotificationEntryView worldChange = Assert.Single(notification.Entries);
+            Assert.Equal("World", worldChange.Category);
+            Assert.Contains("was closed", worldChange.Message);
+
+            for (int i = 0; i < 12; i++)
+                fixture.Host.World.HistoryLedger.Record(
+                    LocationAvailabilityHistoryHandler.HistoryKind,
+                    fixture.Host.World.Clock.Now,
+                    RetentionTier.Recent,
+                    "Commons availability changed again.",
+                    new[] { fixture.Commons.ToRef() });
+            NotificationRecapView grouped = new NotificationRecapProjector(
+                fixture.Host.Catalog.DecisionImportancePolicy).Project(
+                    fixture.Host.World, SimulationMode.OfflineCatchUp, maximumGroups: 1);
+            Assert.Equal(13, Assert.Single(grouped.Entries).OccurrenceCount);
+            Assert.Equal(13, grouped.IncludedEventCount);
+            Assert.Equal(0, grouped.OmittedGroupCount);
+
+            fixture.Host.World.HistoryLedger.Record(
+                new AuthoredId("history.interaction"),
+                fixture.Host.World.Clock.Now,
+                RetentionTier.Recent,
+                "A private interaction.",
+                new[] { fixture.Character.ToRef() });
+            NotificationRecapProjector recap = new NotificationRecapProjector(
+                fixture.Host.Catalog.DecisionImportancePolicy);
+            Assert.DoesNotContain(
+                recap.Project(fixture.Host.World, SimulationMode.OfflineCatchUp, maximumGroups: 20).Entries,
+                entry => entry.Category == "Social");
+
+            fixture.Host.World.Knowledge.Record(new KnowledgeEntry(
+                new FactKey(new AuthoredId("fact.test.observed"), fixture.Character.ToRef()),
+                ObservedValue.Of(new AuthoredId("value.known")),
+                fixture.Host.World.Clock.Now,
+                KnowledgeConfidence.Known,
+                DiscoverySource.Channel(DiscoveryChannels.DirectObservation)));
+            Assert.Contains(
+                recap.Project(fixture.Host.World, SimulationMode.OfflineCatchUp, maximumGroups: 20).Entries,
+                entry => entry.Category == "Social");
 
             fixture.Host.Session.Advance(SimDuration.FromMinutes(10));
 
@@ -123,6 +171,17 @@ namespace Vivarium.Application.Tests
             Fixture fixture = Create(tabletopInterest: 4500, readingInterest: 2500);
             fixture.Host.Session.Advance(SimDuration.FromMinutes(10));
             Assert.Equal(fixture.Commons, Current(fixture.Host, fixture.Character).SpatialContext.Transit.DestinationLocationId);
+            Assert.Empty(new LocationProjector().TryProject(
+                fixture.Host.World, fixture.Commons, out LocationView unwatchedView)
+                ? unwatchedView.ObservedPresence
+                : throw new Xunit.Sdk.XunitException("Commons did not project."));
+            Assert.True(fixture.Host.Session.Execute(
+                new FollowCharacterCommand(fixture.Character, true)).IsSuccess);
+            Assert.True(new LocationProjector().TryProject(
+                fixture.Host.World, fixture.Commons, out LocationView watchedView));
+            Assert.Contains(watchedView.ObservedPresence,
+                presence => presence.CharacterId == fixture.Character.Value &&
+                    presence.StatusLabel.Contains("traveling"));
 
             Result result = fixture.Host.Session.Execute(
                 new SetLocationAvailabilityCommand(fixture.Commons, open: false));

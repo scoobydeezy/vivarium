@@ -25,6 +25,8 @@ namespace Vivarium.Unity.Editor
             CharacterProfilePanel profilePrefab = CreateProfilePanelPrefab();
             CharacterRosterPanel rosterPrefab = CreateRosterPanelPrefab(rosterEntryPrefab);
             DecisionPanel decisionPrefab = CreateDecisionPanelPrefab();
+            WorldLocationPanel locationPrefab = CreateLocationPanelPrefab();
+            NotificationRecapPanel notificationPrefab = CreateNotificationPanelPrefab();
 
             Scene scene = SceneManager.GetActiveScene();
             if (scene.path != TestScenePath)
@@ -49,6 +51,8 @@ namespace Vivarium.Unity.Editor
             CharacterProfilePanel profilePanel = EnsurePrefabInstance(profilePrefab, canvas.transform, "Character Profile Panel");
             CharacterRosterPanel rosterPanel = EnsurePrefabInstance(rosterPrefab, canvas.transform, "Character Roster Panel");
             DecisionPanel decisionPanel = EnsurePrefabInstance(decisionPrefab, canvas.transform, "Decision Panel");
+            WorldLocationPanel locationPanel = EnsurePrefabInstance(locationPrefab, canvas.transform, "World Location Panel");
+            NotificationRecapPanel notificationPanel = EnsurePrefabInstance(notificationPrefab, canvas.transform, "Notification Recap Panel");
             EnsurePersistencePanel(canvas.transform, bootstrapper);
 
             var presenterObject = new SerializedObject(presenter);
@@ -57,6 +61,8 @@ namespace Vivarium.Unity.Editor
             presenterObject.FindProperty("profilePanel").objectReferenceValue = profilePanel;
             presenterObject.FindProperty("rosterPanel").objectReferenceValue = rosterPanel;
             presenterObject.FindProperty("decisionPanel").objectReferenceValue = decisionPanel;
+            presenterObject.FindProperty("locationPanel").objectReferenceValue = locationPanel;
+            presenterObject.FindProperty("notificationPanel").objectReferenceValue = notificationPanel;
             presenterObject.ApplyModifiedPropertiesWithoutUndo();
 
             var bootstrapObject = new SerializedObject(bootstrapper);
@@ -83,7 +89,7 @@ namespace Vivarium.Unity.Editor
 
         private static CharacterProfilePanel CreateProfilePanelPrefab()
         {
-            GameObject root = UiObject("Character Profile Panel", null, new Vector2(620f, 330f));
+            GameObject root = UiObject("Character Profile Panel", null, new Vector2(620f, 520f));
             RectTransform rect = root.GetComponent<RectTransform>();
             Anchor(rect, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(24f, -24f));
             root.AddComponent<Image>().color = new Color(0.04f, 0.06f, 0.08f, 0.88f);
@@ -163,7 +169,7 @@ namespace Vivarium.Unity.Editor
 
         private static DecisionPanel CreateDecisionPanelPrefab()
         {
-            GameObject root = UiObject("Decision Panel", null, new Vector2(520f, 400f));
+            GameObject root = UiObject("Decision Panel", null, new Vector2(660f, 600f));
             RectTransform rect = root.GetComponent<RectTransform>();
             Anchor(rect, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-24f, 24f));
             root.AddComponent<Image>().color = new Color(0.08f, 0.05f, 0.1f, 0.9f);
@@ -172,7 +178,7 @@ namespace Vivarium.Unity.Editor
             TextMeshProUGUI summary = CreateText(root.transform, "Summary", 23f, TextAlignmentOptions.TopLeft);
             summary.rectTransform.anchorMin = new Vector2(0f, 0f);
             summary.rectTransform.anchorMax = new Vector2(1f, 1f);
-            summary.rectTransform.offsetMin = new Vector2(18f, 64f);
+            summary.rectTransform.offsetMin = new Vector2(18f, 150f);
             summary.rectTransform.offsetMax = new Vector2(-18f, -18f);
 
             Button hold = CreateButton(root.transform, "Hold", new Vector2(18f, 12f), new Color(0.32f, 0.22f, 0.08f, 1f));
@@ -189,6 +195,68 @@ namespace Vivarium.Unity.Editor
             GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, PrefabFolder + "/DecisionPanel.prefab");
             Object.DestroyImmediate(root);
             return prefab.GetComponent<DecisionPanel>();
+        }
+
+        private static WorldLocationPanel CreateLocationPanelPrefab()
+        {
+            GameObject root = UiObject("World Location Panel", null, new Vector2(620f, 430f));
+            RectTransform rect = root.GetComponent<RectTransform>();
+            Anchor(rect, Vector2.zero, Vector2.zero, Vector2.zero, new Vector2(24f, 24f));
+            root.AddComponent<Image>().color = new Color(0.04f, 0.1f, 0.1f, 0.9f);
+            WorldLocationPanel panel = root.AddComponent<WorldLocationPanel>();
+
+            TextMeshProUGUI summary = CreateText(root.transform, "Summary", 21f, TextAlignmentOptions.TopLeft);
+            summary.rectTransform.anchorMin = Vector2.zero;
+            summary.rectTransform.anchorMax = Vector2.one;
+            summary.rectTransform.offsetMin = new Vector2(18f, 64f);
+            summary.rectTransform.offsetMax = new Vector2(-18f, -18f);
+
+            Button previous = CreateButton(root.transform, "Previous", new Vector2(18f, 12f), new Color(0.12f, 0.3f, 0.28f, 1f));
+            Button next = CreateButton(root.transform, "Next", new Vector2(174f, 12f), new Color(0.12f, 0.3f, 0.28f, 1f));
+            Button availability = CreateButton(root.transform, "Availability", new Vector2(330f, 12f), new Color(0.12f, 0.3f, 0.28f, 1f));
+            availability.GetComponent<RectTransform>().sizeDelta = new Vector2(270f, 44f);
+
+            var serialized = new SerializedObject(panel);
+            serialized.FindProperty("summaryText").objectReferenceValue = summary;
+            serialized.FindProperty("previousButton").objectReferenceValue = previous;
+            serialized.FindProperty("nextButton").objectReferenceValue = next;
+            serialized.FindProperty("availabilityButton").objectReferenceValue = availability;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, PrefabFolder + "/WorldLocationPanel.prefab");
+            Object.DestroyImmediate(root);
+            return prefab.GetComponent<WorldLocationPanel>();
+        }
+
+        private static NotificationRecapPanel CreateNotificationPanelPrefab()
+        {
+            GameObject root = UiObject("Notification Recap Panel", null, new Vector2(580f, 340f));
+            RectTransform rect = root.GetComponent<RectTransform>();
+            Anchor(rect, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -24f));
+            root.AddComponent<Image>().color = new Color(0.1f, 0.08f, 0.04f, 0.92f);
+            NotificationRecapPanel panel = root.AddComponent<NotificationRecapPanel>();
+
+            TextMeshProUGUI summary = CreateText(root.transform, "Summary", 19f, TextAlignmentOptions.TopLeft);
+            summary.rectTransform.anchorMin = Vector2.zero;
+            summary.rectTransform.anchorMax = Vector2.one;
+            summary.rectTransform.offsetMin = new Vector2(18f, 64f);
+            summary.rectTransform.offsetMax = new Vector2(-18f, -18f);
+
+            Button previous = CreateButton(root.transform, "Previous", new Vector2(18f, 12f), new Color(0.32f, 0.23f, 0.08f, 1f));
+            Button next = CreateButton(root.transform, "Next", new Vector2(174f, 12f), new Color(0.32f, 0.23f, 0.08f, 1f));
+            Button open = CreateButton(root.transform, "Open", new Vector2(330f, 12f), new Color(0.32f, 0.23f, 0.08f, 1f));
+            open.GetComponent<RectTransform>().sizeDelta = new Vector2(230f, 44f);
+
+            var serialized = new SerializedObject(panel);
+            serialized.FindProperty("summaryText").objectReferenceValue = summary;
+            serialized.FindProperty("previousButton").objectReferenceValue = previous;
+            serialized.FindProperty("nextButton").objectReferenceValue = next;
+            serialized.FindProperty("openButton").objectReferenceValue = open;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, PrefabFolder + "/NotificationRecapPanel.prefab");
+            Object.DestroyImmediate(root);
+            return prefab.GetComponent<NotificationRecapPanel>();
         }
 
         private static WorldPresenter EnsurePresenter()

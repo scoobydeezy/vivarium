@@ -1,5 +1,6 @@
 using System.Linq;
 using Vivarium.Application.Commands;
+using Vivarium.Application.Queries;
 using Vivarium.Domain.Activities;
 using Vivarium.Domain.Attention;
 using Vivarium.Domain.Common;
@@ -35,6 +36,36 @@ namespace Vivarium.Application.Tests
             PublishScheduleChange(fixture);
             fixture.Host.Session.Advance(SimDuration.Zero);
             Assert.Single(fixture.Host.World.Decisions.All, d => d.CommitmentConflictKey != null);
+        }
+
+        [Fact]
+        public void TimelineUsesAuthoritativeTravelFeasibilityConflictNotOnlyClockOverlap()
+        {
+            TestWorld fixture = TestWorld.Create();
+            long now = fixture.Host.World.Clock.Now.TotalMinutes;
+            var atHome = new Commitment(
+                fixture.Host.World.RuntimeIds.Commitments.Next(), fixture.Mina,
+                new AuthoredId("commitment.at_home"),
+                new SimTime(now + 60), new SimTime(now + 60),
+                SimDuration.FromMinutes(30), fixture.Home, 4);
+            var atBakery = new Commitment(
+                fixture.Host.World.RuntimeIds.Commitments.Next(), fixture.Mina,
+                new AuthoredId("commitment.at_bakery"),
+                new SimTime(now + 95), new SimTime(now + 95),
+                SimDuration.FromMinutes(30), fixture.Bakery, 6);
+            fixture.Host.World.Commitments.Add(atHome.Id, atHome);
+            fixture.Host.World.Commitments.Add(atBakery.Id, atBakery);
+            PublishScheduleChange(fixture);
+
+            fixture.Host.Session.Advance(SimDuration.Zero);
+
+            Assert.False(atHome.OverlapsWindowOf(atBakery));
+            Assert.Single(fixture.Host.World.Decisions.All, d => d.CommitmentConflictKey != null && d.IsActive);
+            ScheduleView timeline = new ScheduleProjector().Project(fixture.Host.World, fixture.Mina);
+            Assert.Equal(2, timeline.ConflictCount);
+            Assert.All(timeline.Entries, entry => Assert.True(entry.Conflicts));
+            Assert.Contains(atBakery.Id.Value, timeline.Entries[0].ConflictingCommitmentIds);
+            Assert.Contains(atHome.Id.Value, timeline.Entries[1].ConflictingCommitmentIds);
         }
 
         [Fact]
