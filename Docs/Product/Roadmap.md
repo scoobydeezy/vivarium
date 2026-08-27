@@ -1,7 +1,7 @@
 # Vivarium Product Roadmap
 
 **Status:** Current product sequence and next-task authority  
-**Last reconciled:** 2026-08-26
+**Last reconciled:** 2026-08-27
 
 This document answers: **given the implemented simulation, what should be built next?** The product
 north star is [`CoreIdentity.md`](CoreIdentity.md). Detailed phase
@@ -26,7 +26,7 @@ multiple habitats, and reciprocal autonomy.
 
 ## Current gate
 
-**Phases 0–5 are complete; Phase 6 is next.** The jointly locked
+**Phases 0–6 are complete; Phase 7 is next.** The jointly locked
 [`Minimum Playable Scenario`](MinimumPlayableScenario.md) and
 [`Player Agency Brief`](PlayerAgencyBrief.md) define the small world, meaningful character Decisions,
 supported player actions, and required Unity surfaces.
@@ -58,10 +58,14 @@ pre-planning fallback and in-flight Travel redirection visible. The final Phase 
 Knowledge- and Attention-filtered history/notification feed. Live presentation suppresses proactive
 Quiet-character events, offline catch-up becomes one grouped recap, repeated event families coalesce,
 and retained entries navigate back to their Decision, character, or location without creating a second
-event authority. The next vertical slice begins save/continue productization:
+event authority. Phase 6 now productizes persistence with gzipped JSON, atomic-first platform storage
+rooted at Unity's persistent-data path, restart-safe slot discovery, the existing migration chain,
+offline catch-up, compatibility diagnostics, and a player-facing three-slot Save/Continue surface.
+The next gate is Phase 7 hardening:
 
-> **Choose and implement the concrete save-store path and restart-safe continue flow, then expose
-> migration and failure diagnostics through the existing Unity HUD.**
+> **Run the complete small-cast experience repeatedly across live, offline, intervention-heavy, and
+> intervention-free play; fix demonstrated legibility, correctness, and scale failures before adding
+> broader systems.**
 
 Observable completion test:
 
@@ -121,7 +125,7 @@ outcome identically offline and across save/load.
 | 3. Complete player agency | Nudge economy, re-roll/substitution, and Commons availability become real Commands; interactive Activity stays deferred | Complete |
 | 4. Build the small-cast world | 8–12 characters run 2–3 days through one durable headless acceptance scenario | Complete |
 | 5. Build playable Unity surfaces | Roster, character, Decision, schedule, Knowledge, world, and history views consume projections/Commands | Complete |
-| 6. Productize save/continue | Concrete storage, restart continuation, offline catch-up, migration diagnostics, and failure UX | Pending |
+| 6. Productize save/continue | Concrete storage, restart continuation, offline catch-up, migration diagnostics, and failure UX | Complete |
 | 7. MVP hardening gate | The small cast is legible, causal, replayable, persistent, and remains within scale gates | Pending |
 | 8. Relationship-memory longevity | Post-MVP consolidation retains defining memories and compacts ordinary history deterministically | Pending, post-MVP |
 | 9. The Poke | Preserve intent versus forced outcome; physical interference becomes observable history and Observer evidence | Pending, post-MVP |

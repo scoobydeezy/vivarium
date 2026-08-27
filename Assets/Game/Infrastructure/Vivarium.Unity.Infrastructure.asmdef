@@ -3,7 +3,8 @@
     "rootNamespace": "Vivarium.Unity.Infrastructure",
     "references": [
         "Vivarium.Domain",
-        "Vivarium.Application"
+        "Vivarium.Application",
+        "Vivarium.Infrastructure"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

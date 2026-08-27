@@ -561,6 +561,11 @@ For the MVP:
 
 **Goal:** persistence becomes player-facing rather than test-only.
 
+**Status:** Complete. Gzipped JSON is stored through the platform-storage port; Unity uses
+`Application.persistentDataPath`. The three-slot UI supports save, continue, and delete with offline,
+migration, compatibility, and failure feedback. Integration coverage includes a newly constructed
+disk-store instance to prove continuation beyond in-memory process state.
+
 Select the concrete format based on product/platform needs, then implement the existing persistence port.
 
 Minimum behavior:
@@ -960,7 +965,7 @@ behavior, making this the earliest incomplete MPS causal link.
 | Sleep/Energy loop | Missing from playable routine | Critical | Immediate next vertical slice |
 | 8–12-character multi-day scenario | Ten-character/two-day Phase 4 acceptance matrix complete | Complete | Build Phase 5 Unity surfaces over it |
 | Unity general UI | Narrow prototype only | Critical | Build after headless loop is trustworthy |
-| Concrete save format | Deferred | Required for MVP completion | Select after world loop stabilizes |
+| Concrete save format | Gzipped JSON through `PlatformSaveGameStore` | Complete | Preserve versioned DTO/migration authority |
 | Interactive Activity | Seam only; deferred from MVP | Optional | Preserve seam |
 | Economy/construction | Unideated/deferred | Not required | Post-MVP |
 | Advanced pathfinding | Deferred | Not required | Post-MVP unless scenario proves otherwise |

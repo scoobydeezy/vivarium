@@ -301,6 +301,32 @@ namespace Vivarium.Unity.Tests
         }
 
         [UnityTest]
+        public IEnumerator Save_continue_panel_persists_restores_and_reports_status()
+        {
+            const string testSlot = "playmode_phase6_verification";
+            SaveContinuePanel panel = Object.FindAnyObjectByType<SaveContinuePanel>();
+            Assert.That(panel, Is.Not.Null);
+
+            panel.InvokeDeleteForTest(testSlot);
+            _bootstrapper.Host.Session.Advance(SimDuration.FromMinutes(45));
+            long savedMinute = _bootstrapper.Host.World.Clock.Now.TotalMinutes;
+
+            string savedStatus = panel.InvokeSaveForTest(testSlot);
+            Assert.That(savedStatus, Does.Contain("Saved"));
+            Assert.That(_bootstrapper.ListSaveSlots(), Does.Contain(testSlot));
+
+            _bootstrapper.Host.Session.Advance(SimDuration.FromMinutes(30));
+            string loadedStatus = panel.InvokeLoadForTest(testSlot);
+            yield return null;
+
+            Assert.That(loadedStatus, Does.Contain("Loaded"));
+            Assert.That(loadedStatus, Does.Contain("schema"));
+            Assert.That(loadedStatus, Does.Contain("offline catch-up"));
+            Assert.That(_bootstrapper.Host.World.Clock.Now.TotalMinutes, Is.EqualTo(savedMinute));
+            Assert.That(panel.InvokeDeleteForTest(testSlot), Does.Contain("Deleted"));
+        }
+
+        [UnityTest]
         public IEnumerator Unfollow_releases_and_refollow_reuses_a_bound_view()
         {
             CharacterId characterId = FirstCharacter().Id;

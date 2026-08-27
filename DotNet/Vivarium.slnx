@@ -4,6 +4,7 @@
   <Project Path="Vivarium.Domain.Tests/Vivarium.Domain.Tests.csproj" />
   <Project Path="Vivarium.Domain/Vivarium.Domain.csproj" />
   <Project Path="Vivarium.Infrastructure/Vivarium.Infrastructure.csproj" />
+  <Project Path="Vivarium.Infrastructure.Tests/Vivarium.Infrastructure.Tests.csproj" />
   <Project Path="Vivarium.SimRunner/Vivarium.SimRunner.csproj" />
   <Project Path="Vivarium.SimRunner.Tests/Vivarium.SimRunner.Tests.csproj" />
 </Solution>

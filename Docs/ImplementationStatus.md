@@ -33,7 +33,7 @@ literally:
 
 /Assets/Game                Unity-side code, one asmdef per layer
   /Presentation             Vivarium.Unity.Presentation   (Domain, Application, Unity)
-  /Infrastructure           Vivarium.Unity.Infrastructure (Domain, Application, Unity)
+  /Infrastructure           Vivarium.Unity.Infrastructure (Domain, Application, Infrastructure, Unity)
   /Authoring                Vivarium.Unity.Authoring      (Domain, Unity)
   /Bootstrap                Vivarium.Unity.Bootstrap      (everything)
   /Editor                   Vivarium.Unity.Editor         (Domain, Authoring, Editor-only)
@@ -411,7 +411,12 @@ Working implementations:
   existing scheduled-payload collections and older Travel arrivals decode with none. Schema v10 derives
   saved Decision Importance from active persisted reason evaluations rather than retaining legacy authored
   per-type values. Schema v13 adds persisted location availability and management capability; v12
-  locations migrate open and unmanaged.
+  locations migrate open and unmanaged. Phase 6 selects gzipped JSON as the concrete format and composes
+  `PlatformSaveGameStore` over atomic-first file storage. Unity roots that adapter at
+  `Application.persistentDataPath`; a three-slot Save/Continue surface creates, lists, loads, and deletes
+  saves. Loading decodes once, migrates through the explicit schema chain, restores a new world, applies
+  offline catch-up, and reports schema/version drift or actionable corruption/incompatibility failures.
+  Disk tests prove a newly constructed store can continue a prior process's save.
 - **Scale regression gate** — the normal suite repeats a 250-character/six-hour workload and requires
   identical authoritative hashes and deterministic work counts under structural per-character ceilings.
   An opt-in 1,000-character/one-day tier enforces initial wall-clock and heap budgets while the CLI
@@ -427,8 +432,8 @@ Intentionally thin, pending game-design decisions:
   Follow, Attention policy, and feed-qualified Decision attention without leaking unobserved live state;
   character profiles, the selectable Decision feed/detail surface, the dedicated materialized
   schedule/timeline, player-Knowledge relationship view, world/location management surface, and bounded
-  live/offline notification recap are implemented. Phase 6 concrete save storage and restart/failure UX
-  remain.
+  live/offline notification recap are implemented. Phase 6 adds the concrete restart-safe Save/Continue
+  flow and diagnostic/catch-up feedback. Phase 7 hardening remains.
 - **Intent versus forced outcome.** Decisions retain historical reasoning and Commitments distinguish
   planning intent from Activity execution, but there is no general action-attempt provenance or player
   physical-interference path. The simulation cannot yet record “Mina chose and attempted to leave, but
@@ -448,8 +453,6 @@ Intentionally thin, pending game-design decisions:
   attribution, memories, directional channels, and live social belief/Reliance. Institutional
   stakeholders, wages/payroll, promotion/staffing, later attribution correction, and actual Defer
   behavior remain unimplemented.
-- **Save serialization format.** Explicitly deferred (§57). `ISaveGameSerializer` is defined;
-  `InMemorySaveGameStore` exercises mapping without committing to an encoding.
 - **Needs → behaviour breadth.** Every locked MVP Need now has one production behavior: Energy drives
   Sleep/recovery, Hunger drives affordance-gated Eating, Recreation selects reachable Activities from
   Interests with per-instance Decision admission, and Social pressure starts bounded co-located
@@ -570,6 +573,9 @@ The test suite is organised around the §58 invariants rather than around classe
 | Version drift diagnosed, not automatically blocking | `PersistenceTests` |
 | Schema-v6 travel arrivals migrate without invented continuation intent | `PersistenceTests` |
 | Offline duration computed outside Domain | `PersistenceTests` |
+| Gzipped JSON survives a new disk-store instance; overwrite leaves no temporary file | `SaveLoadRoundTripTests` |
+| Deserialize/migrate/restore reports corruption, future schema, and version drift | `SaveLoadBootstrapperTests` |
+| Unity Save/Continue UI persists, restores, reports diagnostics/catch-up, and deletes safely | `VivariumPlayModeTests` |
 | Fixed population workload has identical hash and bounded structural work | `ScaleBenchmarkTests` |
 | Opt-in 1,000-character measured budget | `ScaleBenchmarkTests.StandardMeasuredBudgetIsOptIn` |
 

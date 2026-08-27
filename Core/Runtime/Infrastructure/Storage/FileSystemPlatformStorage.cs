@@ -41,7 +41,31 @@ namespace Vivarium.Infrastructure.Storage
                 Directory.CreateDirectory(directory);
             }
 
-            File.WriteAllBytes(path, contents);
+            if (contents == null) throw new ArgumentNullException(nameof(contents));
+            string temporary = path + ".tmp";
+            try
+            {
+                File.WriteAllBytes(temporary, contents);
+                if (File.Exists(path))
+                {
+                    try
+                    {
+                        File.Replace(temporary, path, null);
+                    }
+                    catch (PlatformNotSupportedException)
+                    {
+                        // Some Unity targets do not implement File.Replace. Preserve functional
+                        // persistence there even though that fallback cannot promise atomic replacement.
+                        File.Delete(path);
+                        File.Move(temporary, path);
+                    }
+                }
+                else File.Move(temporary, path);
+            }
+            finally
+            {
+                if (File.Exists(temporary)) File.Delete(temporary);
+            }
         }
 
         public bool Delete(string relativePath)

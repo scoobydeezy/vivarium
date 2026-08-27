@@ -8,10 +8,9 @@ namespace Vivarium.Infrastructure.Persistence
     /// <summary>
     /// Turns save data into bytes and back (§48).
     /// <para>
-    /// The concrete format is <b>explicitly deferred</b> (§57) — JSON, binary, or something else is a
-    /// decision that can be made once there is a shipping surface to care about. What is not deferred is
-    /// that saves are versioned DTOs (§38) and that migration is explicit (§39), both of which hold
-    /// regardless of encoding.
+    /// Phase 6 selects gzipped JSON for the shipping-facing implementation. The port remains format-
+    /// independent: saves are versioned DTOs (§38) and migration is explicit (§39), regardless of the
+    /// encoder composed at the application boundary.
     /// </para>
     /// </summary>
     public interface ISaveGameSerializer
@@ -109,6 +108,19 @@ namespace Vivarium.Infrastructure.Persistence
             return slots;
         }
 
-        private static string PathFor(string slot) => SaveDirectory + "/" + slot + SaveExtension;
+        private static string PathFor(string slot)
+        {
+            if (string.IsNullOrWhiteSpace(slot))
+                throw new ArgumentException("A save slot needs a name.", nameof(slot));
+            for (int i = 0; i < slot.Length; i++)
+            {
+                char c = slot[i];
+                if (!(char.IsLetterOrDigit(c) || c == '_' || c == '-'))
+                    throw new ArgumentException(
+                        "Save slot names may contain only letters, numbers, underscores, and hyphens.",
+                        nameof(slot));
+            }
+            return SaveDirectory + "/" + slot + SaveExtension;
+        }
     }
 }

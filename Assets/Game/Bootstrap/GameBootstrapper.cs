@@ -3,6 +3,7 @@ using UnityEngine;
 using Vivarium.Application.Commands;
 using Vivarium.Application.Content;
 using Vivarium.Application.Persistence;
+using Vivarium.Application.Ports;
 using Vivarium.Application.Queries;
 using Vivarium.Application.Session;
 using Vivarium.Domain.Activities;
@@ -76,10 +77,12 @@ namespace Vivarium.Unity.Bootstrap
 
         [SerializeField] private TimeDisplay timeDisplay;
 
+        [SerializeField] private SaveContinuePanel saveContinuePanel;
+
         private SimulationHost _host;
         private DefinitionCatalog _catalog;
         private ResolvedContent _resolvedContent;
-        private InMemorySaveGameStore _saveStore;
+        private ISaveGameStore _saveStore;
         private float _accumulatedMinutes;
         private readonly SimulationStatusProjector _statusProjector = new SimulationStatusProjector();
         private long _offlineReturnMinutes = -1;
@@ -128,10 +131,10 @@ namespace Vivarium.Unity.Bootstrap
                 throw new System.InvalidOperationException(
                     "BaseGame content requirements failed: " + string.Join("; ", baseGameErrors));
 
-            _saveStore = new InMemorySaveGameStore();
-
-            // A real save format is deliberately still open (§57). Until a serializer is chosen, the
-            // in-memory store keeps save/load exercised without committing to an encoding.
+            // Phase 6: persistent saves via JSON+gzip under Unity's platform-specific data path (§48, §57).
+            var serializer = new JsonGzipSaveGameSerializer();
+            var storage = new UnityPersistentDataPathStorage();
+            _saveStore = new PlatformSaveGameStore(storage, serializer);
             _host = SimulationBootstrapper.CreateNewWorld(
                 worldSeed,
                 SimTime.FromClockTime(startDay, startHour, 0),
@@ -163,37 +166,18 @@ namespace Vivarium.Unity.Bootstrap
                 presenter.ConfigureLocations(new[] { WorldLayout.Home, WorldLayout.Bakery, WorldLayout.Commons });
             }
 
+            ConfigurePersistencePresentation();
+
             _host.Projections.OnQuiescence(_host.World, _host.Simulation);
 
             RefreshStatus(Domain.Simulation.SimulationMode.Live);
         }
 
-        public void SaveRuntimeSmokeTest() => _host.Session.Save("runtime-smoke-test");
+        public void SaveRuntimeSmokeTest() => SaveToSlot("runtime-smoke-test");
 
         public bool LoadRuntimeSmokeTest()
         {
-            if (!_saveStore.TryLoad("runtime-smoke-test", out SaveGameData saved))
-            {
-                return false;
-            }
-
-            WorldState restoredWorld = _host.SaveMapper.Restore(saved);
-            _host = SimulationBootstrapper.CreateFromRestoredWorld(
-                restoredWorld,
-                _catalog,
-                saved.LastCommandSequence,
-                saved.SimulationRulesVersion,
-                trace: null,
-                saveStore: _saveStore,
-                realWorldClock: new UnityRealWorldClock());
-            MinimumPlayableWorld.ConfigureScenarioServices(_host);
-
-            _accumulatedMinutes = 0f;
-            presenter.PrepareForWorldReload();
-            presenter.Initialize(_host.Projections, (command, diagnostics) => _host.Session.Enqueue(command, diagnostics));
-            _host.Projections.OnQuiescence(_host.World, _host.Simulation);
-            RefreshStatus(Domain.Simulation.SimulationMode.Live);
-            return true;
+            return TryLoadSlot("runtime-smoke-test", out _);
         }
 
         public void LoadRuntimeSmokeTestFromUi() => LoadRuntimeSmokeTest();
@@ -247,6 +231,35 @@ namespace Vivarium.Unity.Bootstrap
         /// <summary>Saves at a quiescent boundary (§2.2.1).</summary>
         public SaveGameData Save(string slot) => _host.Session.Save(slot);
 
+        public IReadOnlyList<string> ListSaveSlots() => _saveStore.ListSlots();
+
+        public string SaveToSlot(string slot)
+        {
+            try
+            {
+                SaveGameData saved = Save(slot);
+                return $"Saved {slot} at {FormatSimTime(saved.ClockMinutes)}.";
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"Failed to save '{slot}': {ex.Message}");
+                return $"Save failed: {ex.Message}";
+            }
+        }
+
+        public string DeleteSaveSlot(string slot)
+        {
+            try
+            {
+                return _saveStore.Delete(slot) ? $"Deleted {slot}." : $"No save exists in {slot}.";
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"Failed to delete '{slot}': {ex.Message}");
+                return $"Delete failed: {ex.Message}";
+            }
+        }
+
         /// <summary>
         /// Applies offline catch-up for a save that was taken earlier (§21).
         /// <para>
@@ -272,6 +285,109 @@ namespace Vivarium.Unity.Bootstrap
             _host.Session.Advance(elapsed, Domain.Simulation.SimulationMode.OfflineCatchUp, publishEveryInstants: 500);
             RefreshStatus(Domain.Simulation.SimulationMode.OfflineCatchUp);
         }
+
+        /// <summary>
+        /// Loads a saved game from disk with full migration and diagnostics (Phase 6 §4.2).
+        /// <para>
+        /// Deserializes → migrates schema → restores world → applies offline catch-up.
+        /// All errors are handled and logged; callback receives success/failure.
+        /// </para>
+        /// </summary>
+        public string LoadFromSlot(string slot)
+        {
+            TryLoadSlot(slot, out string message);
+            return message;
+        }
+
+        public void LoadSave(string slot, System.Action<bool> onComplete) =>
+            onComplete?.Invoke(TryLoadSlot(slot, out _));
+
+        private bool TryLoadSlot(string slot, out string message)
+        {
+            SaveGameData saved;
+            try
+            {
+                if (_saveStore == null || !_saveStore.TryLoad(slot, out saved))
+                {
+                    message = $"No save exists in {slot}.";
+                    return false;
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"Failed to read save '{slot}': {ex.Message}");
+                message = $"Load failed — corrupted or unreadable save: {ex.Message}";
+                return false;
+            }
+
+            var bootstrapper = new SaveLoadBootstrapper(
+                new JsonGzipSaveGameSerializer(),
+                _host.SaveMapper,
+                _catalog.ContentVersion,
+                simulationRulesVersion);
+            SaveLoadResult result = bootstrapper.TryRestore(saved);
+            if (!result.IsSuccess)
+            {
+                Debug.LogError($"Failed to load save '{slot}' ({result.ErrorKind}): {result.ErrorMessage}");
+                message = $"Load failed [{result.ErrorKind}]: {result.ErrorMessage}";
+                return false;
+            }
+
+            try
+            {
+                _host = SimulationBootstrapper.CreateFromRestoredWorld(
+                    result.World,
+                    _catalog,
+                    result.SavedData.LastCommandSequence,
+                    simulationRulesVersion,
+                    trace: null,
+                    saveStore: _saveStore,
+                    realWorldClock: new UnityRealWorldClock());
+                MinimumPlayableWorld.ConfigureScenarioServices(_host);
+
+                _accumulatedMinutes = 0f;
+                presenter.PrepareForWorldReload();
+                presenter.Initialize(_host.Projections, (command, diagnostics) => _host.Session.Enqueue(command, diagnostics));
+                _host.Projections.OnQuiescence(_host.World, _host.Simulation);
+                ApplyOfflineProgression(result.SavedData);
+                RefreshStatus(Domain.Simulation.SimulationMode.Live);
+                message = $"Loaded {slot} — {FormatCompatibility(result.CompatibilityReport)}; " +
+                    $"offline catch-up {SimDuration.FromMinutes(_offlineReturnMinutes)}.";
+                return true;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"Failed to restore save '{slot}': {ex.Message}");
+                message = $"Load failed [RestorationFailed]: {ex.Message}";
+                return false;
+            }
+        }
+
+        private void ConfigurePersistencePresentation()
+        {
+            if (saveContinuePanel == null) saveContinuePanel = FindAnyObjectByType<SaveContinuePanel>();
+            if (saveContinuePanel == null)
+            {
+                Canvas canvas = FindAnyObjectByType<Canvas>();
+                if (canvas == null)
+                    throw new System.InvalidOperationException("Save/continue presentation requires a Canvas.");
+                saveContinuePanel = SaveContinuePanel.CreateRuntime(canvas.transform);
+            }
+            saveContinuePanel.Configure(ListSaveSlots, SaveToSlot, LoadFromSlot, DeleteSaveSlot);
+        }
+
+        private static string FormatCompatibility(SaveCompatibilityReport report)
+        {
+            string migrations = report.MigrationSteps.Count == 0
+                ? "schema current"
+                : "migrated " + string.Join(", ", report.MigrationSteps);
+            if (!report.ReproductionIsVersionScoped) return migrations + ", versions match";
+            return migrations + $", version drift content={report.ContentVersionDiffers}, " +
+                $"rules={report.RulesVersionDiffers}, rng={report.RandomAlgorithmVersionDiffers}";
+        }
+
+        private static string FormatSimTime(long totalMinutes) =>
+            $"Day {totalMinutes / 1440} {totalMinutes % 1440 / 60:00}:{totalMinutes % 60:00}";
 
         private void RefreshStatus(Domain.Simulation.SimulationMode mode) =>
             timeDisplay?.Apply(_statusProjector.Project(

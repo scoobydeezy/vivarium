@@ -1,6 +1,5 @@
 using TMPro;
 using UnityEditor;
-using UnityEditor.Events;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -27,6 +26,7 @@ namespace Vivarium.Unity.Editor
             DecisionPanel decisionPrefab = CreateDecisionPanelPrefab();
             WorldLocationPanel locationPrefab = CreateLocationPanelPrefab();
             NotificationRecapPanel notificationPrefab = CreateNotificationPanelPrefab();
+            SaveContinuePanel saveContinuePrefab = CreateSaveContinuePanelPrefab();
 
             Scene scene = SceneManager.GetActiveScene();
             if (scene.path != TestScenePath)
@@ -53,7 +53,7 @@ namespace Vivarium.Unity.Editor
             DecisionPanel decisionPanel = EnsurePrefabInstance(decisionPrefab, canvas.transform, "Decision Panel");
             WorldLocationPanel locationPanel = EnsurePrefabInstance(locationPrefab, canvas.transform, "World Location Panel");
             NotificationRecapPanel notificationPanel = EnsurePrefabInstance(notificationPrefab, canvas.transform, "Notification Recap Panel");
-            EnsurePersistencePanel(canvas.transform, bootstrapper);
+            SaveContinuePanel saveContinuePanel = EnsurePrefabInstance(saveContinuePrefab, canvas.transform, "Save Continue Panel");
 
             var presenterObject = new SerializedObject(presenter);
             presenterObject.FindProperty("characterViewPrefab").objectReferenceValue = characterPrefab;
@@ -67,6 +67,7 @@ namespace Vivarium.Unity.Editor
 
             var bootstrapObject = new SerializedObject(bootstrapper);
             bootstrapObject.FindProperty("presenter").objectReferenceValue = presenter;
+            bootstrapObject.FindProperty("saveContinuePanel").objectReferenceValue = saveContinuePanel;
             bootstrapObject.ApplyModifiedPropertiesWithoutUndo();
 
             EditorSceneManager.MarkSceneDirty(scene);
@@ -259,6 +260,45 @@ namespace Vivarium.Unity.Editor
             return prefab.GetComponent<NotificationRecapPanel>();
         }
 
+        private static SaveContinuePanel CreateSaveContinuePanelPrefab()
+        {
+            GameObject root = UiObject("Save Continue Panel", null, new Vector2(620f, 190f));
+            RectTransform rect = root.GetComponent<RectTransform>();
+            Anchor(rect, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 24f));
+            root.AddComponent<Image>().color = new Color(0.05f, 0.08f, 0.14f, 0.92f);
+            SaveContinuePanel panel = root.AddComponent<SaveContinuePanel>();
+
+            TextMeshProUGUI summary = CreateText(root.transform, "Summary", 21f, TextAlignmentOptions.TopLeft);
+            summary.rectTransform.anchorMin = Vector2.zero;
+            summary.rectTransform.anchorMax = Vector2.one;
+            summary.rectTransform.offsetMin = new Vector2(16f, 62f);
+            summary.rectTransform.offsetMax = new Vector2(-16f, -14f);
+
+            Button previous = CreateButton(root.transform, "Previous", new Vector2(12f, 12f), new Color(0.16f, 0.25f, 0.42f, 1f));
+            previous.GetComponent<RectTransform>().sizeDelta = new Vector2(105f, 40f);
+            Button next = CreateButton(root.transform, "Next", new Vector2(123f, 12f), new Color(0.16f, 0.25f, 0.42f, 1f));
+            next.GetComponent<RectTransform>().sizeDelta = new Vector2(80f, 40f);
+            Button save = CreateButton(root.transform, "Save", new Vector2(209f, 12f), new Color(0.16f, 0.25f, 0.42f, 1f));
+            save.GetComponent<RectTransform>().sizeDelta = new Vector2(100f, 40f);
+            Button load = CreateButton(root.transform, "Load", new Vector2(315f, 12f), new Color(0.16f, 0.25f, 0.42f, 1f));
+            load.GetComponent<RectTransform>().sizeDelta = new Vector2(100f, 40f);
+            Button delete = CreateButton(root.transform, "Delete", new Vector2(421f, 12f), new Color(0.16f, 0.25f, 0.42f, 1f));
+            delete.GetComponent<RectTransform>().sizeDelta = new Vector2(185f, 40f);
+
+            var serialized = new SerializedObject(panel);
+            serialized.FindProperty("summaryText").objectReferenceValue = summary;
+            serialized.FindProperty("previousButton").objectReferenceValue = previous;
+            serialized.FindProperty("nextButton").objectReferenceValue = next;
+            serialized.FindProperty("saveButton").objectReferenceValue = save;
+            serialized.FindProperty("loadButton").objectReferenceValue = load;
+            serialized.FindProperty("deleteButton").objectReferenceValue = delete;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, PrefabFolder + "/SaveContinuePanel.prefab");
+            Object.DestroyImmediate(root);
+            return prefab.GetComponent<SaveContinuePanel>();
+        }
+
         private static WorldPresenter EnsurePresenter()
         {
             WorldPresenter existing = Object.FindAnyObjectByType<WorldPresenter>();
@@ -281,22 +321,6 @@ namespace Vivarium.Unity.Editor
             GameObject instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab.gameObject, parent);
             instance.name = name;
             return instance.GetComponent<T>();
-        }
-
-        private static void EnsurePersistencePanel(Transform parent, GameBootstrapper bootstrapper)
-        {
-            Transform existing = parent.Find("Debug Persistence Panel");
-            if (existing != null)
-            {
-                return;
-            }
-
-            GameObject panel = UiObject("Debug Persistence Panel", parent, new Vector2(300f, 52f));
-            Anchor(panel.GetComponent<RectTransform>(), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -24f));
-            Button save = CreateButton(panel.transform, "Save", new Vector2(4f, 4f), new Color(0.2f, 0.28f, 0.2f, 1f));
-            Button load = CreateButton(panel.transform, "Load", new Vector2(156f, 4f), new Color(0.2f, 0.28f, 0.2f, 1f));
-            UnityEventTools.AddPersistentListener(save.onClick, bootstrapper.SaveRuntimeSmokeTest);
-            UnityEventTools.AddPersistentListener(load.onClick, bootstrapper.LoadRuntimeSmokeTestFromUi);
         }
 
         private static Transform EnsureChild(Transform parent, string name)
