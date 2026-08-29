@@ -108,7 +108,7 @@ namespace Vivarium.Infrastructure.Bootstrap
             world.Attention.SetPolicy(layout.Mina, AttentionPolicy.AutoHold);
             AddRecreationRoutine(host, layout.Glen, 5990, tabletopInterest: 4500, readingInterest: 2500);
             AddSocialRoutine(host, layout.Lena, 7000);
-            AddRecreationRoutine(host, layout.Owen, 5020, tabletopInterest: 8500, readingInterest: 1500);
+            AddRecreationRoutine(host, layout.Owen, 5020, tabletopInterest: 8500, readingInterest: 0);
             AddRecreationRoutine(host, layout.Priya, 1000, tabletopInterest: 1000, readingInterest: 3500);
             AddSocialRoutine(host, layout.Tess, 6500);
 
@@ -344,7 +344,7 @@ namespace Vivarium.Infrastructure.Bootstrap
                 second,
                 new AuthoredId(kind),
                 AnalyticalProgression.Constant(initialAffection, world.Clock.Now),
-                world.Clock.Now);
+                world.Clock.Now.Plus(SimDuration.FromDays(-30)));
             world.Relationships.Add(relationship.Id, relationship);
             world.RelationshipIndex.Register(relationship);
             return relationship;
@@ -500,4 +500,3 @@ namespace Vivarium.Infrastructure.Bootstrap
         }
     }
 }
-

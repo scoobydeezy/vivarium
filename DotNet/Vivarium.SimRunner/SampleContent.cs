@@ -436,7 +436,9 @@ namespace Vivarium.SimRunner
                         CategorySocial,
                         new AuthoredId("influence.enjoys_company"),
                         new AuthoredId("influence.avoids_company"),
-                        InfluenceVisibility.Full)),
+                    InfluenceVisibility.Full),
+                    minimumRepeatInterval: SimDuration.FromDays(1),
+                    minimumRelationshipAge: SimDuration.FromDays(2)),
                 relationshipOutcomes: new[]
                 {
                     new DecisionRelationshipOutcome(OptionSeekCompany, RelationshipChannels.Affection, 1000),
@@ -460,7 +462,9 @@ namespace Vivarium.SimRunner
                         CategorySocial,
                         new AuthoredId("influence.person_seems_reliable"),
                         new AuthoredId("influence.person_seems_unreliable"),
-                        InfluenceVisibility.Full))));
+                    InfluenceVisibility.Full),
+                    minimumRepeatInterval: SimDuration.FromDays(1),
+                    minimumRelationshipAge: SimDuration.FromDays(2))));
 
             return builder.Build();
         }
@@ -666,7 +670,7 @@ namespace Vivarium.SimRunner
                         {
                             new SignalLinearTerm(
                                 ContextWorkPressure,
-                                SignalNumeric.Scale,
+                                24000,
                                 new AuthoredId("reason.difficult_work_context")),
                         }, null, null, null),
                     new ReasonChannelDefinition(new AuthoredId("reason_channel.work_context")),

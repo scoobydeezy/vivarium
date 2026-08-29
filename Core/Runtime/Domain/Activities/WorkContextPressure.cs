@@ -39,9 +39,13 @@ namespace Vivarium.Domain.Activities
         public void CharacterArrived(SimulationContext context, CharacterId arrived, LocationId location)
         {
             WorldState world = context.World;
-            foreach (CharacterId occupant in world.Spatial.DirectOccupantsOf(location))
+            // Only an existing negative relationship can produce this modifier. Walk the arrived
+            // character's derived relationship adjacency instead of every occupant in a potentially
+            // population-scale location.
+            foreach (CharacterId occupant in world.RelationshipIndex.KnownCharactersOf(arrived))
             {
-                if (occupant == arrived)
+                if (!world.Spatial.TryGetDirectLocation(occupant, out LocationId occupantLocation) ||
+                    occupantLocation != location)
                 {
                     continue;
                 }
@@ -54,9 +58,11 @@ namespace Vivarium.Domain.Activities
         public void CharacterDeparted(SimulationContext context, CharacterId departed, LocationId location)
         {
             WorldState world = context.World;
-            foreach (CharacterId worker in world.Spatial.DirectOccupantsOf(location))
+            foreach (CharacterId worker in world.RelationshipIndex.KnownCharactersOf(departed))
             {
-                if (!IsNegativeRelationship(world, worker, departed) ||
+                if (!world.Spatial.TryGetDirectLocation(worker, out LocationId workerLocation) ||
+                    workerLocation != location ||
+                    !IsNegativeRelationship(world, worker, departed) ||
                     !world.TryGetCurrentActivity(worker, out ActivityInstance activity) ||
                     activity.DefinitionId != _workActivityId ||
                     !activity.HasModifier(_modifierId))

@@ -57,6 +57,22 @@ namespace Vivarium.Domain.Relationships
                 return new CharacterId[0];
             }
 
+            // Spatial and travel membership indexes expose their already-sorted sets through the
+            // IReadOnlyCollection contract. Preserve the exact selection semantics without copying
+            // and sorting the whole shared context for every arrival.
+            if (sharedContextPool is SortedSet<CharacterId> sortedPool)
+            {
+                return SelectFromSortedPool(
+                    actor,
+                    sortedPool,
+                    relationships,
+                    maxCandidates,
+                    scopeType,
+                    scopeId,
+                    rollIndex,
+                    relevance);
+            }
+
             var acquaintances = new List<CharacterId>();
             var strangers = new List<CharacterId>();
 
@@ -111,6 +127,158 @@ namespace Vivarium.Domain.Relationships
             // Bounded deterministic sample: rejection-sample distinct indices, O(remaining) expected,
             // rather than shuffling a pool that could hold thousands.
             var scope = new RandomScope(scopeType, scopeId);
+            IReadOnlyList<int> picked = PickStrangerOrdinals(scope, rollIndex, strangers.Count, remaining);
+
+            for (int i = 0; i < picked.Count; i++)
+            {
+                selected.Add(strangers[picked[i]]);
+            }
+
+            return selected;
+        }
+
+        private IReadOnlyList<CharacterId> SelectFromSortedPool(
+            CharacterId actor,
+            SortedSet<CharacterId> sortedPool,
+            RelationshipIndex relationships,
+            int maxCandidates,
+            AuthoredId scopeType,
+            int scopeId,
+            int rollIndex,
+            IInteractionRelevance relevance)
+        {
+            var acquaintances = new List<CharacterId>();
+            if (relationships != null)
+            {
+                foreach (CharacterId known in relationships.KnownCharactersOf(actor))
+                {
+                    if (known != actor && sortedPool.Contains(known))
+                    {
+                        acquaintances.Add(known);
+                    }
+                }
+            }
+
+            acquaintances.Sort((left, right) =>
+            {
+                if (relevance != null)
+                {
+                    int score = relevance.Score(actor, right).CompareTo(relevance.Score(actor, left));
+                    if (score != 0) return score;
+                }
+                return left.CompareTo(right);
+            });
+            var acquaintanceSet = new HashSet<CharacterId>(acquaintances);
+
+            var selected = new List<CharacterId>(maxCandidates);
+            for (int i = 0; i < acquaintances.Count && selected.Count < maxCandidates; i++)
+            {
+                selected.Add(acquaintances[i]);
+            }
+
+            if (selected.Count >= maxCandidates)
+            {
+                return selected;
+            }
+
+            int strangerCount = sortedPool.Count - acquaintances.Count - (sortedPool.Contains(actor) ? 1 : 0);
+            if (strangerCount <= 0)
+            {
+                return selected;
+            }
+
+            int remaining = maxCandidates - selected.Count;
+            if (strangerCount <= remaining)
+            {
+                foreach (CharacterId candidate in sortedPool)
+                {
+                    if (candidate != actor && !acquaintanceSet.Contains(candidate))
+                    {
+                        selected.Add(candidate);
+                    }
+                }
+                return selected;
+            }
+
+            var scope = new RandomScope(scopeType, scopeId);
+            var picked = PickStrangerOrdinals(scope, rollIndex, strangerCount, remaining);
+            if (TryAppendDensePoolSelections(sortedPool, actor, acquaintanceSet, picked, selected))
+            {
+                return selected;
+            }
+
+            int strangerOrdinal = 0;
+            int pickedOrdinal = 0;
+            foreach (CharacterId candidate in sortedPool)
+            {
+                if (candidate == actor || acquaintanceSet.Contains(candidate))
+                {
+                    continue;
+                }
+
+                if (pickedOrdinal < picked.Count && strangerOrdinal == picked[pickedOrdinal])
+                {
+                    selected.Add(candidate);
+                    pickedOrdinal++;
+                    if (pickedOrdinal == picked.Count)
+                    {
+                        break;
+                    }
+                }
+
+                strangerOrdinal++;
+            }
+
+            return selected;
+        }
+
+        private static bool TryAppendDensePoolSelections(
+            SortedSet<CharacterId> sortedPool,
+            CharacterId actor,
+            HashSet<CharacterId> acquaintanceSet,
+            IReadOnlyList<int> picked,
+            List<CharacterId> selected)
+        {
+            if (sortedPool.Count == 0 ||
+                (long)sortedPool.Max.Value - sortedPool.Min.Value + 1 != sortedPool.Count)
+            {
+                return false;
+            }
+
+            var excluded = new List<CharacterId>(acquaintanceSet.Count + 1);
+            foreach (CharacterId acquaintance in acquaintanceSet)
+            {
+                excluded.Add(acquaintance);
+            }
+            if (sortedPool.Contains(actor))
+            {
+                excluded.Add(actor);
+            }
+            excluded.Sort();
+
+            for (int i = 0; i < picked.Count; i++)
+            {
+                long candidateValue = (long)sortedPool.Min.Value + picked[i];
+                for (int excludedIndex = 0; excludedIndex < excluded.Count; excludedIndex++)
+                {
+                    if (excluded[excludedIndex].Value > candidateValue)
+                    {
+                        break;
+                    }
+                    candidateValue++;
+                }
+                selected.Add(new CharacterId((int)candidateValue));
+            }
+
+            return true;
+        }
+
+        private List<int> PickStrangerOrdinals(
+            RandomScope scope,
+            int rollIndex,
+            int strangerCount,
+            int remaining)
+        {
             var picked = new SortedSet<int>();
             int attempt = 0;
             int attemptLimit = remaining * 8 + 16;
@@ -122,17 +290,12 @@ namespace Vivarium.Domain.Relationships
                     RandomPurposes.InteractionCandidateSample,
                     (rollIndex * attemptLimit) + attempt,
                     0,
-                    strangers.Count);
+                    strangerCount);
                 picked.Add(index);
                 attempt++;
             }
 
-            foreach (int index in picked)
-            {
-                selected.Add(strangers[index]);
-            }
-
-            return selected;
+            return new List<int>(picked);
         }
     }
 }

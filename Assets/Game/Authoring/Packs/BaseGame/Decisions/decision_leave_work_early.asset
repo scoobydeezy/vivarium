@@ -129,7 +129,7 @@ MonoBehaviour:
         revision: 1
         linearTerms:
         - signalId: decision_context.work_pressure
-          coefficient: 10000
+          coefficient: 24000
           provenanceId: reason.difficult_work_context
         pairwiseTerms: []
         idealPoint: []

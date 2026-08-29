@@ -89,9 +89,8 @@ namespace Vivarium.Application.Queries
 
             bool offline = mode == SimulationMode.OfflineCatchUp;
             var groups = new List<Group>();
-            var omittedKeys = new HashSet<string>();
+            var groupsByKey = new Dictionary<string, Group>();
             int included = 0;
-            int omittedGroups = 0;
             IReadOnlyList<HistoryEntry> history = world.HistoryLedger.Entries;
             for (int i = history.Count - 1; i >= 0; i--)
             {
@@ -102,28 +101,37 @@ namespace Vivarium.Application.Queries
 
                 string key = description.Category + ":" + description.CharacterId + ":" +
                     description.DecisionId + ":" + description.LocationId;
-                Group existing = null;
-                for (int groupIndex = 0; groupIndex < groups.Count; groupIndex++)
-                    if (groups[groupIndex].Key == key)
-                    {
-                        existing = groups[groupIndex];
-                        break;
-                    }
-
-                if (existing != null)
+                if (groupsByKey.TryGetValue(key, out Group existing))
                 {
                     existing.Count++;
                     continue;
                 }
 
-                if (groups.Count >= maximumGroups)
-                {
-                    if (omittedKeys.Add(key)) omittedGroups++;
-                    continue;
-                }
-
-                groups.Add(new Group(key, entry, description));
+                var group = new Group(key, entry, description);
+                groups.Add(group);
+                groupsByKey.Add(key, group);
             }
+
+            // Select material groups before routine social repetition can consume the bounded recap.
+            // Display order remains newest-first after selection, so priority affects inclusion rather
+            // than turning the recap into a category-sorted event browser.
+            groups.Sort((left, right) =>
+            {
+                int byPriority = Priority(right.Description.Category).CompareTo(
+                    Priority(left.Description.Category));
+                if (byPriority != 0) return byPriority;
+                int byTime = right.Entry.OccurredAt.CompareTo(left.Entry.OccurredAt);
+                return byTime != 0 ? byTime : right.Entry.Id.CompareTo(left.Entry.Id);
+            });
+            int selectedCount = Math.Min(maximumGroups, groups.Count);
+            int omittedGroups = groups.Count - selectedCount;
+            if (groups.Count > selectedCount)
+                groups.RemoveRange(selectedCount, groups.Count - selectedCount);
+            groups.Sort((left, right) =>
+            {
+                int byTime = right.Entry.OccurredAt.CompareTo(left.Entry.OccurredAt);
+                return byTime != 0 ? byTime : right.Entry.Id.CompareTo(left.Entry.Id);
+            });
 
             var entries = new NotificationEntryView[groups.Count];
             for (int i = 0; i < groups.Count; i++)
@@ -140,6 +148,23 @@ namespace Vivarium.Application.Queries
                     group.Description.LocationId);
             }
             return new NotificationRecapView(offline, entries, included, omittedGroups);
+        }
+
+        private static int Priority(string category)
+        {
+            switch (category)
+            {
+                case "Intervention":
+                case "World":
+                    return 4;
+                case "Decision":
+                case "Commitment":
+                    return 3;
+                case "Resources":
+                    return 2;
+                default:
+                    return 1;
+            }
         }
 
         private bool TryDescribe(

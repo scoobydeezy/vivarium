@@ -186,6 +186,8 @@ namespace Vivarium.Unity.Authoring
         public string negativeLabelId;
         public InfluenceVisibility visibility;
         public AppraisalStrength minimumStrength;
+        public int minimumRepeatIntervalMinutes;
+        public int minimumRelationshipAgeMinutes;
         public bool IsConfigured => !string.IsNullOrWhiteSpace(pressureDefinitionId);
         public SocialInteractionDecisionTrigger ToDefinition() => new SocialInteractionDecisionTrigger(
             new AuthoredId(pressureDefinitionId),
@@ -197,7 +199,9 @@ namespace Vivarium.Unity.Authoring
                 new AuthoredId(positiveLabelId),
                 new AuthoredId(negativeLabelId),
                 visibility),
-            minimumStrength);
+            minimumStrength,
+            SimDuration.FromMinutes(minimumRepeatIntervalMinutes),
+            SimDuration.FromMinutes(minimumRelationshipAgeMinutes));
     }
 
     [System.Serializable]

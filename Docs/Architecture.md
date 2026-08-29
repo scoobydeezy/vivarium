@@ -89,12 +89,15 @@ DotNet/Vivarium.SimRunner/bin/Debug/net10.0/Vivarium.SimRunner.exe determinism
 # Verify save-before-resolution continuation
 DotNet/Vivarium.SimRunner/bin/Debug/net10.0/Vivarium.SimRunner.exe saveload
 
+# Run the two-day Phase 7 longitudinal experience audit
+DotNet/Vivarium.SimRunner/bin/Debug/net10.0/Vivarium.SimRunner.exe audit
+
 # Synthetic population measurement
 DotNet/Vivarium.SimRunner/bin/Debug/net10.0/Vivarium.SimRunner.exe bench 1000 1
 
 # Opt-in measured budget
 $env:VIVARIUM_ENFORCE_PERFORMANCE_BUDGETS='1'
-dotnet test DotNet/Vivarium.SimRunner.Tests --filter StandardMeasuredBudget
+dotnet test DotNet/Vivarium.SimRunner.Tests -c Release --filter StandardMeasuredBudget
 ```
 
 ## Change routing

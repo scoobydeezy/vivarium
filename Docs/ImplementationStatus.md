@@ -86,12 +86,15 @@ Vivarium.SimRunner.exe determinism
 # Save before a decision resolves, reload, confirm the same outcome
 Vivarium.SimRunner.exe saveload
 
+# Two-day ten-character experience audit across control, influenced, live, and offline continuation
+Vivarium.SimRunner.exe audit
+
 # Synthetic population benchmark
 Vivarium.SimRunner.exe bench 1000 1
 
 # Enforce the measured 1,000-character/one-day budget (PowerShell)
 $env:VIVARIUM_ENFORCE_PERFORMANCE_BUDGETS='1'
-dotnet test DotNet/Vivarium.SimRunner.Tests --filter StandardMeasuredBudget
+dotnet test DotNet/Vivarium.SimRunner.Tests -c Release --filter StandardMeasuredBudget
 ```
 
 ## Language level
@@ -420,7 +423,33 @@ Working implementations:
 - **Scale regression gate** — the normal suite repeats a 250-character/six-hour workload and requires
   identical authoritative hashes and deterministic work counts under structural per-character ceilings.
   An opt-in 1,000-character/one-day tier enforces initial wall-clock and heap budgets while the CLI
-  reports the same measurements and authoritative hash (§49–§52).
+  reports the same measurements and authoritative hash (§49–§52). Phase 7A removed two demonstrated
+  population-scaled scans without changing behavior: interaction candidate selection now consumes the
+  existing sorted shared-context index without materializing and sorting the whole crowd, while a
+  rebuildable relationship-adjacency index targets Work-context pressure checks to characters who can
+  actually qualify. After the Phase 7B content calibration, the Release benchmark completes the
+  one-day workload in approximately 5.1 seconds with 33 MB managed heap on the reference development
+  machine, below the existing 15-second / 128-MB budget, with authoritative hash `FB937853E332DCE4`.
+- **Phase 7B longitudinal experience audit** — the headless `audit` command runs the production-shaped
+  ten-character world for two days through an intervention-free live branch plus influenced live and
+  restored offline continuations. It audits every character profile, every Decision explanation, and
+  the bounded recap, and compares a projection-visible continuation fingerprint between live and
+  offline runs. The current fixture completes with 22 Decisions in the control branch and 13 in each
+  influenced continuation, no objective audit issues, and matching live/offline fingerprints. The pass
+  corrected Mina's Hunger-versus-Work importance so the authored Auto-Hold beat actually occurs,
+  prioritizes material recap groups ahead of routine Social coalescing, and limits interaction-created
+  social Decisions to established relationships with a one-day per-pair repeat interval. Interaction
+  Evidence now settles before social Decision construction, preventing same-event belief revision from
+  leaving a resolved Decision without a frozen reason.
+- **Phase 7C Unity experience acceptance** — two scene-level PlayMode passes now carry the shared
+  ten-character fixture through a full intervention-free live continuation and an
+  intervention/Commons/save/reload/offline continuation. They inspect every character through the real
+  profile surface, require legible Activity, location, Schedule, Knowledge, Decision, and History
+  sections, validate frozen Decision explanations, expose all four authored intervention families in
+  the Decision center, preserve Follow across reload, and require material Decision and Commitment
+  groups in the bounded offline recap. The pass exposed a missing selected-row glyph in the shipped TMP
+  font; Decision and recap selection now use a font-safe ASCII marker. Together with the headless audit
+  and scale gates, these passes close the Phase 7 MVP hardening gate.
 
 Intentionally thin, pending game-design decisions:
 
@@ -433,7 +462,8 @@ Intentionally thin, pending game-design decisions:
   character profiles, the selectable Decision feed/detail surface, the dedicated materialized
   schedule/timeline, player-Knowledge relationship view, world/location management surface, and bounded
   live/offline notification recap are implemented. Phase 6 adds the concrete restart-safe Save/Continue
-  flow and diagnostic/catch-up feedback. Phase 7 hardening remains.
+  flow and diagnostic/catch-up feedback. Phase 7A scale recovery, Phase 7B longitudinal auditing, and
+  Phase 7C Unity experience acceptance are complete; the MVP hardening gate is closed.
 - **Intent versus forced outcome.** Decisions retain historical reasoning and Commitments distinguish
   planning intent from Activity execution, but there is no general action-attempt provenance or player
   physical-interference path. The simulation cannot yet record “Mina chose and attempted to leave, but

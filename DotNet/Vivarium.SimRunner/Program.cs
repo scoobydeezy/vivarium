@@ -46,10 +46,66 @@ namespace Vivarium.SimRunner
                 case "saveload":
                     return RunSaveLoadCheck();
 
+                case "audit":
+                    return RunMvpExperienceAudit();
+
                 default:
-                    Console.WriteLine("usage: SimRunner [demo|determinism|saveload|bench <population> <days>]");
+                    Console.WriteLine("usage: SimRunner [demo|audit|determinism|saveload|bench <population> <days>]");
                     return 1;
             }
+        }
+
+        private static int RunMvpExperienceAudit()
+        {
+            MvpExperienceAuditResult audit = MvpExperienceAudit.Run();
+            Console.WriteLine("Phase 7B MVP experience audit");
+
+            for (int branchIndex = 0; branchIndex < audit.Branches.Count; branchIndex++)
+            {
+                MvpExperienceBranchReport branch = audit.Branches[branchIndex];
+                Console.WriteLine($"\n-- {branch.Name} @ {branch.FinalTime} --");
+                Console.WriteLine(
+                    $"activities={branch.ActivityCount} decisions={branch.DecisionCount} " +
+                    $"history={branch.HistoryCount} knowledge={branch.KnowledgeCount} " +
+                    $"nudges={branch.NudgeBalance} commons={(branch.CommonsOpen ? "open" : "closed")}");
+                Console.WriteLine("continuation=" + branch.ContinuationFingerprint.Substring(0, 16));
+
+                for (int i = 0; i < branch.Characters.Count; i++)
+                {
+                    MvpCharacterAuditRow character = branch.Characters[i];
+                    Console.WriteLine(
+                        $"  {character.Name,-16} {character.Activity} @ {character.Location}; " +
+                        $"plans={character.ScheduleCount} choices={character.DecisionCount} " +
+                        $"history={character.HistoryCount} known-needs={character.KnownNeedCount} " +
+                        $"known-relationships={character.KnownRelationshipCount}");
+                }
+
+                Console.WriteLine($"  decision explanations: {branch.Decisions.Count}");
+                for (int i = 0; i < branch.Decisions.Count; i++)
+                {
+                    MvpDecisionAuditRow decision = branch.Decisions[i];
+                    Console.WriteLine(
+                        $"    #{decision.DecisionId} {decision.CharacterName}: {decision.DefinitionId} " +
+                        $"[{decision.Status}] options={decision.OptionCount} visible-reasons={decision.VisibleReasonCount} " +
+                        $"frozen-reasons={decision.FrozenReasonCount} interventions={decision.InterventionCount}");
+                }
+
+                Console.WriteLine($"  recap groups: {branch.Recap.Count}");
+                for (int i = 0; i < branch.Recap.Count; i++)
+                {
+                    NotificationEntryView entry = branch.Recap[i];
+                    Console.WriteLine($"    {entry.Category}: {entry.Message}" +
+                        (entry.OccurrenceCount > 1 ? $" (×{entry.OccurrenceCount})" : string.Empty));
+                }
+
+                for (int i = 0; i < branch.Issues.Count; i++)
+                    Console.WriteLine("  ISSUE: " + branch.Issues[i]);
+            }
+
+            Console.WriteLine("\nlive/offline continuation: " +
+                (audit.ContinuationsEquivalent ? "MATCH" : "DIVERGED"));
+            Console.WriteLine(audit.Passed ? "PASS" : "FAIL");
+            return audit.Passed ? 0 : 1;
         }
 
         /// <summary>

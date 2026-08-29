@@ -44,18 +44,28 @@ namespace Vivarium.Domain.Decisions
             AuthoredId pressureDefinitionId,
             AuthoredId lensId,
             SocialDecisionInfluenceSpec influenceSpec,
-            AppraisalStrength minimumStrength = AppraisalStrength.Minor)
+            AppraisalStrength minimumStrength = AppraisalStrength.Minor,
+            SimDuration minimumRepeatInterval = default,
+            SimDuration minimumRelationshipAge = default)
         {
+            if (minimumRepeatInterval.IsNegative)
+                throw new ArgumentOutOfRangeException(nameof(minimumRepeatInterval));
+            if (minimumRelationshipAge.IsNegative)
+                throw new ArgumentOutOfRangeException(nameof(minimumRelationshipAge));
             PressureDefinitionId = pressureDefinitionId;
             LensId = lensId;
             InfluenceSpec = influenceSpec ?? throw new ArgumentNullException(nameof(influenceSpec));
             MinimumStrength = minimumStrength;
+            MinimumRepeatInterval = minimumRepeatInterval;
+            MinimumRelationshipAge = minimumRelationshipAge;
         }
 
         public AuthoredId PressureDefinitionId { get; }
         public AuthoredId LensId { get; }
         public SocialDecisionInfluenceSpec InfluenceSpec { get; }
         public AppraisalStrength MinimumStrength { get; }
+        public SimDuration MinimumRepeatInterval { get; }
+        public SimDuration MinimumRelationshipAge { get; }
     }
 
     public sealed class DecisionRelationshipOutcome
@@ -119,6 +129,13 @@ namespace Vivarium.Domain.Decisions
             {
                 return;
             }
+            if (trigger.MinimumRelationshipAge > SimDuration.Zero &&
+                (!world.RelationshipIndex.TryGetBetween(characterId, targetId, out RelationshipId relationshipId) ||
+                 world.Clock.Now.Since(world.Relationships.Get(relationshipId).EstablishedAt) <
+                    trigger.MinimumRelationshipAge))
+            {
+                return;
+            }
 
             CompositeSocialEvaluationResult evaluation = _social.Evaluate(
                 world,
@@ -140,6 +157,14 @@ namespace Vivarium.Domain.Decisions
             {
                 if (existing.IsActive && existing.CharacterId == characterId &&
                     (existing.DefinitionId == definition.Id || (conflict.IsSet && existing.ConflictScope.Equals(conflict))))
+                {
+                    return;
+                }
+                if (trigger.MinimumRepeatInterval > SimDuration.Zero &&
+                    existing.CharacterId == characterId && existing.DefinitionId == definition.Id &&
+                    existing.SnapshottedParameters.TryGetValue(TargetParameter, out long existingTarget) &&
+                    existingTarget == targetId.Value &&
+                    world.Clock.Now.Since(existing.CreatedAt) < trigger.MinimumRepeatInterval)
                 {
                     return;
                 }

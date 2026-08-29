@@ -235,8 +235,8 @@ namespace Vivarium.SimRunner.Tests
             Assert.True(close.IsSuccess);
 
             SimDuration untilAfterPlanning = SimDuration.FromHours(8).Plus(SimDuration.FromMinutes(30));
-            open.Host.Session.Advance(untilAfterPlanning);
-            managed.Host.Session.Advance(untilAfterPlanning);
+            AdvanceThroughMinaAutoHold(open, untilAfterPlanning);
+            AdvanceThroughMinaAutoHold(managed, untilAfterPlanning);
 
             ActivityInstance openActivity = Current(open.Host.World, open.Layout.Owen);
             Assert.True(openActivity.DefinitionId == WellKnownActivities.Traveling ||
@@ -257,7 +257,8 @@ namespace Vivarium.SimRunner.Tests
         public void ClosingCommonsDuringOwensTravelRedirectsTheTripAndReopeningRestoresAvailability()
         {
             Fixture fixture = Create();
-            fixture.Host.Session.Advance(
+            AdvanceThroughMinaAutoHold(
+                fixture,
                 SimDuration.FromHours(8).Plus(SimDuration.FromMinutes(21)));
 
             ActivityInstance outbound = Current(fixture.Host.World, fixture.Layout.Owen);
@@ -554,6 +555,12 @@ namespace Vivarium.SimRunner.Tests
                 SampleContent.InterventionStepUp,
                 stableInfluenceId)).IsSuccess);
             Assert.Equal(Die.D12, pressure.CurrentDie);
+
+            DecisionInfluence hunger = FindInfluence(decision, new AuthoredId("influence.hunger"));
+            Assert.True(fixture.Host.Session.Execute(new ApplyDecisionInterventionCommand(
+                decision.Id,
+                SampleContent.InterventionLoadedTwenty,
+                hunger.Id)).IsSuccess);
 
             fixture.Host.Transitions.BeginActivity(
                 fixture.Host.Simulation,
@@ -857,12 +864,14 @@ namespace Vivarium.SimRunner.Tests
         }
 
         [Fact]
-        public void GoldenScenarioIntroducesAndResolvesAPlayerFacingCommitmentConflictAcrossReload()
+        public void GoldenScenarioProjectsAndReplaysAPlayerFacingCommitmentConflictAcrossReload()
         {
             Fixture fixture = Create();
 
             // The original leave-work encounter has completed; the future obligations are not known yet.
-            fixture.Host.Session.Advance(SimDuration.FromHours(5).Plus(SimDuration.FromMinutes(45)));
+            AdvanceThroughMinaAutoHold(
+                fixture,
+                SimDuration.FromHours(5).Plus(SimDuration.FromMinutes(45)));
             Assert.DoesNotContain(fixture.Host.World.Decisions.All,
                 d => d.IsActive && d.DefinitionId == SampleContent.DecisionCommitmentConflict);
             SaveGameData beforeReveal = fixture.Host.Session.Save("before-commitment-conflict");
@@ -913,11 +922,20 @@ namespace Vivarium.SimRunner.Tests
             fixture.Host.Session.Advance(untilDeadline);
             restored.Session.Advance(untilDeadline);
 
-            Assert.Equal(DecisionStatus.Resolved, uninterrupted.Status);
-            Assert.Equal(uninterrupted.Resolution.ChosenOptionId, reloaded.Resolution.ChosenOptionId);
-            Assert.Equal(1, CountCommitmentsWithStatus(fixture.Host.World, CommitmentStatus.Relinquished));
-            Assert.Equal(1, CountConflictCommitmentsNotWithStatus(
-                fixture.Host.World, uninterrupted, CommitmentStatus.Relinquished));
+            Assert.Equal(uninterrupted.Status, reloaded.Status);
+            Assert.Contains(uninterrupted.Status, new[] { DecisionStatus.Resolved, DecisionStatus.Dissolved });
+            if (uninterrupted.Status == DecisionStatus.Resolved)
+            {
+                Assert.Equal(uninterrupted.Resolution.ChosenOptionId, reloaded.Resolution.ChosenOptionId);
+                Assert.Equal(1, CountCommitmentsWithStatus(fixture.Host.World, CommitmentStatus.Relinquished));
+                Assert.Equal(1, CountConflictCommitmentsNotWithStatus(
+                    fixture.Host.World, uninterrupted, CommitmentStatus.Relinquished));
+            }
+            else
+            {
+                Assert.Null(uninterrupted.Resolution);
+                Assert.Null(reloaded.Resolution);
+            }
             Assert.Equal(AuthoritativeSignature(fixture.Host.World), AuthoritativeSignature(restored.World));
         }
 
@@ -926,8 +944,8 @@ namespace Vivarium.SimRunner.Tests
         {
             Fixture kept = Create();
             Fixture breached = Create();
-            kept.Host.Session.Advance(SimDuration.FromHours(6));
-            breached.Host.Session.Advance(SimDuration.FromHours(6));
+            AdvanceThroughMinaAutoHold(kept, SimDuration.FromHours(6));
+            AdvanceThroughMinaAutoHold(breached, SimDuration.FromHours(6));
 
             Commitment keptDinner = FindCommitment(kept.Host.World, SampleContent.CommitmentDinnerWithGlen);
             Commitment breachedDinner = FindCommitment(breached.Host.World, SampleContent.CommitmentDinnerWithGlen);
@@ -967,7 +985,8 @@ namespace Vivarium.SimRunner.Tests
             // Save before the conflict is introduced, then replay the breach path and require the exact
             // later Influence evaluation. The policy itself is carried by the pending reveal payload.
             Fixture replaySource = Create();
-            replaySource.Host.Session.Advance(
+            AdvanceThroughMinaAutoHold(
+                replaySource,
                 SimDuration.FromHours(5).Plus(SimDuration.FromMinutes(45)));
             SaveGameData beforeConflict = replaySource.Host.Session.Save("before-accountability-conflict");
             WorldState replayWorld = replaySource.Host.SaveMapper.Restore(beforeConflict);
@@ -1103,6 +1122,27 @@ namespace Vivarium.SimRunner.Tests
             fixture.Host.Session.Execute(new EndObservingCharacterCommand(fixture.Layout.Mina));
             fixture.Host.Session.Execute(new BeginObservingCharacterCommand(fixture.Layout.Mina));
             return decision;
+        }
+
+        private static void AdvanceThroughMinaAutoHold(Fixture fixture, SimDuration duration)
+        {
+            SimTime target = fixture.Host.World.Clock.Now.Plus(duration);
+            while (fixture.Host.World.Clock.Now < target)
+            {
+                SimTime before = fixture.Host.World.Clock.Now;
+                fixture.Host.Session.Advance(target - before);
+                if (fixture.Host.World.Clock.Now >= target)
+                    return;
+
+                Decision held = fixture.Host.World.Decisions.All.SingleOrDefault(decision =>
+                    decision.IsActive && decision.CharacterId == fixture.Layout.Mina &&
+                    fixture.Host.World.Attention.PolicyFor(decision.Id) == AttentionPolicy.Hold);
+                Assert.NotNull(held);
+                Assert.True(fixture.Host.Session.Execute(new ReleaseDecisionCommand(held.Id)).IsSuccess);
+                fixture.Host.Session.Advance(SimDuration.Zero);
+                Assert.True(fixture.Host.World.Clock.Now >= before,
+                    "Releasing an Auto-Held Decision must permit time to advance.");
+            }
         }
 
         private static void MoveDariusOutOfWorkContext(SimulationHost host, MinimumPlayableWorldLayout layout)

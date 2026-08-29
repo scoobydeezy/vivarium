@@ -155,7 +155,7 @@ namespace Vivarium.Unity.Presentation
             for (int i = 0; i < _feed.Entries.Count; i++)
             {
                 DecisionFeedEntryView entry = _feed.Entries[i];
-                text.Append('\n').Append(i == _selectedFeedIndex ? "▶ " : "  ")
+                text.Append('\n').Append(i == _selectedFeedIndex ? "> " : "  ")
                     .Append(entry.CharacterName).Append(" — ").Append(entry.DefinitionId)
                     .Append(" — importance ").Append(entry.Importance);
                 if (entry.IsHeld) text.Append(" [Held]");

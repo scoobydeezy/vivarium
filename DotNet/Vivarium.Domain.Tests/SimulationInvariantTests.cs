@@ -426,6 +426,43 @@ namespace Vivarium.Domain.Tests
         }
 
         [Fact]
+        public void IndexedSharedContextSelectionMatchesTheGeneralDeterministicPath()
+        {
+            var index = new RelationshipIndex();
+            var relationship = new Relationship(
+                new RelationshipId(1),
+                new CharacterId(1),
+                new CharacterId(500),
+                new AuthoredId("relationship.friend"),
+                AnalyticalProgression.Constant(0, SimTime.Epoch),
+                SimTime.Epoch);
+            index.Register(relationship);
+
+            var list = new List<CharacterId>();
+            for (int i = 1; i <= 1000; i++) list.Add(new CharacterId(i));
+            var sorted = new SortedSet<CharacterId>(list);
+            var selector = new InteractionCandidateSelector(new DeterministicRandomOracle(7));
+
+            IReadOnlyList<CharacterId> general = selector.Select(
+                new CharacterId(1), list, index, 6, RandomScopeTypes.Location, 1, 3);
+            IReadOnlyList<CharacterId> indexed = selector.Select(
+                new CharacterId(1), sorted, index, 6, RandomScopeTypes.Location, 1, 3);
+
+            Assert.Equal(general, indexed);
+
+            list.Remove(new CharacterId(17));
+            list.Remove(new CharacterId(123));
+            list.Remove(new CharacterId(900));
+            sorted = new SortedSet<CharacterId>(list);
+            general = selector.Select(
+                new CharacterId(1), list, index, 6, RandomScopeTypes.Location, 1, 3);
+            indexed = selector.Select(
+                new CharacterId(1), sorted, index, 6, RandomScopeTypes.Location, 1, 3);
+
+            Assert.Equal(general, indexed);
+        }
+
+        [Fact]
         public void OneArrivalInALargeSharedContextProducesAtMostOneInteraction()
         {
             Fixture fixture = Build();

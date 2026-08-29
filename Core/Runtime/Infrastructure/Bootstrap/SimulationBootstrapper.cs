@@ -301,7 +301,7 @@ namespace Vivarium.Infrastructure.Bootstrap
                 catalog,
                 socialBeliefs,
                 new AuthoredId("social.action.interaction"),
-                maxWitnesses: 2), 200);
+                maxWitnesses: 2), 140);
             domainHandlers.Register(new SocialBeliefDecisionHandler(decisionReevaluation), 300);
             domainHandlers.Register(new ActivityStartedDecisionReevaluationHandler(decisionReevaluation), 300);
             domainHandlers.Register(new NeedChangedDecisionHandler(decisionReevaluation), 300);

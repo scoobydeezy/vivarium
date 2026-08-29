@@ -1,7 +1,7 @@
 # Vivarium Product Roadmap
 
 **Status:** Current product sequence and next-task authority  
-**Last reconciled:** 2026-08-27
+**Last reconciled:** 2026-08-28
 
 This document answers: **given the implemented simulation, what should be built next?** The product
 north star is [`CoreIdentity.md`](CoreIdentity.md). Detailed phase
@@ -26,7 +26,7 @@ multiple habitats, and reciprocal autonomy.
 
 ## Current gate
 
-**Phases 0–6 are complete; Phase 7 is next.** The jointly locked
+**Phases 0–7 are complete; Phase 8 relationship-memory design is next.** The jointly locked
 [`Minimum Playable Scenario`](MinimumPlayableScenario.md) and
 [`Player Agency Brief`](PlayerAgencyBrief.md) define the small world, meaningful character Decisions,
 supported player actions, and required Unity surfaces.
@@ -61,11 +61,31 @@ and retained entries navigate back to their Decision, character, or location wit
 event authority. Phase 6 now productizes persistence with gzipped JSON, atomic-first platform storage
 rooted at Unity's persistent-data path, restart-safe slot discovery, the existing migration chain,
 offline catch-up, compatibility diagnostics, and a player-facing three-slot Save/Continue surface.
-The next gate is Phase 7 hardening:
+The Phase 7 hardening gate required:
 
 > **Run the complete small-cast experience repeatedly across live, offline, intervention-heavy, and
 > intervention-free play; fix demonstrated legibility, correctness, and scale failures before adding
 > broader systems.**
+
+Phase 7A scale recovery and Phase 7B longitudinal small-cast auditing are complete. The Release
+1,000-character/one-day workload remains below its runtime, heap, and structural budgets. The two-day
+headless audit now exercises intervention-free live play plus influenced live and restored offline
+continuations, audits all ten character profiles and Decision explanations, retains material recap
+groups, and requires projection-visible live/offline continuation equivalence. Its evidence corrected
+the Mina Auto-Hold calibration and bounded repeated interaction-created social Decisions without
+silencing the established Owen/Lena and Glen/Mina causal beats.
+
+Phase 7C completes the scene-level Unity experience matrix with two production-scene PlayMode passes:
+an intervention-free two-day live continuation and an intervention/Commons/save/reload/offline
+continuation. They inspect every character through the real profile surface, exercise the Decision,
+location, persistence, and recap surfaces, and retain the intended later accountability evidence. The
+pass found and corrected one concrete legibility defect—a selected-row glyph absent from the shipped TMP
+font. With the headless longitudinal equivalence, Unity acceptance, deterministic persistence, and scale
+budgets green, the MVP hardening gate is closed.
+
+The next gate is Phase 8 relationship-memory consolidation and attrition. Its roadmap goal is locked,
+but scoring, consolidation thresholds, and retention policy require the focused design brief called for
+by [`RoadmapPhases.md`](RoadmapPhases.md) before implementation begins.
 
 Observable completion test:
 

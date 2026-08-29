@@ -157,6 +157,12 @@ namespace Vivarium.Application.Tests
             Assert.Contains(
                 recap.Project(fixture.Host.World, SimulationMode.OfflineCatchUp, maximumGroups: 20).Entries,
                 entry => entry.Category == "Social");
+            NotificationRecapView prioritized = recap.Project(
+                fixture.Host.World,
+                SimulationMode.OfflineCatchUp,
+                maximumGroups: 1);
+            Assert.Equal("World", Assert.Single(prioritized.Entries).Category);
+            Assert.Equal(1, prioritized.OmittedGroupCount);
 
             fixture.Host.Session.Advance(SimDuration.FromMinutes(10));
 

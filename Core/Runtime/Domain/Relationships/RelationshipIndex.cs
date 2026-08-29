@@ -44,6 +44,7 @@ namespace Vivarium.Domain.Relationships
     {
         private readonly Dictionary<RelationshipPairKey, RelationshipId> _byPair = new Dictionary<RelationshipPairKey, RelationshipId>();
         private readonly IndexedMembership<CharacterId, RelationshipId> _byCharacter = new IndexedMembership<CharacterId, RelationshipId>();
+        private readonly IndexedMembership<CharacterId, CharacterId> _knownCharacters = new IndexedMembership<CharacterId, CharacterId>();
 
         public void Register(Relationship relationship)
         {
@@ -56,6 +57,8 @@ namespace Vivarium.Domain.Relationships
             _byPair[key] = relationship.Id;
             _byCharacter.Add(relationship.LowCharacterId, relationship.Id);
             _byCharacter.Add(relationship.HighCharacterId, relationship.Id);
+            _knownCharacters.Add(relationship.LowCharacterId, relationship.HighCharacterId);
+            _knownCharacters.Add(relationship.HighCharacterId, relationship.LowCharacterId);
         }
 
         public void Unregister(Relationship relationship)
@@ -63,6 +66,8 @@ namespace Vivarium.Domain.Relationships
             _byPair.Remove(new RelationshipPairKey(relationship.LowCharacterId, relationship.HighCharacterId));
             _byCharacter.Remove(relationship.LowCharacterId, relationship.Id);
             _byCharacter.Remove(relationship.HighCharacterId, relationship.Id);
+            _knownCharacters.Remove(relationship.LowCharacterId, relationship.HighCharacterId);
+            _knownCharacters.Remove(relationship.HighCharacterId, relationship.LowCharacterId);
         }
 
         public bool TryGetBetween(CharacterId a, CharacterId b, out RelationshipId id) =>
@@ -71,10 +76,15 @@ namespace Vivarium.Domain.Relationships
         /// <summary>Relationships involving a character, ascending by relationship id.</summary>
         public IReadOnlyCollection<RelationshipId> Of(CharacterId character) => _byCharacter.MembersOf(character);
 
+        /// <summary>Characters with a registered relationship to this character, ascending.</summary>
+        public IReadOnlyCollection<CharacterId> KnownCharactersOf(CharacterId character) =>
+            _knownCharacters.MembersOf(character);
+
         public void Clear()
         {
             _byPair.Clear();
             _byCharacter.Clear();
+            _knownCharacters.Clear();
         }
     }
 }

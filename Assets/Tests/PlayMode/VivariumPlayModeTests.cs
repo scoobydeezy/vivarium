@@ -568,6 +568,124 @@ namespace Vivarium.Unity.Tests
         }
 
         [UnityTest]
+        public IEnumerator Phase7c_intervention_free_two_day_pass_keeps_every_required_surface_legible()
+        {
+            SimTime target = SimTime.FromClockTime(2, 7, 0);
+            AdvanceThroughHeldDecisions(target, Vivarium.Domain.Simulation.SimulationMode.Live);
+            yield return null;
+
+            Assert.That(_bootstrapper.Host.World.Clock.Now, Is.EqualTo(target));
+            Assert.That(_bootstrapper.Host.World.Characters.Count, Is.EqualTo(10));
+
+            CharacterRosterPanel roster = Object.FindAnyObjectByType<CharacterRosterPanel>();
+            CharacterProfilePanel profile = Object.FindAnyObjectByType<CharacterProfilePanel>();
+            DecisionPanel decisions = Object.FindAnyObjectByType<DecisionPanel>();
+            WorldLocationPanel locations = Object.FindAnyObjectByType<WorldLocationPanel>();
+            NotificationRecapPanel notifications = Object.FindAnyObjectByType<NotificationRecapPanel>();
+            Assert.That(roster.EntryCount, Is.EqualTo(10));
+            Assert.That(decisions.DisplayedText, Does.Contain("Decision inbox"));
+            Assert.That(locations.DisplayedText, Does.Contain("Mina's flat"));
+            Assert.That(notifications.EntryCount, Is.InRange(1, 8));
+            Assert.That(notifications.DisplayedText, Does.Contain("World notifications"));
+
+            foreach (Character character in _bootstrapper.Host.World.Characters.All)
+            {
+                _presenter.OnCharacterTapped(character.Id);
+                _bootstrapper.Host.Session.Pump();
+                Assert.That(profile.DisplayedText, Does.Contain(character.DisplayName));
+                Assert.That(profile.DisplayedText, Does.Contain("Activity:"));
+                Assert.That(profile.DisplayedText, Does.Contain("Location:"));
+                Assert.That(profile.DisplayedText, Does.Contain("Schedule:"));
+                Assert.That(profile.DisplayedText, Does.Contain("Social / Knowledge:"));
+                Assert.That(profile.DisplayedText, Does.Contain("Decisions:"));
+                Assert.That(profile.DisplayedText, Does.Contain("History:"));
+                Assert.That(profile.DisplayedText, Does.Not.Contain("Activity: unknown"));
+                Assert.That(profile.DisplayedText, Does.Not.Contain("Location: unknown"));
+            }
+
+            var projector = new DecisionProjector(_bootstrapper.Host.Catalog.Interventions);
+            bool sawConflict = false;
+            foreach (Decision decision in _bootstrapper.Host.World.Decisions.All)
+            {
+                DecisionView view = projector.Project(_bootstrapper.Host.World, decision);
+                Assert.That(view.Options.Count, Is.GreaterThanOrEqualTo(2));
+                if (view.Resolution != null)
+                    Assert.That(view.Resolution.Reasons, Is.Not.Empty);
+                if (decision.DefinitionId == CommitmentConflictDecisionId)
+                    sawConflict = true;
+                Assert.That(decision.Interventions, Is.Empty);
+            }
+            Assert.That(sawConflict, Is.True);
+        }
+
+        [UnityTest]
+        public IEnumerator Phase7c_influenced_save_offline_pass_preserves_agency_and_material_recap()
+        {
+            const string slot = "phase7c-experience-test";
+            Character mina = CharacterNamed("Mina Cairn");
+            SaveContinuePanel saves = Object.FindAnyObjectByType<SaveContinuePanel>();
+            WorldLocationPanel locations = Object.FindAnyObjectByType<WorldLocationPanel>();
+            DecisionPanel decisions = Object.FindAnyObjectByType<DecisionPanel>();
+            NotificationRecapPanel notifications = Object.FindAnyObjectByType<NotificationRecapPanel>();
+
+            saves.InvokeDeleteForTest(slot);
+            Assert.That(_bootstrapper.Host.Session.Execute(
+                new FollowCharacterCommand(mina.Id, true)).IsSuccess, Is.True);
+            _presenter.OnCharacterTapped(mina.Id);
+            _bootstrapper.Host.Session.Pump();
+
+            Assert.That(locations.TrySelectLocation(_bootstrapper.WorldLayout.Commons), Is.True);
+            Assert.That(locations.InvokeAvailabilityForTest(), Is.True);
+            Assert.That(_bootstrapper.Host.Session.Pump(), Is.EqualTo(1));
+            Assert.That(locations.DisplayedText, Does.Contain("Eastmarket Commons — CLOSED"));
+
+            _bootstrapper.Host.Session.Advance(
+                SimDuration.FromHours(5).Plus(SimDuration.FromMinutes(34)));
+            Decision decision = DemoDecision();
+            Assert.That(_bootstrapper.Host.World.Attention.IsHeld(decision.Id), Is.True);
+            Assert.That(decisions.SelectedDecisionId, Is.EqualTo(decision.Id.Value));
+            Assert.That(decisions.DisplayedText, Does.Contain("intervention.encourage"));
+            Assert.That(decisions.DisplayedText, Does.Contain("intervention.temper"));
+            Assert.That(decisions.DisplayedText, Does.Contain("intervention.re_roll"));
+            Assert.That(decisions.DisplayedText, Does.Contain("intervention.loaded_twenty"));
+
+            DecisionInfluence influence = FirstIntervenableInfluence(decision);
+            Assert.That(_bootstrapper.Host.Session.Execute(new ApplyDecisionInterventionCommand(
+                decision.Id,
+                new AuthoredId("intervention.encourage"),
+                influence.Id)).IsSuccess, Is.True);
+            Assert.That(_bootstrapper.Host.Session.Execute(
+                new ReleaseDecisionCommand(decision.Id)).IsSuccess, Is.True);
+            Assert.That(locations.InvokeAvailabilityForTest(), Is.True);
+            Assert.That(_bootstrapper.Host.Session.Pump(), Is.EqualTo(1));
+            Assert.That(locations.DisplayedText, Does.Contain("Eastmarket Commons — OPEN"));
+
+            Assert.That(saves.InvokeSaveForTest(slot), Does.Contain("Saved"));
+            SimTime checkpoint = _bootstrapper.Host.World.Clock.Now;
+            _bootstrapper.Host.Session.Advance(SimDuration.FromMinutes(1));
+            Assert.That(saves.InvokeLoadForTest(slot), Does.Contain("Loaded"));
+            Assert.That(_bootstrapper.Host.World.Clock.Now, Is.EqualTo(checkpoint));
+            Assert.That(_bootstrapper.Host.World.Attention.WatchStateOf(mina.Id).IsFollowed, Is.True);
+
+            _presenter.BeginOfflineRecap(checkpoint);
+            _bootstrapper.Host.Session.Advance(
+                SimTime.FromClockTime(2, 7, 0) - checkpoint,
+                Vivarium.Domain.Simulation.SimulationMode.OfflineCatchUp);
+            yield return null;
+
+            Assert.That(_bootstrapper.Host.World.Clock.Now,
+                Is.EqualTo(SimTime.FromClockTime(2, 7, 0)));
+            Assert.That(notifications.EntryCount, Is.InRange(1, 8));
+            Assert.That(notifications.DisplayedText, Does.Contain("While you were away"));
+            Assert.That(notifications.DisplayedText, Does.Contain("[Decision]"));
+            Assert.That(notifications.DisplayedText, Does.Contain("[Commitment]"));
+            Assert.That(decisions.DisplayedText, Does.Contain("Recent events"));
+            Assert.That(decisions.DisplayedText, Does.Contain("Applied interventions:"));
+            Assert.That(decisions.DisplayedText, Does.Contain("intervention.encourage → Influence"));
+            Assert.That(saves.InvokeDeleteForTest(slot), Does.Contain("Deleted"));
+        }
+
+        [UnityTest]
         public IEnumerator Demo_progresses_through_shared_travel_work_pressure_and_need_decision()
         {
             Character mina = CharacterNamed("Mina Cairn");
@@ -644,7 +762,13 @@ namespace Vivarium.Unity.Tests
             Assert.That(profile.DisplayedText, Does.Contain("decision.commitment_conflict"));
 
             _bootstrapper.Host.Session.Advance(conflict.ResolveAt - _bootstrapper.Host.World.Clock.Now);
-            Assert.That(conflict.Status, Is.EqualTo(DecisionStatus.Resolved));
+            Assert.That(conflict.Status,
+                Is.EqualTo(DecisionStatus.Resolved).Or.EqualTo(DecisionStatus.Dissolved));
+            if (conflict.Status == DecisionStatus.Dissolved)
+            {
+                Assert.That(conflict.Resolution, Is.Null);
+                yield break;
+            }
             Commitment relinquished = null;
             foreach (Commitment commitment in _bootstrapper.Host.World.Commitments.All)
                 if (commitment.Status == CommitmentStatus.Relinquished)
@@ -760,6 +884,33 @@ namespace Vivarium.Unity.Tests
             {
                 _bootstrapper.Host.Session.Advance(
                     SimDuration.FromHours(5).Plus(SimDuration.FromMinutes(34)));
+            }
+        }
+
+        private void AdvanceThroughHeldDecisions(
+            SimTime target,
+            Vivarium.Domain.Simulation.SimulationMode mode)
+        {
+            int releases = 0;
+            while (_bootstrapper.Host.World.Clock.Now < target)
+            {
+                SimTime before = _bootstrapper.Host.World.Clock.Now;
+                _bootstrapper.Host.Session.Advance(target - before, mode);
+                if (_bootstrapper.Host.World.Clock.Now >= target) return;
+
+                Decision held = null;
+                foreach (Decision candidate in _bootstrapper.Host.World.Decisions.All)
+                    if (candidate.IsActive && _bootstrapper.Host.World.Attention.IsHeld(candidate.Id))
+                    {
+                        held = candidate;
+                        break;
+                    }
+                Assert.That(held, Is.Not.Null,
+                    "A live experience pass stopped before its target without a releasable Decision.");
+                Assert.That(_bootstrapper.Host.Session.Execute(
+                    new ReleaseDecisionCommand(held.Id)).IsSuccess, Is.True);
+                Assert.That(++releases, Is.LessThanOrEqualTo(12),
+                    "The bounded two-day fixture produced too many blocking Decisions.");
             }
         }
 

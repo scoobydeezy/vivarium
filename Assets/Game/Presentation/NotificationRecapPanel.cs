@@ -104,7 +104,7 @@ namespace Vivarium.Unity.Presentation
             for (int i = 0; i < _view.Entries.Count; i++)
             {
                 NotificationEntryView entry = _view.Entries[i];
-                text.Append("\n").Append(i == _selectedIndex ? "▶ " : "  ")
+                text.Append("\n").Append(i == _selectedIndex ? "> " : "  ")
                     .Append(entry.OccurredAtLabel).Append(" [").Append(entry.Category).Append("] ")
                     .Append(entry.Message);
                 if (entry.OccurrenceCount > 1)

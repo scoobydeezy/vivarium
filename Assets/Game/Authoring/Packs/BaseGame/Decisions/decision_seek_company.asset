@@ -27,6 +27,8 @@ MonoBehaviour:
     negativeLabelId: influence.avoids_company
     visibility: 31
     minimumStrength: 1
+    minimumRepeatIntervalMinutes: 1440
+    minimumRelationshipAgeMinutes: 2880
   relationshipOutcomes:
   - optionId: option.seek_company
     channelId: relationship.channel.affection
